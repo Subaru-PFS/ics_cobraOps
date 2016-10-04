@@ -1,0 +1,22 @@
+{ Init camera and LED }
+{ Daily Benchmark Test}
+cmd_init_Digital_IO
+cmd_turnLed_Off
+
+cmd_createTestDirectoryWithSuffix msimMaps
+
+{ ==Camera Setup== 
+ NOTE: You must run or load dark and bias images prior to this script }
+cmd_remoteEnableCameraRecovery 1,100
+cmd_remote_setCameraExposureTime  0.002, 100
+cmd_selectCentroiding_Algorithm  6
+cmd_enableWindowed_Centroid  0
+cmd_setThreshold_NSigma  5
+cmd_loadDark_Image  2msDarkImage_64.fits
+cmd_loadBias_Image  RemoteBiasImage_64.fits
+cmd_enableBiasSub  1
+cmd_enableDarkSub  1
+cmd_clearFiducialTable
+cmd_setHornMethodFiducialCoordinate 1644.1082, 1905.1559, 10
+cmd_setHornMethodFiducialCoordinate 1257.2366, 1530.2563, 10
+cmd_setHornMethodFiducialCoordinate 94.7737, 405.1884, 10

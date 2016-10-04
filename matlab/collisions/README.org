@@ -1,0 +1,81 @@
+#+STARTUP: hidestars
+Collision simulation subroutine outline:
+
+* simFun (replaces simulationCollisionsMoving)
+** function calls
+*** getCentersRails(nrails) -> [centers]
+    assumes distCobras = 8
+*** XY2TP(xy_patrol, L1, L2) -> {.tht, .phi}
+    - xy specified in patrol region coordinates as a cmplx number
+    - L1, L2 default to 2.375 mm
+*** CalcDistanceMatrix(targets, benchGeometry) -> {.dst, .rc, .dmatrix}
+    - calls XY2TP
+    - calls pt2linesegment
+*** pt2linesegment(xy1,xy2,xy3) -> [dist solntype]
+*** generate trajectory
+**** generateTrajectory2 + realizeTrajectory2
+**** generateTrajectory(positions, targets, benchGeometry, trajectory_strategy) -> {.traj,.ntht,.dtht,.nphi,.dphi,.nmax}
+     - stepsize
+     - calls XY2TP
+     - thteps ("theta epsilon") controls the direction of motion out of
+       the home position.  postive means positive (CCW, opposite sense
+       of phi), negative means negative (CW, same sense as phi).
+       Currently [2016-03-10 Thu] the physical implementation ins
+       negative.
+*** detectCollisionsSparse(.traj, centers, rMin) -> {.detected, .type}
+    - also needs L1, L2, NNMap
+    - distCobras = 8.0 (for NNMap)
+    - linkLength = 2.375 -> L1, L2
+    - minimumSeparation defaults to 2.0
+    - calls XY2TP
+    - cals pt2linesegment
+*** showMovementNN(.traj, centers, collisions, pos1, pos2) -> figures
+    - arm = 2.375
+    - rfib = 1.0
+    - calls XY2TP
+* simulationCollisionsMoving
+** ideas
+   collect centers, L1, L2, THT0, phiIN, phiOUT, NNMap into one structure.
+** variables
+   linkLength -> L1, L2
+   distCobras
+   minDist(rf)
+   KeepOutAngle, phiIn, phiOut
+** function calls
+*** getCentersRails(nrails) -> [centers]
+    assumes distCobras = 8
+*** XY2TP(xy_patrol, L1, L2) -> {.tht, .phi}
+    - xy specified in patrol region coordinates as a cmplx number
+    - L1, L2 default to 2.375 mm
+*** CalcDistanceMatrix(targets, benchGeometry) -> {.dst, .rc, .dmatrix}
+    - calls XY2TP
+    - calls pt2linesegment
+*** pt2linesegment(xy1,xy2,xy3) -> [dist solntype]
+*** generateTrajectory(targets, benchGeometry, trajectory_strategy) -> [trajectories]
+    - stepsize
+    - calls XY2TP
+*** detectCollisions(trajectories, centers, rMin) -> {.detected, .type}
+    - also needs L1, L2, NNMap
+    - distCobras = 8.0 (for NNMap)
+    - linkLength = 2.375 -> L1, L2
+    - minimumSeparation defaults to 2.0
+    - calls XY2TP
+    - cals pt2linesegment
+*** showMovement(trajectories, centers, collisions, pos1, pos2) -> figures
+    - arm = 2.375
+    - rfib = 1.0
+    - calls XY2TP
+
+* other routines in directory
+
+** getTargetsAround.m
+
+** getTargetsMatrix.m
+
+** go.m
+
+** simulateCollisions.m
+
+ * xytpdemo.m
+
+
