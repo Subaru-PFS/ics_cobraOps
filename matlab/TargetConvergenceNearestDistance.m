@@ -144,13 +144,12 @@ function output=TargetConvergenceNearestDistance()
                                     L1(cobraC), L2(cobraC), mm);
             
             jammed = (jammalammaR | jammalammaC) & close_shave;
-            if sum(jammed)
-                 jammed
+            if sum(jammed) & (tgt > first_tgt)
                 isjammed(jj, tgt) = true;
 
                 %% mark the collision map figure
                 figure(cmapfignum); hold on;
-                plot(tgt,2*jj,'rx','MarkerSize',20,'Linewidth',3);
+                plot(tgt-1,2*jj,'rx','MarkerSize',20,'Linewidth',3);
                 xlim([-4.5 4.5] + tgt);
                 hold off;
                 drawnow;
