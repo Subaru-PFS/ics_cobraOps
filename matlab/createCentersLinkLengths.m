@@ -7,11 +7,11 @@ baseCfg = loadCfgXml;
 
 % Start new config
 newConfig = baseCfg;
-
+cw = 1;
 data = processMsimCenters(baseCfg);
-makeMaps = 1;
-cli_answer = input(sprintf('Do you want to create and store motor maps too? [Y|n] '),'s');
-if strcmp(cli_answer,'n')
+makeMaps = 0;
+cli_answer = input(sprintf('Do you want to create and store motor maps too? [y|N] '),'s');
+if strcmp(cli_answer,'y')
     makeMaps = 0;
 end
 %keyboard;
@@ -25,7 +25,8 @@ for kk = 1:size(data, 2)
     data(kk).cold = getARMval(baseCfg,pid,1,'Global_base_pos_x') + 1i * getARMval(baseCfg,pid,1,'Global_base_pos_y');
     data(kk).l1old = getARMval(baseCfg,pid,1,'Link1_Link_Length');
     data(kk).l2old = getARMval(baseCfg,pid,1,'Link2_Link_Length');
-    data(kk).zold = getARMval(baseCfg,pid,1,'Global_base_ori_z');
+    data(kk).ccwold = getARMval(baseCfg,pid,1,'CCW_Global_base_ori_z');
+    data(kk).cwold = getARMval(baseCfg,pid,1,'CW_Global_base_ori_z');
     data(kk).amaxOld = getARMval(baseCfg,pid,1,'phiMax');
     data(kk).aminOld = getARMval(baseCfg,pid,1,'phiMin');
     data(kk).ot1fw = getARMval(baseCfg,pid,1,'Link1_fwd_Duration');
@@ -67,23 +68,36 @@ for kk = 1:size(data, 2)
     
     % Getting the theta phi angles for the data.
     qphi = XY2TP(data(kk).j2centroids - data(kk).j1center, data(kk).link1, data(kk).link2);
+    qphi.tht = mod(qphi.tht, 2*pi);
     data(kk).j2phi = mod(real(qphi.phi),pi);
     data(kk).j2tht = qphi.tht;
     
+    %Calculate neg. hardstop CCW
     thtm = nanmean(qphi.tht(5:30));
     thtstd = nanstd(qphi.tht(5:30));
     thtall = qphi.tht(qphi.tht>thtm-thtstd*2.5 & qphi.tht<thtm+thtstd*2.5);
     data(kk).thtm = nanmean(thtall);
     
+    % Getting the theta phi angles for the pos hardstop.
+    qphi2 = XY2TP(data(kk).j2centroids2 - data(kk).j1center, data(kk).link1, data(kk).link2);
+    data(kk).j2phi2 = mod(real(qphi2.phi),pi);
+    data(kk).j2tht2 = qphi2.tht;
+    
+    try
+    %Calculate pos. hardstop CW
+    thtm2 = nanmean(qphi2.tht(5:30));
+    thtstd2 = nanstd(qphi2.tht(5:30));
+    thtall2 = qphi2.tht(qphi2.tht>thtm2-thtstd2*2.5 & qphi2.tht<thtm2+thtstd2*2.5);
+    data(kk).thtm2 = nanmean(thtall2);
+    
     qtht = XY2TP(data(kk).j1centroids - data(kk).j1center, data(kk).link1, data(kk).link2);
     data(kk).j1phi = real(qtht.phi);
     data(kk).j1tht = unwrap(qtht.tht - data(kk).thtm);
-    
+    catch
+        disp 'No CW hardstop in test data';
+        
+    end
 end
-
-
-
-
 
 
 centersfig = figure(1)
@@ -134,12 +148,15 @@ for kk = 1:size(data, 2)
         sprintf('Link2: %.2f (old: %.2f)', data(kk).link2, data(kk).l2old), ...
         sprintf('Phi Angle Start:   %.2f (old: %.2f)', data(kk).amin, data(kk).aminOld), ...
         sprintf('Phi Angle End: %.2f (old: %.2f)', data(kk).amax, data(kk).amaxOld), ...
-        sprintf('Theta Hardstop: %.2f (old: %.2f)', mod(data(kk).thtm,2*pi)*180/pi, data(kk).zold)); % Center confidence= how far was phi out for measuring the center.
+        sprintf('CCW Hardstop: %.2f (old: %.2f)', mod(data(kk).thtm,2*pi)*180/pi, data(kk).ccwold));%,... % Center confidence= how far was phi out for measuring the center.
+       % sprintf('CW Hardstop: %.2f (old: %.2f)', mod(data(kk).thtm2,2*pi)*180/pi, data(kk).cwold)); % Center confidence= how far was phi out for measuring the center.
+    
+    
     
     hold off;
     
     
-    if 1
+    if 0
         %%suggestions
         % use unwrap
         % set fwd limit to 6.3 rad, rev limit to .5 rad
@@ -172,8 +189,11 @@ for kk = 1:size(data, 2)
         newConfig = setARMval(newConfig,pid, 1, 'Global_base_pos_y',imag(data(kk).j1center));
         newConfig = setARMval(newConfig,pid, 1, 'Link1_Link_Length',data(kk).link1);
         newConfig = setARMval(newConfig,pid, 1, 'Link2_Link_Length',data(kk).link2);
-        newConfig = setARMval(newConfig,pid,1,'Global_base_ori_z', mod(data(kk).thtm,2*pi)*180/pi);
-        
+        ccwangle = mod(data(kk).thtm,2*pi)*180/pi;
+        newConfig = setARMval(newConfig,pid,1,'CCW_Global_base_ori_z', ccwangle);
+%        cwangle = mod(data(kk).thtm2,2*pi)*180/pi;
+%        newConfig = setARMval(newConfig,pid,1,'CW_Global_base_ori_z', cwangle);
+
         %if(amin < 0) amin = 0.1; end % No neg angles for MSIM please.
         newConfig = setARMval(newConfig,pid, 1, 'Joint2_CCW_limit_angle',data(kk).amin);
         newConfig = setARMval(newConfig,pid, 1, 'Joint2_CW_limit_angle',data(kk).amax);
