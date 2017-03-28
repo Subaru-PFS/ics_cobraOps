@@ -71,23 +71,26 @@ for ii=1:nTests;
             dataDir = dataDirs{ii};
             QQ = loadmats([loadFilter '_mId*.mat'],dataDir);
         end
-    eval(unpackstruct(QQ));
-    S = whos;
-    Names = {S.name};
-    posFileInd = find(~cellfun(@isempty,regexp(Names,'^mId')));
+% $$$         eval(unpackstruct(QQ));
+% $$$         S = whos;
+% $$$         Names = {S.name};
+% $$$         % indices in Names that start with mId
+% $$$         posFileInd = find(~cellfun(@isempty,regexp(Names,'^mId')));
+        datafields = fields(QQ);
     end
-    for vv = posFileInd % for all positioners
+    for vv = fields(QQ)' % for all positioners
         if(isLoaded)
-            vname = '_str';
-            keyboard;
+% $$$             vname = '_str';
+% $$$             keyboard;
         else 
-        vname='';
-        vname = char(Names(vv));
-        id = str2num(char(regexp(vname,'(?<=pId_)\d*','match')));
-        pos(id).name = vname;
-        s = eval(vname);
+% $$$             vname='';
+% $$$             vname = char(Names(vv));
+% $$$             id = str2num(char(regexp(vname,'(?<=pId_)\d*','match')));
+            s = QQ.(vv{1});
+            id = s(1).pid;
+            pos(id).name = vv{1}; %vname;
         end
-        if ~isempty(regexp(vname,'_str'))
+% $$$         if ~isempty(regexp(vname,'_str'))
              
             angles = [s.J1].*180/pi;
             targetAngles= [s.J1_t].*180/pi;
@@ -127,7 +130,7 @@ for ii=1:nTests;
             pos(id).s2.mmap =          horzcat(pos(id).s2.mmap, ms ./ tt(1:end-1,:));
             pos(id).s2.iteration =     horzcat(pos(id).s2.iteration, iter(1:end-1,:));
             pos(id).s2.targetNo =      horzcat(pos(id).s2.targetNo, meshgrid(1:size(ms,2), 1:size(ms,1)));
-        end
+% $$$         end
     end
 end
 

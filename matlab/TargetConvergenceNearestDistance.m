@@ -165,7 +165,7 @@ function output=TargetConvergenceNearestDistance()
 % $$$                 end
 
                 %% the 2-cobra figure:
-                figure(jj+8000)
+                figure(8000)
                 plot(pos(cobraR,:,tgt),'bo--'); hold on;
                 plot(pos(cobraC,:,tgt),'go--'); 
                 plot(target([cobraR cobraC],tgt), 'kx','MarkerSize',20,'Linewidth',3);
@@ -175,24 +175,47 @@ function output=TargetConvergenceNearestDistance()
                      'ro-','MarkerSize',10);
                 cmplx(@plotcircle, center(cobraR), L1(cobraR)+L2(cobraR),'k:');
                 cmplx(@plotcircle, center(cobraC), L1(cobraC)+L2(cobraC),'k:');
+                % tht hard stops
+                plot(bsxfun(@plus,[0 0; 4.75/mm*exp(i*tht0([cobraR cobraC])')],...
+                            center([cobraR cobraC]).'),'k--');
+                plot(bsxfun(@plus,[0 0; 4.75/mm*exp(i*tht1([cobraR cobraC])')],...
+                            center([cobraR cobraC]).'),'k-.');
+                % pid labels
+                cmplx(@text,center(cobraR)+5,num2str(pids(cobraR)));
+                cmplx(@text,center(cobraC)+5,num2str(pids(cobraC)));
+                title(sprintf('Min separation = %.4f mm, target %d', min(dist(jj,:,tgt)),tgt-1));
                 hold off;
+                camroll(90);
                 axis equal
 
                 %% vs time
-                figure(tgt+9000)
+                figure(9000)
                 
-                C = abs(bsxfun(@minus, squeeze(pos(:,:,tgt)), target(:,tgt)));
-                D = output.dist(:,:,tgt);
+                %% C := distance to target
+                C = abs(bsxfun(@minus, squeeze(pos(:,1:end-1,tgt)), target(:,tgt)))*mm;
+                %% D := measure of collision distance
+                D = output.dist(:,1:end-1,tgt);
                 CD = zeros(size([C;D]));
-                CD(1:2:end,:) = C;
-                CD(2:2:end,:) = D;
-                imagesc(CD);
-                  xlabel('Iteration #');
-                 ylabel('pIDs');
+                try
+                CD(1:2:end,:) = 1./(1 + exp(-(C - 0.03)/0.005));
+                CD(2:2:end,:) = 1./(1 + exp((D - 2.4)/.1));
+                catch 
+                   keyboard; 
+                end
+                [rows cols] = size(CD);
+                imagesc((1:cols)-1.5,1:rows,CD); hold on;
+                plot(find(jammed)-1, 2*jj*ones(size(find(jammed))),'ro','MarkerFace','r');
+                hold off;
+                colorbar;
+                title(sprintf('target %d',tgt-1));
+                xlabel('Iteration #');
+                ylabel('pIDs');
                 set(gca,'YTick',2:2:Nneighbors,'YTickLabel',output.labels);
-              caxis([0, 10]);
-                keyboard;
+                caxis([0, 1]);
                 drawnow;
+                
+                disp([tgt-1 cobraR cobraC]);
+                keyboard
 
 % $$$                 close(pidpair)
 % $$$                 close(jj + 8000)
