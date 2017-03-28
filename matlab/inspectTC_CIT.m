@@ -74,18 +74,31 @@ function output = inspectTC_CIT(pid,minsteps,targets)
             figure(pid)
             clf;
             subplot(221)
-            plot([0, arm1*exp(i*(data(jj).J1_t + theta0)), ...
-                  arm1*exp(i*(data(jj).J1_t + theta0)) ...
-                  + arm2*exp(i*((data(jj).J1_t - pi + data(jj).J2_t) ...
-                                + theta0))], 'o-'); 
-            hold on;
-            plot(arm1*exp(i*(data(jj).J1 + theta0)) + ...
-                 arm2*exp(i*((data(jj).J1 - pi + data(jj).J2) + theta0)),'k.:')
-            %       plot((data(jj).curPos(~isnan(data(jj).status))    - cobracenter)*pix2um,'k.:');
-            %       plot((data(jj).targCmplx - cobracenter)*pix2um,'r.');
-            plotcircle(0,0,arm1+arm2,'r');
+            dataok = find(~isnan(data(jj).curPos) & data(jj).curPos ~= 0);
+            % outer patrol limit
+            plotcircle(0,0,arm1+arm2,'r');            hold on;
+            % 10, 5 micron target circles
             cmplx(@plotcircle,(data(jj).targCmplx - cobracenter)*pix2um,10,'r');
             cmplx(@plotcircle,(data(jj).targCmplx - cobracenter)*pix2um, 5,'m');
+            % hard stop angles for theta
+            plot([0 (arm1+arm2)*exp(i*theta0)], 'k-.');%os
+            plot([0 (arm1+arm2)*exp(i*theta1)], 'k-'); %ss
+            % cobra arms at target
+            plot([0                   arm1 * exp(i*THTtgt(jj)) ...
+                  (data(jj).targCmplx - cobracenter)*pix2um],'ro--');
+            % cobra arms in initial position
+            XYinit = (data(jj).curPos(dataok(1)) - cobracenter)*pix2um;
+            THTinit = angle(XYinit) + acos((XYinit*XYinit' + arm1.^2 - arm2.^2)./(2*arm1.*abs(XYinit)));
+            plot([0, arm1 * exp(i*THTinit), XYinit],'go-');
+            % cobra arms in final position
+            XYlast = (data(jj).curPos(dataok(end)) - cobracenter)*pix2um;
+            THTlast = angle(XYlast) + acos((XYlast*XYlast' + arm1.^2 - arm2.^2)./(2*arm1.*abs(XYlast)));
+            plot([0, arm1 * exp(i*THTlast), XYlast],'bo-');
+            % fiber trajectory from XY position
+            plot((data(jj).curPos(dataok) - cobracenter)*pix2um,'k.:');
+            % target location
+            % plot((data(jj).targCmplx - cobracenter)*pix2um,'rx','MarkerSize',20);
+            
             xlabel('X [um]');
             ylabel('Y [um]');
             title(sprintf('%d: XY coordinates',jj-1));
@@ -102,30 +115,31 @@ function output = inspectTC_CIT(pid,minsteps,targets)
             xlabel('R\Delta\theta [um]');
             ylabel('r_2\Delta\phi [um]');
             title(sprintf('%d in \\Delta\\theta-\\Delta\\phi space',jj-1));
-            try
-                textbp(sprintf('\\theta_t = %.2f rad (%.0f deg)\n\\phi_t = %.2f rad(%.0f deg)',...
-                               data(jj).J1_t, 180/pi*data(jj).J1_t, ...
-                               data(jj).J2_t, 180/pi*data(jj).J2_t));
-            catch
-                text(.2,.2,sprintf('\\theta_t = %.2f rad (%.0f deg)\n\\phi_t = %.2f rad(%.0f deg)',...
-                                   data(jj).J1_t, 180/pi*data(jj).J1_t, ...
-                                   data(jj).J2_t, 180/pi*data(jj).J2_t),'units','normal');
-            end
+            %% labels of the target theta, phi angles.  not necessary, given 221 figure
+% $$$             try
+% $$$                 textbp(sprintf('\\theta_t = %.2f rad (%.0f deg)\n\\phi_t = %.2f rad(%.0f deg)',...
+% $$$                                data(jj).J1_t, 180/pi*data(jj).J1_t, ...
+% $$$                                data(jj).J2_t, 180/pi*data(jj).J2_t));
+% $$$             catch
+% $$$                 text(.2,.2,sprintf('\\theta_t = %.2f rad (%.0f deg)\n\\phi_t = %.2f rad(%.0f deg)',...
+% $$$                                    data(jj).J1_t, 180/pi*data(jj).J1_t, ...
+% $$$                                    data(jj).J2_t, 180/pi*data(jj).J2_t),'units','normal');
+% $$$             end
             hold off;
 
             set(0,'DefaultLineMarkerSize',8);
             subplot(222)
-            j1pos = find(data(jj).J1err > 0);
+            j1pos = find(J1err(:,jj) > 0);
             j2pos = find(data(jj).J2err > 0);
-            j1neg = find(data(jj).J1err < 0);
+            j1neg = find(J1err(:,jj) < 0);
             j2neg = find(data(jj).J2err < 0);
-            plot(j1pos,  data(jj).J1err(j1pos), 'b^'); hold on;
-            plot(j1neg, -data(jj).J1err(j1neg), 'bv', 'MarkerFaceColor','none');
+            plot(j1pos,  J1err(j1pos,jj), 'b^'); hold on;
+            plot(j1neg, -J1err(j1neg,jj), 'bv', 'MarkerFaceColor','none');
             plot(j2pos,  data(jj).J2err(j2pos), 'r^');
             plot(j2neg, -data(jj).J2err(j2neg), 'rv', 'MarkerFaceColor','none');
-            plot(abs(data(jj).J1err),'b-');
+            plot(abs(J1err(:,jj)),'b-');
             plot(abs(data(jj).J2err),'r-');
-            plot(abs(data(jj).J1_S)/1000,'k--');
+% $$$             plot(abs(data(jj).J1_S)/1000,'k--');
             hold off;
             set(gca,'yscale','log');
             try, refline(find(in5,1),1,Inf,'r-'); end

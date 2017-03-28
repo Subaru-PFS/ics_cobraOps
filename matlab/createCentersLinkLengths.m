@@ -114,13 +114,19 @@ for kk = 1:size(data, 2)
     daspect([1,1,1]);
     hold on;
     
-    h = plot(data(kk).j2centroids, 'ko');
+    h = plot(data(kk).j2centroids, 'kx');
     % set(h, 'color', [0.5 0.5 0.5])
-    plot(data(kk).j2centroids(data(kk).j2ok),'gx');
+    plot(data(kk).j2centroids(data(kk).j2ok),'ko');
+    try
+       h = plot(data(kk).j2centroids2, 'gx');
+       plot(data(kk).j2centroids2(data(kk).j2ok2),'go');
+       plot([data(kk).j1center, data(kk).j2center2 + data(kk).link2 * exp(1i * (data(kk).thtm2 ))],'k--');
+       plot(data(kk).j2center2, 'ko');
+    catch
+    end
+    h = plot(data(kk).j1centroids, 'bx');
+    plot(data(kk).j1centroids(data(kk).j1ok),'bo');
     
-    h = plot(data(kk).j1centroids, 'ko');
-    % set(h, 'color', [0.5 0.5 0.5])
-    plot(data(kk).j1centroids(data(kk).j1ok),'gx');
     
     
     xlabel('X [pix]');
@@ -134,7 +140,7 @@ for kk = 1:size(data, 2)
     plot([data(kk).j2center, data(kk).j2center + data(kk).link2 * exp(1i * (data(kk).phiOut + data(kk).thtm))],'b');
     
     plot([data(kk).j1center, data(kk).j2center + data(kk).link2 * exp(1i * (data(kk).thtm ))],'b--');
-    
+   
     plot(data(kk).j1center, 'rx');
     plot(data(kk).j2center, 'rx');
     cmplx(@circle, data(kk).j1center, data(kk).link1, 'b');
@@ -167,6 +173,7 @@ for kk = 1:size(data, 2)
         
         
         figure(pid)
+        
         hold on;
         %   plot(data(kk).j2tht, 'r.');
         plot(data(kk).j1tht, 'rx');
@@ -180,6 +187,7 @@ for kk = 1:size(data, 2)
         %       sprintf('thttest PHI'));
     end
     
+ %  keyboard;
     
     cli_answer = input(sprintf('Use these data for PID %d? [Y|n] ',pid),'s');
     if strcmp(cli_answer,'n')
