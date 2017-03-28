@@ -16,6 +16,10 @@ for jj = 1:length(files)
   contents = load(files{jj});
   FieldName = fields(contents);
   for kk = 1:length(FieldName)
-    output = setfield(output, FieldName{kk}, contents.(FieldName{kk}));
+      if strcmp(FieldName{kk}(end-3:end), '_str')
+          output = setfield(output, ...
+                            sprintf('pid%02d',contents.(FieldName{kk})(1).pid), ...
+                            contents.(FieldName{kk}));
+      end
   end
 end
