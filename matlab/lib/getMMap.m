@@ -11,7 +11,7 @@ function [outputY outputX]=getMMap(CobraConfig, armID, speed, JointID, direction
 % 9/16/14: PHM modified this to pull angles out while remaining
 % backwards compatible with existing usage.
 %
-output = [];
+%output = [];
 die = false;
 if ~exist('armID','var') || ~isnumeric(armID)
     disp('Second parameter is an ARM_DATA_ ID number [1-9]');
