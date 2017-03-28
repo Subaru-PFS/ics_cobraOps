@@ -77,7 +77,7 @@ function output = generateCollidingTargets(nfields,density)
     direction = {'N','P'};
     
     for jj = 1:length(bench.pids)
-        fname = sprintf('TargetList_mId_%d_pId_%d.txt',bench.mids(jj),bench.pids(jj));
+        fname = sprintf('TargetList_mId_%02d_pId_%02d.txt',bench.mids(jj),bench.pids(jj));
         tfile = fopen(fname,'a');
 
         %    targetoutput = [targets, zeros(length(targets)), zeros(length(targets))]; 
