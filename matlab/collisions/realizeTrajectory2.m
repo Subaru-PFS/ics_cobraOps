@@ -16,7 +16,7 @@ function output=realizeTrajectory2(gt2,geom,useP,useL)
 % useL  : 1xM logical: theta moves out late
 % tht   : MxN local theta
 % phi   : MxN local phi
-% thtDT : 1xM fwd bin shifts (0 == maximally early) >= 0
+% thtDT(L) : 1xM fwd bin shifts (0 == maximally early) >= 0
 % phiDT : 1xM rev bin shifts (0 == maximally late)  >= 0
 % ltdiff: 1xM time difference over lmax for changing theta direction
     

@@ -1,38 +1,251 @@
 #+STARTUP: hidestars
 Collision simulation subroutine outline:
 
-* simFun (replaces simulationCollisionsMoving)
+* simFun
+** inputs
+*** numtrg=1: (complex array of targets | floating scalar as target density)
+     sets TGT_GEN_STRATEGY = ('targetlist'|'field')
+**** note: 
+     TGT_GEN_STRATEGY = 'patrol' is archaeological and treats
+     numtrg as an integer number of targets to supply which translates
+     into the number of fields simulated with 1 target/cobra
+     distributed uniformly over the patrol region.
+*** cobraLayout='': ('','none'|'hex'|'line|'rails'|'full')
+    Sets up the cobra physical layout (bench) if a 'bench' is not passed in
+    via varargin 'UseThisBench'.
+*** useRealMaps=true: (true,1|false,0)
+    false means all cobras move at the same speed
+*** useRealLinks=true: (true,1|false,0)
+    false means that all links are equal in length
+*** varargin
+**** alpha: move error parameter -- 1-sigma error for a 1 radian move
+**** showMoves=false: boolean for plotting (slows down the code!)
+**** SkipTargetReplan=true: boolean altering target list
+**** UseThisBench (no default): option to insert a bench definition
+**** verbosity=0: integer to set verbosity level
 ** function calls
-*** getCentersRails(nrails) -> [centers]
-    assumes distCobras = 8
-*** XY2TP(xy_patrol, L1, L2) -> {.tht, .phi}
-    - xy specified in patrol region coordinates as a cmplx number
-    - L1, L2 default to 2.375 mm
-*** CalcDistanceMatrix(targets, benchGeometry) -> {.dst, .rc, .dmatrix}
-    - calls XY2TP
-    - calls pt2linesegment
-*** pt2linesegment(xy1,xy2,xy3) -> [dist solntype]
-*** generate trajectory
-**** generateTrajectory2 + realizeTrajectory2
-**** generateTrajectory(positions, targets, benchGeometry, trajectory_strategy) -> {.traj,.ntht,.dtht,.nphi,.dphi,.nmax}
-     - stepsize
-     - calls XY2TP
-     - thteps ("theta epsilon") controls the direction of motion out of
-       the home position.  postive means positive (CCW, opposite sense
-       of phi), negative means negative (CW, same sense as phi).
-       Currently [2016-03-10 Thu] the physical implementation ins
-       negative.
-*** detectCollisionsSparse(.traj, centers, rMin) -> {.detected, .type}
-    - also needs L1, L2, NNMap
-    - distCobras = 8.0 (for NNMap)
-    - linkLength = 2.375 -> L1, L2
-    - minimumSeparation defaults to 2.0
-    - calls XY2TP
-    - cals pt2linesegment
-*** showMovementNN(.traj, centers, collisions, pos1, pos2) -> figures
-    - arm = 2.375
-    - rfib = 1.0
-    - calls XY2TP
+*** getCentersRails
+    assumes distCobras = 8 (separation of cobras)
+**** input: integer # of rails
+**** output: complex array of centers
+*** defineBenchGeometry
+**** inputs
+***** centers: complex array of cobra center positions from [[getCentersRails]] or otherwise
+***** useRealMaps: see [[simFun]] inputs
+***** useRealLinks: see [[simFun]] inputs
+**** output: bench definition 
+     M=# cobras, N=# angle bins
+     - center     : [M×1 complex]  cobra positions                                                    
+     - L1         : [M×1 double] link 1 lengths                                                     
+     - L2         : [M×1 double] link 2 lengths                                                     
+     - phiIn      : [M×1 double] phi angle of inner hard stop (link 2)                              
+     - phiOut     : [M×1 double] phi angle of outer hard stop (link 2)                              
+     - tht0       : [M×1 double] theta angle hard stop (link 1 and link 2 have same-sense move)     
+     - tht1       : [M×1 double] theta angle hard stop (link 1 and link 2 have opposite-sense move) 
+     - rMin       : [M×1 double] derived variable, patrol radius
+     - rMax       : [M×1 double] derived variable, patrol radius
+     - dA         : [M×1 double] derived variable, for calculating uniform distr over annulus
+     - rRange     : [M×1 double] derived variable, for calculating uniform distr over annulus
+     - home0      : [M×1 complex] home position for same-sense move
+     - home1      : [M×1 complex] home position for opposite-sense move
+     - nnMap      : [M×M logical] nearest-neighbor map, sparse
+     - NN         : [1×1 struct] row & col where nnMap=true, xy position of interstices
+     - rf         : 1 (radius of fiber)
+     - distCobras : 8 (distance between cobras)
+     - minDist    : 2 (minimum non-collision distance)
+     - S1Nm       : [M×N double] theta reverse map
+     - S1Pm       : [M×N double] theta forward map
+     - S2Pm       : [M×N double] phi forward map
+     - S2Nm       : [M×N double] phi reverse map
+     - map_range  : [1×1 struct] stores the min/max theta and phi values from the maps
+     - binWidth   : 0.0628 (map bin width)
+     - alpha      : 0.0700 (simulation error parameter)
+     - beta       : 0.5000 (simulation diffusion coefficient)
+     - pids       : [25×1 double] positioner ID's from XML config file
+     - mids       : [25×1 double] module ID's from XML config file
+     - thteps     : 2.0000e-10 (obsolete -- was used to set direction of Link 1/theta
+     - tht_overlap: [M×1 double] derived variable, range of theta motion - 2*pi
+     - field      : [1×1 struct] some statistics of the field geometry (I don't recall why!)
+     - map        : [M×4 double] records the 4 source maps for each simulated positioner
+**** bugs:
+***** must use real maps OR real links.  Branch with ideal map and link is broken.
+*** CalcDistanceMatrix
+    calculates the point to line distance of cobras at their target
+    location using [[pt2linesegment]]
+**** inputs: (targets, bench)
+***** targets: complex array from [[assign_targets]] or otherwise
+***** bench: from [[defineBenchGeometry]]
+**** calls: [[pt2linesegment]], [[XY2TP]]
+**** output: square matrix of scalar distances
+*** generateTargets
+*** assign_targets
+    implements draining algorithm in TGT_GEN_STRATEGY='field'
+**** inputs:
+***** targets: floating scalar density of targets per patrol area
+***** bench: output from [[defineBenchGeometry]]
+**** calls: 
+***** [[getCentersRails]] and [[defineBenchGeometry]] if bench is not specified
+***** generateTargets.m: generates targets of a given density over a field
+***** [[XY2TP]]
+***** [[CalcDistanceMatrix]] to avoid target interferences
+**** outputs:
+     - tgt        : complex array of assigned targets
+     - rem        : complex array of unassigned targts
+     - all        : complex array of all targets (
+     - isassigned : logical array, true if cobra is assigned to a target [#cobras x 1]
+     - at_home    : logical array, true if target == home position
+     - srtDIST    : float array of distance from target to cobras [#cobras x #targets]
+     - srtTGT_ID  : int array of target IDs associated with srtDIST [#cobras x #targets]
+*** mapFactor
+*** generateTrajectory2
+    generates the two stage-1 (theta) motions and the stage-2 (phi)
+    motion from the resepctive home position to thet target
+    To make this more general, one of the inputs should be the initial
+    position, but then logic has to be inserted to determine the
+    proper direction and the output has to indicate which trajectory
+    is valid.
+**** inputs: (targets, bench)...
+***** targets: complex array from [[assign_targets]] or otherwise
+***** bench: from [[defineBenchGeometry]]
+**** calls: 
+***** [[mapFactor]].m: calculates error factors for moves with real maps
+***** [[XY2TP]]
+**** output: M = #cobras
+     - ThtP  : cell array [1xM] of same-sense theta trajectories from home
+     - ThtN  : cell array [1xM] of opposite-sense theta trajectories from home
+     - Phi   : cell array [1xM] of phi trajectories from home
+     - nthtP : float array [1xM] of # motor steps for ThtP
+     - nthtN : float array [1xM] of # motor steps for ThtN
+     - nphi  : float array [1xM] of # motor steps for Phi
+     - nmax  : float array [1xM] of max value of nthtP, nthtN and nphi for each cobra
+     - lthtP : int array [1xM] of # motor map bins traversed by ThtP
+     - lthtN : int array [1xM] of # motor map bins traversed by ThtN
+     - lphi  : int array [1xM] of # motor map bins traversed by Phi
+     - lmax  : int scalar, max of lthtP, lthtN and lphi
+
+*** realizeTrajectory2
+    Convert theta/phi trajectories into a real trajectory with
+    possible delay in the theta state.  If not specified, this
+    function picks the shorter of the two theta moves.
+**** inputs: (trajectories, bench, theta-direction, late-theta)
+***** trajectories: output of [[generateTrajectory2]]
+***** bench: output of [[defineBenchGeometry]]
+***** theta-direction: logical array indicating which cobras use the same-sense hard stop
+      logical true means theta has the same sense moving out as phi
+***** late-theta: logical array indicating which cobras move theta as late as possible
+      this generally has the effect of reversing the rotational sense
+      of the fiber tip trajectory.
+**** outputs: M=#cobras, N=#simulation steps
+     - traj  : [M×N complex] early theta trajectory (x,y coords)
+     - trajL : [M×N complex] late theta trajector (x,y coords)
+     - useP  : [1×M logical] true if theta moves in same sense as phi for the primary trajectory
+     - useL  : [1×M logical] true if theta moves late
+     - tht   : [M×N double] theta trajectories
+     - phi   : [M×N double] phi trajectories
+     - thtDT : [1×M double] theta bin shifts for traj
+     - thtDTL: [1×M double] theta bin shifts for trajL
+     - phiDT : [1×M double] phi bin shifts for traj (or trajL)
+     - ltdiff: [1×M double] time penalty for changing theta direction (beyond longest move)
+*** detectCollisionsSparse
+    runs the trajectories and looks for collisions at each time step.
+**** inputs:
+***** trajectory: #cobras X #steps matrix from [[realizeTrajectory2]]
+***** bench: from [[defineBenchGeometry]]
+**** calls: [[pt2linesegment]], [[XY2TP]]
+**** outputs: M=#cobras, T=#simulation time steps
+     - row     : [6M×1 integer] list of cobra IDs (1:M) from nearest neighbor (NN) matrix
+     - col     : [6M×1 integer] list of cobra IDs (1:M) from nearest neighbor (NN) matrix
+     - rcindx  : [M×M integer] matrix associating two cobras with their index (0:6M) in the row and col vectors
+     - detected: [6M×T logical] true if there is a collision between a pair of cobras at a given time
+     - type    : [6M×T integer] type of collision (fiber to {elbow, arm, fiber}) see [[pt2linesegment]]
+     - minDist : [M×M double] for each NN pair, the minimum distance over the trajectory
+     - M       : [M×M integer] for each NN pair, the number of colliding time steps
+                 this is NOT a symmetric matrix - the count is how many time steps 
+                 the fiber (row) collides with the neighbor (col).
+     - V       : [M×1 integer] for each cobra, the number of colliding time steps
+*** XY2TP
+**** inputs:
+***** xy: complex scalar or array with cobra center as origin
+***** L1=2.375: Link 1 length
+***** L2=2.375: Link 2 length
+**** outputs:
+***** tht: theta - the usual definition 0 along x-axis, increasing counterclockwise
+***** phi: zero points in the direction of theta, increasing counterclockwise
+*** pt2linesegment
+    by convention, the fiber of the central cobra is the "point," the
+    elbow of a neighbor is "line1," and the fiber of the same neighbor
+    is "line2."
+**** inputs:
+***** point: complex scalar or vector 
+***** line1: complex scalar or vector representing one end of the line segment
+***** line2: complex scalar or vector representing the other end of the line segment
+**** outputs:
+***** distance: floating scalar or vector
+***** solution type: int scalar or vector
+      - 1 = distance is the point-line1 distance
+      - 2 = distance vector is perpendicular to line segment
+      - 3 = distance is the point-line2 distance
+** bugs:
+*** Target replanning does not work in the current version (L452)
+* full file list ([2017-03-22 Wed]) (no subdirs
+    1176 Jul 19  2016 [[CalcDistanceMatrix]].m
+    2644 Sep  7  2016 README.org
+    5600 Aug  9  2016 TargetList_mId_1_pId_3.txt
+    2091 Jun 13  2016 [[XY2TP]].m
+     634 Mar 15  2016 animateTraj.m
+   14454 Aug 29  2016 [[assign_targets]].m
+   22299 Aug  3  2016 collision distance distribution.fig
+    8257 Nov 21 17:46 [[defineBenchGeometry]].m
+    1598 Mar 16  2016 demo.m
+    3053 Jul 15  2016 [[detectCollisionsSparse]].m
+     745 Mar 14  2016 gedanken.m
+    3673 Nov 18 07:21 generateCollidingTargets.m
+    1281 Nov 21 17:53 generateFieldTargets.m
+    1107 Sep  9  2016 [[generateTargets]].m
+   11609 Aug 10  2016 generateTrajectory.m
+   15898 Nov 21 18:12 [[generateTrajectory2]].m
+     419 Mar 10 11:03 [[getCentersRails]].m
+     324 Nov 17 19:32 getTargetsFromTargetList.m
+    1075 Mar 22  2016 [[mapFactor]].m
+     386 Aug  2  2016 miniresim.m
+    1159 Jun 10  2016 modifyTrajectory.m
+    1312 Sep 14  2016 [[pt2linesegment]].m
+    3118 Mar 14 15:33 [[realizeTrajectory2]].m
+    1793 Nov 18 08:24 resimulate.m
+    2550 Dec  9  2015 showMovement.m
+     214 Jul 29  2016 showMovementAfterSim.m
+    2013 Dec 17  2015 showMovementNN.m
+   25120 Mar 14 13:37 [[simFun]].m
+    9240 May 10  2016 simFunInv.m
+   20452 Jun  7  2016 simFun_v1.0.m
+    1161 Aug 25  2016 test_genTraj.m
+    3254 May 13  2016 thtdir_comparo.m
+  486006 Sep  1  2016 updatedMotorMapsFromThisRun2.xml
+
+* other routines in directory
+
+** getTargetsAround.m
+
+** getTargetsMatrix.m
+
+** go.m
+
+** simulateCollisions.m
+
+ * xytpdemo.m
+
+** generateTrajectory(positions, targets, benchGeometry, trajectory_strategy) -> {.traj,.ntht,.dtht,.nphi,.dphi,.nmax}
+   - stepsize
+   - calls XY2TP
+   - thteps ("theta epsilon") controls the direction of motion out of
+     the home position.  postive means positive (CCW, opposite sense
+     of phi), negative means negative (CW, same sense as phi).
+     Currently [2016-03-10 Thu] the physical implementation ins
+     negative.
+** showMovementNN(.traj, centers, collisions, pos1, pos2) -> figures
+   - arm = 2.375
+   - rfib = 1.0
+   - calls XY2TP
 * simulationCollisionsMoving
 ** ideas
    collect centers, L1, L2, THT0, phiIN, phiOUT, NNMap into one structure.
@@ -65,17 +278,3 @@ Collision simulation subroutine outline:
     - arm = 2.375
     - rfib = 1.0
     - calls XY2TP
-
-* other routines in directory
-
-** getTargetsAround.m
-
-** getTargetsMatrix.m
-
-** go.m
-
-** simulateCollisions.m
-
- * xytpdemo.m
-
-

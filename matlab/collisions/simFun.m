@@ -445,7 +445,7 @@ for kk = 1:numFields
             for jj = 1:length(rows)
                 rr = rows(jj);
                 cc = cols(jj);
-                disp('Need to fix things here to proceed with target replanning (simFun L425)')
+                disp('Need to fix things here to proceed with target replanning (simFun L449)')
                 keyboard
                 % from each pair, take the target with the longest theta moves
                 if primary.ntht(rr) > primary.ntht(cc)

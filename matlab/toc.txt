@@ -22,7 +22,7 @@
 | Mar  1  2016 | analyzeTargetRun.m                         |                      |
 | Jul 17  2014 | benchmark.lst                              |                      |
 | Nov  4  2014 | calcRailSNR.m                              |                      |
-| Aug  1 14:47 | calcSNR.m                                  |                      |
+| Aug  1 14:47 | calcSNR.m                                  | [2016-11-14 Mon] PHM |
 | Jun  4  2014 | centerScriptGenerator.m                    |                      |
 | Jun 17  2014 | checkLogFile.m                             |                      |
 | Mar 13  2015 | checkTargetRunCentroiding.m                |                      |
