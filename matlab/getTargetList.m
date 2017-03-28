@@ -3,6 +3,9 @@ function output = getTargetList(fieldid)
 % files?)
 %
 % usage: output = getTargetList(fieldID)
+% where fieldID counts from 0.
+    
+    fieldid = fieldid + 1;
     
     c = loadCfgXml();
     s = loadTestData('',c,1);
