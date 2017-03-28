@@ -34,11 +34,9 @@ parfor kk=1:nRepeats
     Coll  = detectCollisionsSparse(traj, bench);
 
     if ~isempty(find(nonzeros(Coll.detected)))
-
         indx_collpair = find(sum(Coll.detected,2));
         n_collisions(kk) = length(indx_collpair);
         collTracker = [collTracker indx_collpair.'];
-
     end
     if ~(mod(kk,100))
         fprintf(1,'loop %d done\n',kk);

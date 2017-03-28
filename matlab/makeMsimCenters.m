@@ -4,6 +4,7 @@ function logData = makeMsimCenters(stage,direction,logPrefix,Nsteps,moveMin,move
 % Find the positioner centroid logs in current directory and store pids
 posFiles = dir2cell([logPrefix '_mId_*pId_*.txt']);
 
+
 mid_cells = regexp(posFiles,'(?<=mId_)\d*','match');
 pid_cells = regexp(posFiles,'(?<=pId_)\d*','match');
 for jj = 1:length(posFiles)
