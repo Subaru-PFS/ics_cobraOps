@@ -24,6 +24,7 @@ toggle.SkipTargetReplan = true;
 verbosity = 0;
 % $$$ thtDIR = 1       ;   % tht & phi have same sense out.
 if ~exist('numtrg','var')      , numtrg = 1;          end % number of targets to generate
+if ~exist('cobraLayout','var') , cobraLayout = '';    end % use config file bench layout
 if ~exist('useRealMaps','var') , useRealMaps  = true; end % use xml data for maps
 if ~exist('useRealLinks','var'), useRealLinks = true; end % use xml data for geometry
 
