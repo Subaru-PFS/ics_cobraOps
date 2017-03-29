@@ -54,27 +54,66 @@ function [output  pltHndl] = calcSNR(data,badthresh,serialNum,t_step,t_max,t_obs
 %   output.maxsnr = maxsnr;
 %   output.indx_maxsnr = indx_maxsnr;
 
-if serialNum == -1
-    titlestring = sprintf('pID %d, snr= %.3f at %d',pID,maxsnr,indx_maxsnr-1);
-else
-    titlestring = sprintf('EM-%d, snr= %.3f at %d',serialNum,maxsnr,indx_maxsnr-1);
-end
+    %%%%%% SNR vs time summary plot
+    figure(747)
+    plot(t_config, [output.snr],'.'); hold on;
+    pltHndl = plot(t_config, mean([output.snr],2), 'o-', 'Linewidth',4,'MarkerSize',5);
+    %   text(t_config+1, mean([output.snr],2)+.01,...
+    %        {'0','1','2','3','4','5','6','7','8','9','10','11','12','13','14'},...
+    %        'fontsize',14)
+    %   text(t_config+1, mean([output.snr],2)+.01,...
+    %        {'0','1','2','3','4','5','6','7','8','9'},...
+    %        'fontsize',14)
+    hold off;
+    ylim([.8 1.05]);
+    grid on;
+    xlabel('configuration time');
+    ylabel('SNR/SNR_{900s}');
+    title(titlestring,'fontsize',12);
+    
+    %%% SNR vs target
+    figure(757)
+    plot(0:length(snr)-1, snr, 'b.'); hold on;
+    plot(0:length(snr)-1, snr(indx_maxsnr,:), 'ro'); hold off;
+    refline(0,badthresh,0,'k:');
+    xlabel('target ID (from 0)');
+    ylabel('SNR');
+    grid on;
+    title(titlestring,'fontsize',12);
+    
+    
+    %% text output
+    fprintf(1,'max SNR = %.3f at %d iterations\n',maxsnr, indx_maxsnr - 1);
 
-  %%%%%%summary plot
-  plot(t_config, [output.snr],'.'); hold on;
-  pltHndl = plot(t_config, mean([output.snr],2), 'o-', 'Linewidth',4,'MarkerSize',5);
-%   text(t_config+1, mean([output.snr],2)+.01,...
-%        {'0','1','2','3','4','5','6','7','8','9','10','11','12','13','14'},...
-%        'fontsize',14)
-%   text(t_config+1, mean([output.snr],2)+.01,...
-%        {'0','1','2','3','4','5','6','7','8','9'},...
-%        'fontsize',14)
-  hold off;
-  ylim([.8 1.05]);
-  grid on;
-  xlabel('configuration time');
-  ylabel('SNR/SNR_{900s}');
-  title(titlestring,'fontsize',12);
+    
+    %% run inspectTC_CIT on bad ones
+    if serialNum == -1 %%& strcmp(getenv('USER'),'petermao')
+% $$$         inspectTC_CIT(pID,1,output.bad)
 
-  %% text output
-  fprintf(1,'max SNR = %.3f at %d iterations\n',maxsnr, indx_maxsnr - 1);
+% $$$         j1  = [data.J1];   % theta
+% $$$         j1s = [data.J1_S]; % theta steps commanded
+% $$$         dj1 = [data.J1_t] - j1; % angular displacement to target (should
+% $$$                                 % correlate with j1s)
+% $$$         figure(990)
+% $$$         histogram(mod(j1(1,:)+pi,2*pi)-pi,-1:.025:1);
+% $$$         title('Initial \theta distribution over [-pi,pi)');
+% $$$         for step = 1:1
+% $$$             figure(888)
+% $$$             plot(j1(step,:),j1s(step,:),'o'); hold on;
+% $$$             plot(j1(step,output.bad),j1s(step,output.bad),'ro');hold off;
+% $$$             ylabel('steps');
+% $$$             xlabel('\theta [rad]');
+% $$$             title(sprintf('pre-move %d steps vs. initial angle',step));
+% $$$             refline(2*pi,0,Inf,'k:');
+% $$$             grid on;
+% $$$             figure(889)
+% $$$             plot(dj1(step,:), j1s(step,:),'o'); hold on;
+% $$$             plot(dj1(step,output.bad), j1s(step,output.bad),'ro'); hold off;
+% $$$             set(gca,'XAxisLocation','origin');
+% $$$             set(gca,'YAxisLocation','origin');
+% $$$             ylabel('steps');
+% $$$             xlabel('\Delta \theta [rad]');
+% $$$             title(sprintf('pre-move %d steps vs. \\Delta angle',step));
+% $$$ % $$$             keyboard;
+% $$$         end
+    end
