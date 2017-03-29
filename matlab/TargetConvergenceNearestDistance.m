@@ -1,47 +1,45 @@
-function output=TargetConvergenceNearestDistance()
+function output=TargetConvergenceNearestDistance(first_tgt)
 % calculate the nearest fiber to arm distance for each set of
 % nearest neighbor pairs
-
+     if ~exist('first_tgt','var'), first_tgt = 0; end;
+    
     % load the as-is bench from the config file
     bench = defineBenchGeometry([],1,1);
+    getfrombench = false(size(bench.pids));
     
     % load all test data
     mats = loadmats; 
-    flds = fields(mats);
+    flds = sort(fields(mats));
     
     for jj = 1:length(flds)
-        if ~isempty(strfind(flds{jj},'_str'))
-            data = mats.(flds{jj});
-            pid = data(1).pid;
-            cobraIndx = find(bench.pids == pid);
-            try
-                pos(cobraIndx,:,:) = [data.curPos];
-            catch
-                keyboard
-            end
-            status(cobraIndx,:,:) = [data.status];
-            errRat1(cobraIndx,:,:) = rdiff([data.J1err]);
-            errRat2(cobraIndx,:,:) = rdiff([data.J2err]);
-            target(cobraIndx,:) = [data.targCmplx];
-            havedata(cobraIndx) = true;
+        data = mats.(flds{jj});
+        pid = data(1).pid;
+        try
+            pos(jj,:,:) = [data.curPos];
+        catch
+            keyboard
         end
+        status(jj,:,:) = [data.status];
+        errRat1(jj,:,:) = rdiff([data.J1err]);
+        errRat2(jj,:,:) = rdiff([data.J2err]);
+        target(jj,:) = [data.targCmplx];
+        havedata(jj) = find(bench.pids == pid);
     end
-    clear pid cobraIndx data;
-    
-    % turn have data from logical array into cobra index array
-    havedata = find(havedata); 
+    clear pid jj data;
     
     % cut down the arrays
     pids   = bench.pids(havedata);
-    pos    = pos(havedata,:,:);
-    status   = status(havedata,:,:);
-    status(isnan(status)) = 0; 
     center = bench.center(havedata);
+    tht0   = bench.tht0(havedata);
+    tht1   = bench.tht1(havedata);
     L1     = bench.L1(havedata);
     L2     = bench.L2(havedata);
-    errRat1 = errRat1(havedata,:,:);
-    errRat2 = errRat2(havedata,:,:);
-    target  = target(havedata,:);
+% $$$     pos    = pos(havedata,:,:);
+% $$$     status = status(havedata,:,:);
+% $$$     status(isnan(status)) = 0; 
+% $$$     errRat1 = errRat1(havedata,:,:);
+% $$$     errRat2 = errRat2(havedata,:,:);
+% $$$     target  = target(havedata,:);
  
     % find the pos first-index corresponding arrays
     [rr cc] = find(bench.nnMap(havedata,havedata));
@@ -94,7 +92,6 @@ function output=TargetConvergenceNearestDistance()
     output.pid2 = pids(col);
 
 
-
 %     for ii = 1:150
 %     imagesc(output.dist(:,:,ii)<2.1)
 %     pause(0.5)
@@ -110,9 +107,18 @@ function output=TargetConvergenceNearestDistance()
     %B = squeeze(sum(status, 2)<1);
     AB = zeros(size([A;B]));
     
-    AB(1:2:end,:) = B;
-    AB(2:2:end,:) = A;
-    imagesc(AB)
+  try
+           AB(1:2:end,:) = B;
+            AB(2:2:end,:) = A;
+  catch
+     % keyboard;
+      AB(1:2:end,:) = B(2:end,:);
+      AB(2:2:end-1,:) = A;
+
+  end
+   
+    [rows cols] = size(AB);
+    imagesc((1:cols)-1,1:rows,AB)
 
     xlabel('Field #');
     ylabel('pIDs');
@@ -253,7 +259,7 @@ function output = AmIJammed(ER1,ER2,XY,tgt,L1,L2,unitconv)
 % L2  :  length of arm 2
 % unitconv: unit conversion factor into mm
     
-    MAXDIST = 0.01; % in mm
+    MAXDIST = 0.01; % in mm from target
     ETHRESH = 0.8; % max good error ratio
     
     tgtang = XY2TP(tgt, L1, L2);
