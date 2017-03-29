@@ -24,35 +24,50 @@ function [output  pltHndl] = calcSNR(data,badthresh,serialNum,t_step,t_max,t_obs
     DtoR = pi/180;
     pID = data.pid;
     
-    firstnan = find(isnan(data(jj).dist), 1);
-    dist = data(jj).dist * 1e-3;
-  if ~exist('t_step','var')
-    t_step_old =  [20,28,36,44,52,60,68,76,84,92,100]';
-    t_step = [12,20,28,36,44,52,60,68,76,84,92]';
-  end;
-    if length(dist)==1 || isempty(dist)
-        continue;
+    %%%%%% calculation of bkg dominated snr.
+    jjc=1;
+    for jj=1:length(data)
+      
+        firstnan = find(isnan(data(jj).dist), 1);
+        dist = data(jj).dist * 1e-3;
+        %% invalid dist data shows up as -1, so increase by 1e6X
+        %% for negative dists
+        dist(dist < 0) = -1e6;
+        if ~exist('t_step','var')
+            t_step_old =  [20,28,36,44,52,60,68,76,84,92,100]';
+            t_step = [12,20,28,36,44,52,60,68,76,84,92]';
+        end;
+        if length(dist)==1 || isempty(dist)
+            fprintf(1,'skipping target %d',jj-1);
+            continue;
+        end
+        dist(firstnan:end) = dist(firstnan - 1);
+        try
+            timeOld =  t_max + t_obs - t_step_old;
+            time =  t_max + t_obs - t_step; 
+            snr(:,jjc)    = (1 - dist.^2 * k_offset) .* sqrt(time / t_obs);
+            snrOld(:,jjc) = (1 - dist.^2 * k_offset) .* sqrt(timeOld / t_obs);
+        catch
+            keyboard
+        end
+        jjc=jjc+1;
     end
-    dist(firstnan:end) = dist(firstnan - 1);
- try
-     timeOld =  t_max + t_obs - t_step_old;
-    time =  t_max + t_obs - t_step; 
-    output(jjc).snr = (1 - dist.^2 * k_offset) .* sqrt(time / t_obs);
-    output(jjc).snrOld = (1 - dist.^2 * k_offset) .* sqrt(timeOld / t_obs);
-
-     catch
-     keyboard
- end
-    negs = output(jjc).snr < 0;
-    output(jjc).snr(negs) = 0;
-    jjc=jjc+1;
-  end
-
-%   keyboard;
-  [maxsnr indx_maxsnr] = max(mean([output.snr],2));
-  t_config = t_obs+t_max - time;
-%   output.maxsnr = maxsnr;
-%   output.indx_maxsnr = indx_maxsnr;
+    snr = max(snr,0);
+% $$$     [maxsnr indx_maxsnr] = max(mean(snr,2));
+    indx_maxsnr = 6;
+    maxsnr  = mean(snr(indx_maxsnr,:));
+    t_config = t_obs+t_max - time;
+    
+    output.snr    = snr;
+    output.maxsnr = maxsnr;
+    output.indx_maxsnr = indx_maxsnr;
+    output.bad    = find(snr(indx_maxsnr,:) < badthresh);
+    
+    if serialNum == -1
+        titlestring = sprintf('pID %d, SNR= %.3f at %d',pID,maxsnr,indx_maxsnr-1);
+    else
+        titlestring = sprintf('EM-%d, SNR= %.3f at %d',serialNum,maxsnr,indx_maxsnr-1);
+    end
 
     %%%%%% SNR vs time summary plot
     figure(747)
