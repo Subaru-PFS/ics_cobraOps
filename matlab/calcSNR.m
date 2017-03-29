@@ -1,5 +1,5 @@
-function [output maxsnr indx_maxsnr pltHndl] = calcSNR(data,serialNum,t_step,t_max,t_obs,k_offset)
-% output = calcSNR(data, serialNum, [t_step, t_max, t_obs, k_offset]);
+function [output  pltHndl] = calcSNR(data,badthresh,serialNum,t_step,t_max,t_obs,k_offset)
+% [output pltHndl] = calcSNR(data, badthreshold, [serialNum, t_step, t_max, t_obs, k_offset]);
 % data: *_str data structure from Chaz
 % serialNum: serial number or -1 for auto-pId (-1)
 % t_step: time per step [s] (8)
@@ -8,19 +8,21 @@ function [output maxsnr indx_maxsnr pltHndl] = calcSNR(data,serialNum,t_step,t_m
 % k_offset: loss parameter [1/mm^2] (1/(.075)^2): loss = k dx^2
 %
 % output: 
-%  
+%  output.snr        : (#iterations,#targets) array of SNR's (min value 0)
+%  output.maxsnr     : maximum snr averaged over targets
+%  output.indx_maxsnr: iteration index of maxSNR (matlab indexing)
+%  output.bad        : target indices of poor performers
+
+
 % by: Peter Mao
 
-  if ~exist('serialNum','var'),serialNum =   -1; end;  
-  if ~exist('t_max','var'), t_max  = 105; end;
-  if ~exist('t_obs','var'), t_obs  = 900; end;
-  if ~exist('k_offset','var'), k_offset = 0.075^(-2); end;
-  DtoR = pi/180;
-  pID = data.pid;
-
-  %%%%%% calculation of bkg dominated snr.
-  jjc=1;
-  for jj=1:length(data)
+    if ~exist('badthresh','var'), badthresh = 0.9; end;
+    if ~exist('serialNum','var'),serialNum =   -1; end;  
+    if ~exist('t_max','var'), t_max  = 105; end;
+    if ~exist('t_obs','var'), t_obs  = 900; end;
+    if ~exist('k_offset','var'), k_offset = 0.075^(-2); end;
+    DtoR = pi/180;
+    pID = data.pid;
     
     firstnan = find(isnan(data(jj).dist), 1);
     dist = data(jj).dist * 1e-3;
