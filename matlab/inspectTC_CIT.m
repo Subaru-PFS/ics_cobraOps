@@ -15,11 +15,9 @@ function output = inspectTC_CIT(pid,minsteps,targets)
     % numbered cell array for easy access
     kk = 0;
     for ff=sort(fields(data0)')
-        if ~isempty(regexp(ff{1},'_str$'))
-            kk = kk+1;
-            pdata{kk} = data0.(ff{1});
-            pids(kk) = pdata{kk}(1).pid;
-        end
+        kk = kk+1;
+        pdata{kk} = data0.(ff{1});
+        pids(kk) = pdata{kk}(1).pid;
     end
 
     data = pdata{find(pid == pids)};
@@ -27,16 +25,16 @@ function output = inspectTC_CIT(pid,minsteps,targets)
     if ~exist('minsteps','var'), minsteps = 1; end;
     if ~exist('targets','var'), targets=1:length(data); end;
 
+    %% this is commented out b/c only use is in defn' of e5 and e10.
     
-    % Blame Johannes for the crazy specification of taking the fifth
-    %  (ammendment?) -- no -- fifth element in the J2_t (joint 2
-    %  target) vector.
-    for jj = 1:length(data)
-        data(jj).J1_t = data(jj).J1_t(5);
-        data(jj).J2_t = data(jj).J2_t(5);
-    end
-
-
+% $$$     % Blame Johannes for the crazy specification of taking the fifth
+% $$$     %  (ammendment?) -- no -- fifth element in the J2_t (joint 2
+% $$$     %  target) vector.
+% $$$     for jj = 1:length(data)
+% $$$         data(jj).J1_t = data(jj).J1_t(5);
+% $$$         data(jj).J2_t = data(jj).J2_t(5);
+% $$$     end
+   
     mid = 1; % hard coded to deal with new getARMval
 
     maxiter = length(data(1).J1);
@@ -46,22 +44,24 @@ function output = inspectTC_CIT(pid,minsteps,targets)
     
     pix2um = getARMval(cal,pID,mid,'Pixel_scale'); % pixels
     theta0 = getARMval(cal,pID,mid,'CW_Global_base_ori_z') * DtoR;
-    cobracenter = getARMval(cal,pID,mid,'Global_base_pos_x') + ...
-        getARMval(cal,pID,mid,'Global_base_pos_y') * i;
+    theta1 = getARMval(cal,pID,mid,'CCW_Global_base_ori_z') * DtoR;
+    cobracenter = (getARMval(cal,pID,mid,'Global_base_pos_x') + ...
+                   getARMval(cal,pID,mid,'Global_base_pos_y') * i);
     arm1 = getARMval(cal,pID,mid,'Link1_Link_Length') * pix2um;
     arm2 = getARMval(cal,pID,mid,'Link2_Link_Length') * pix2um;
-    RR = @(phi) sqrt(cos(phi) * 2 * arm1 * arm2 + arm1^2 + arm2^2);
-    J1err = [data.J1err];
-    Rtgt = RR(pi - [data.J2_t]);
+    J1err = mod([data.J1err] + pi, 2*pi) - pi;
+    Rtgt = abs([data.targCmplx] - cobracenter)*pix2um;
     RdJ1 = bsxfun(@times, J1err, Rtgt);
     RdJ2 = arm2 * [data.J2err];
-    J2_t = [data.J2_t];
     RdJ1J2 = RdJ1 + i*RdJ2;
-
+    % target theta angle
+    THTtgt = (angle([data.targCmplx] - cobracenter) +...
+              acos((Rtgt.^2 + arm1.^2 - arm2.^2)./(2*arm1.*Rtgt)));
+    
     for kk=1:length(targets)
         jj = targets(kk);
-        e5  = CobraTPerror( 5,pi - data(jj).J2_t,arm1,arm2);
-        e10 = CobraTPerror(10,pi - data(jj).J2_t,arm1,arm2);
+        e5  = CobraTPerror( 5,pi - data(jj).J2_t(5),arm1,arm2);
+        e10 = CobraTPerror(10,pi - data(jj).J2_t(5),arm1,arm2);
 
         in5  = inpoly( e5, RdJ1J2(:,jj));
         in10 = inpoly(e10, RdJ1J2(:,jj));
