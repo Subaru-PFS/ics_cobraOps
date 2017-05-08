@@ -1,3 +1,0 @@
-LIBRARY	"msrecvraw"
-EXPORTS
-	mexFunction
