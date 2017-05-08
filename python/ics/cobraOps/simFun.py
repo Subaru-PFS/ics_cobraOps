@@ -1,44 +1,60 @@
+"""
+
+A cobra collision simulator for PFS.
+
+Consult the following papers for more detailed information:
+
+  http://adsabs.harvard.edu/abs/2012SPIE.8450E..17F
+  http://adsabs.harvard.edu/abs/2014SPIE.9151E..1YF
+  http://adsabs.harvard.edu/abs/2016arXiv160801075T
+  
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from getCentersRails import getCentersRails
-from defineBenchGeometry import defineBenchGeometry
-from assign_targets import assign_targets
+import cobraUtils as cobraUtils
+import benchUtils as benchUtils
+import targetUtils as targetUtils
 
 
 def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, varargin=None):
-    """Collision simulator for PFS.
+    """Cobras collision simulator for PFS.
 
     Parameters
     ----------
-    numtrg: int
-        Number of targets to generate. Default is 1.
+    numtrg: Object
+        Number of targets to generate. It could be a number describing the 
+        target density to simulate or a numpy array with the target positions.
+        Default is 1.
     cobraLayout: str
-        The cobras layout to use: "none", "hex", "line", "rails" or "full". "none" means
-        that the layout should be extracted from a bench configuration file. Default is "none".
+        The cobras layout to use: "none", "hex", "line", "rails" or "full". 
+        "none" means that the layout should be extracted from a calibration 
+        file. Default is "none".
     useRealMaps: bool
-        If true, use xml data for maps.
+        If true, the cobra motor maps will be loaded from a calibration file.
+        No motor maps will be used otherwise.
     useRealLinks: bool
-        If true, use xml data for geometry.
+        If true, the cobra link properties will be loaded from a calibration 
+        file. Some approximations will be used otherwise.
     varargin: dict
-        List of optional parameters.
+        List of optional configuration parameters.
     
     Returns
     -------
     Object
-        Complex object with the following elements:
-            targets: Nx1 complex array of target positions
-            Traj: trajectory structure from realizeTrajectory2
-            Coll: collision structure from detectCollisionsSparse
-            bench: bench definition from defineBenchGeometry
-            minDist: 6Nx1 array of minimum distances between nearest neighbors
-            caats: "collide at any time" list of nearest neighbors
-            IR1_colliders: not sure
-            IR1: something to do with interference replan 1
+        The collision simulation results, containing the following elements:
+        - targets: Nx1 complex array of target positions.
+        - Traj: trajectory structure from realizeTrajectory2.
+        - Coll: collision structure from detectCollisionsSparse.
+        - bench: bench definition from defineBenchGeometry.
+        - minDist: 6Nx1 array of minimum distances between nearest neighbors.
+        - caats: "collide at any time" list of nearest neighbors.
+        - IR1_colliders: not sure.
+        - IR1: something to do with interference replan 1.
     
     """
-    # General application control dictionary
+    # Define the application control parameters defaults
     toggle = {}
     toggle["info"] = "Logical switches"
     toggle["showMoves"] = False
@@ -46,123 +62,68 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
     toggle["SkipTargetReplan"] = True
     toggle["verbosity"] = 0
 
-    # Check if there is some special configuration
+    # Check if the user provided some special configuration
     if varargin is not None:
         for key in toggle:
             if key in varargin:
                 toggle[key] = varargin[key]
-
-    # Initialize the performance metrics
-    PM = {}
-    PM["info"] = "Performance metrics"
-    PM["total_primary_collisions"] = 0
-    PM["total_collisions"] = 0
-    PM["total_targets"] = 0
     
     # Define the bench
     if varargin is not None and "UseThisBench" in varargin:
         bench = varargin["UseThisBench"]
     else:
-        if cobraLayout == "none":
-            # Use the configuration file geometry
-            centers = None
-            useRealMaps = True
-        elif cobraLayout == "hex":
-            # The centers will follow a hexagon pattern
-            # (R3 collisions = 3.0e-4 w/ 100k targets)
-            centers = np.zeros(7, dtype="complex")
-            centers[1:] = 8 * np.exp(np.arange(6) * 1j * np.pi / 3)
-        elif cobraLayout == "line":
-            # Line of cobras 
-            # (R3 collisions = 4.5e-5 (fraction) w/ 1M targets)
-            centers = 8 * np.arange(27) + 1j
-        elif cobraLayout == "rails":
-            # N hard coded rails 
-            # (R3 collisions = 9.9e-5 w/ 16k targets)
-            centers = getCentersRails(14)
-        elif cobraLayout == "full":
-            # Full PFI bench 
-            # (R3 collisions = 1.7e-4 (fraction) w/ 1M targets)
-            # Get the first sector
-            firstSector = getCentersRails(14)
-            
-            # Create the centers array
-            cobrasPerSector = len(firstSector)
-            centers = np.zeros(3 * cobrasPerSector, dtype="complex")
-            
-            # Add the first sector
-            centers[:cobrasPerSector] = firstSector 
-            
-            # Add the second sector rotating the first sector 120 degrees
-            centers[cobrasPerSector:2 * cobrasPerSector] = firstSector * np.exp(1j * 2 * np.pi / 3) 
+        # Get the cobras central positions for the requested layout
+        centers = cobraUtils.getCobrasCenters(cobraLayout)
 
-            # Add the third sector rotating the first sector 240 degrees
-            centers[2 * cobrasPerSector:] = firstSector * np.exp(1j * 4 * np.pi / 3)
-        else:
-            print("Valid cobra layouts: 'none', 'hex', 'line', 'rails' or 'full'")
-            print("Exiting...")
-            return
+        # Define the bench geometry
+        bench = benchUtils.defineBenchGeometry(centers, useRealMaps, useRealLinks)
 
-        # Plot the centers
-        if toggle["showFigures"] and centers is not None:
-            plt.scatter(np.real(centers), np.imag(centers), s=2)
-            plt.xlabel("x position")
-            plt.ylabel("y position")
-            plt.title("Cobra centers (" + cobraLayout + ")")
-            plt.show()
+    # Plot the cobras central positions if necessary
+    if toggle["showFigures"]:
+        cobraUtils.plotCobrasCenters(bench["center"])
 
-        # Define a structure with the bench geometry
-        bench = defineBenchGeometry(centers, useRealMaps, useRealLinks)
-    
-    #----------------------------
-    #    bench defined      
-    #----------------------------
-
-    # reassign bench alpha/beta here (if desired)
+    # Reassign the bench alpha value if requested by the used
     if varargin is not None and "alpha" in varargin:
-        alpha = varargin["alpha"]
-        bench["alpha"] = alpha 
-    else:
-        alpha = bench["alpha"]
+        bench["alpha"] = varargin["alpha"] 
 
-    numPos = len(bench["center"])
+    alpha = bench["alpha"]
 
-    if isinstance(numtrg, int):
-        TGT_GEN_STRATEGY = "field"  # uniform over... ('field|'patrol')
+    # Initialize the performance metrics
+    PM = {}
+    PM["info"] = "Performance metrics"
+    PM["total_targets"] = 0
+    PM["total_collisions"] = 0
+    PM["total_primary_collisions"] = 0
+
+    if isinstance(numtrg, int) or isinstance(numtrg, float):
+        # uniform over... ('field|'patrol')
+        TGT_GEN_STRATEGY = "field" 
     else:
         TGT_GEN_STRATEGY = "targetlist"
 
     assignments = {}
+    numPos = len(bench["center"])
     
     if TGT_GEN_STRATEGY == "targetlist":
         numFields = 1
-        targets = numtrg.copy()
+        targets = numtrg
         assignments["tgt"] = targets  # for partial compatibility with 'field' case.
     elif TGT_GEN_STRATEGY == "field":
         # Use numtrg as density
         numFields = 1
         targets = np.zeros((numFields, numPos), dtype="complex")
         
-        for i in xrange(0, numFields):
-            assignments = assign_targets(numtrg, bench)
-            #targets[i] = assignments["tgt"]
+        for i in range(numFields):
+            assignments = targetUtils.assignTargets(numtrg, bench)
+            # targets[i] = assignments["tgt"]
         
         PM["R2_percentColl"] = None
     elif TGT_GEN_STRATEGY == "patrol":
-        # TODO See matlab code
-        print("Impossible path!!!")
-    else:
-        print("Target strategy is uniform over 'field' or uniform over 'patrol'")
-        return
+        # TODO See MATLAB code
+        raise Exception("Impossible path: TGT_GEN_STRATEGY = 'patrol'")
 
-    '''
-    if toggle["showFigures"] and centers is not None:
-        plt.scatter(np.real(targets), np.imag(targets), s=2)
-        plt.xlabel("x position")
-        plt.ylabel("y position")
-        plt.title("Tarject centers (" + TGT_GEN_STRATEGY + ")")
-        plt.show()
-    '''
+    if toggle["showFigures"]:
+        targetUtils.plotTargets(targets)
     
     #------------------------------------------------------------------
     #    Targets defined, no end-point physical interferences (Rule 2)      
@@ -190,9 +151,18 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
     # $$$ use_ss  = s_or_os & (dtht0 < -dtht1) | only_ss
     # $$$ use_os  = s_or_os & (dtht0 > -dtht1) | only_os
 
-    # TBD...
+    # Pause the execution to have time to inspect any open figure
+    plt.show()
+
+    # ## TBD
+
     return bench
+
+
+if __name__ == "__main__":
+    bench = simFun(cobraLayout="full", varargin={"showFigures": False})
     
-aa = simFun(cobraLayout="full")
-print(len(aa["center"]))
-print(len(aa["L1"]))
+    # Print the data in the console
+    for key in bench:
+        print("Bench data: " + key)
+        print(bench[key])
