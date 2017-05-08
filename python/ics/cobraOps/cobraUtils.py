@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 COBRAS_SEPARATION = 8.0
-"""The separation in mm between two consecutive cobras."""
+"""The separation between two consecutive cobras in mm."""
 
 MODULE_FIRST_LINE_LENGTH = 29
 """The number of cobras in the first line of a module."""
@@ -62,21 +62,7 @@ def getCobrasCenters(cobraLayout):
     elif cobraLayout == "full":
         # Full PFI bench (2394 cobras distributed in 3 rotated sectors). 
         # (R3 collisions = 1.7e-4 (fraction) w/ 1M targets)
-        # Get the first sector
-        firstSector = getFirstSectorCenters()
-         
-        # Create the cobras centers array
-        cobrasPerSector = len(firstSector)
-        centers = np.zeros(3 * cobrasPerSector, dtype="complex")
-            
-        # Add the first sector
-        centers[:cobrasPerSector] = firstSector 
-           
-        # Add the second sector rotating the first sector 120 degrees
-        centers[cobrasPerSector:-cobrasPerSector] = firstSector * np.exp(1j * 2 * np.pi / 3) 
-
-        # Add the third sector rotating the first sector 240 degrees
-        centers[-cobrasPerSector:] = firstSector * np.exp(1j * 4 * np.pi / 3)
+        centers = getPFICenters()
     else:
         raise Exception(cobraLayout + " is not a valid cobra layout: none, hex, line, rails or full.")
 
@@ -104,20 +90,47 @@ def getFirstSectorCenters():
     firstModule += COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
     
     # Order the first module centers by the x coordinate
-    orderedIndexes = firstModule.sort()
-    firstModule[:] = firstModule[orderedIndexes]
+    firstModule.sort()
     
     # Fill the rest of the modules
     modulesOffset = 2 * COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
      
-    for i in xrange(1, MODULES_PER_SECTOR):
+    for i in range(1, MODULES_PER_SECTOR):
         centers[i * cobrasPerModule:(i + 1) * cobrasPerModule] = firstModule + i * modulesOffset
     
     return centers
 
 
+def getPFICenters():
+    """Calculates the cobras central positions for the Prime Focus Instrument.
+    
+    Returns
+    -------
+    Object
+        Complex numpy array with the cobras central positions.
+    
+    """
+    # Get the first sector cobra centers
+    firstSector = getFirstSectorCenters()
+         
+    # Create the cobras centers array
+    cobrasPerSector = len(firstSector)
+    centers = np.zeros(3 * cobrasPerSector, dtype="complex")
+            
+    # Add the first sector
+    centers[:cobrasPerSector] = firstSector 
+         
+    # Add the second sector rotating the first sector 120 degrees
+    centers[cobrasPerSector:-cobrasPerSector] = firstSector * np.exp(1j * 2 * np.pi / 3) 
+
+    # Add the third sector rotating the first sector 240 degrees
+    centers[-cobrasPerSector:] = firstSector * np.exp(1j * 4 * np.pi / 3)
+
+    return centers
+
+
 def plotCobrasCenters(centers):
-    """Plot the cobras central positions.
+    """Plots the cobras central positions.
 
     Parameters
     ----------
@@ -141,4 +154,3 @@ if __name__ == "__main__":
     # Plot the centers
     plotCobrasCenters(centers)
     plt.show()
-    
