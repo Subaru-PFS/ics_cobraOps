@@ -28,17 +28,20 @@ LINK_LENGTH = 2.375
 """The theoretical link length in mm."""
  
 COBRAS_SEPARATION = 8.0
-"""The theoretical separation in mm between two consecutive cobras."""
+"""The theoretical separation between two consecutive cobras in mm."""
            
 THT_EPS = 2e-10
 """This is an epsilon to make sure that values near zero in theta are
-intepreted on the positive (or negative) side of the cut, respectively. 
+interpreted on the positive (or negative) side of the cut, respectively. 
 Make it negative for same same direction moveouts (positive for 
 positive hardstop).
 
 tht1 implemented below is an opposite-sense hard stop.  when that's 
 working, theta direction will be specified on a per cobra basis, not 
 on a full instrument basis, as is implemented here."""
+
+BIN_WIDTH = 2 * np.pi / 100
+"""Angular bin width."""
 
 
 def getBenchCalibrationData(fileName):
@@ -64,8 +67,8 @@ def getBenchCalibrationData(fileName):
         - L1: The link1 lengths in pixel units (n).
         - L2: The link2 lengths in pixel units (n).
         - angularStep: The angular steps size in degrees used in the motor measurements (n).
-        - mapRangeTht: The theta angle map range in radias (nx2).
-        - mapRangePhi: The phi angle map range in radias (nx2).
+        - mapRangeTht: The theta angle map range in radians (nx2).
+        - mapRangePhi: The phi angle map range in radians (nx2).
         - S1Pm: The joint1 forward motor steps required to move an angular step (nxm).
         - S1Nm: The joint1 reverse motor steps required to move an angular step (nxm).
         - S2Pm: The joint2 forward motor steps required to move an angular step (nxm).
@@ -107,7 +110,7 @@ def getBenchCalibrationData(fileName):
     S2Pm = np.zeros((nDataContainers, nSteps))
     S2Nm = np.zeros((nDataContainers, nSteps))
 
-    for i in xrange(nDataContainers):
+    for i in range(nDataContainers):
         # Save some of the data header information
         header = dataContainers[i].find("DATA_HEADER")
         mids[i] = int(header.find("Module_Id").text)
@@ -120,7 +123,7 @@ def getBenchCalibrationData(fileName):
         tht1[i] = np.deg2rad(float(kinematics.find("CW_Global_base_ori_z").text))
         phiIn[i] = np.deg2rad(float(kinematics.find("Joint2_CCW_limit_angle").text)) - np.pi
         phiOut[i] = np.deg2rad(float(kinematics.find("Joint2_CW_limit_angle").text)) - np.pi
-        pixelScale[i] = float(kinematics.find("Pixel_scale").text) / 1000
+        pixelScale[i] = float(kinematics.find("Pixel_scale").text) / 1000.0
 
         if kinematics.find("Link1_Link_Length") is not None:
             L1[i] = float(kinematics.find("Link1_Link_Length").text)
@@ -198,28 +201,48 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
         A numpy array with the cobras central positions. If none, the cobras
         positions from a configuration file will be used.
     useRealMaps: bool
-        If true, use the configuration file data for the maps.
+        If true, the cobra motor maps will be loaded from a calibration file.
+        No motor maps will be used otherwise.
     useRealLinks: bool
-        If true, use the configuration file data for the geometry.
+        If true, the cobra link properties will be loaded from a calibration 
+        file. Some approximations will be used otherwise.
 
     Returns
     -------
     Object
-        The bench object, containing the following elements:
-        - center (Mx1)
-        - L1     (Mx1)
-        - L2     (Mx1)
-        - phiIn  (Mx1)
-        - phiOut (Mx1)
-        - tht0   (Mx1)
-        - NNmap  (MxM), logical
-        - rf
-        - distCobras
-        - minDist
-        - pids 
-        - mids 
-        - S1Nm 
-        - S1Pm, S2Pm, S2Nm, binWidth
+        The bench geometry object, containing the following elements:
+        - center: The cobra central positions in mm or pixel units (n).
+        - tht0: The hard stop angle for same sense move-out in radians (n).
+        - tht1: The hard stop angle for opposite sense move-out in radians (n).
+        - phiIn: ... in radians (n).
+        - phiOut: ... in radians (n).
+        - L1: The link1 lengths in mm or pixel units (n).
+        - L2: The link2 lengths in mm or pixel units (n).
+        - S1Pm: The joint1 forward motor steps required to move an angular step (nxm).
+        - S1Nm: The joint1 reverse motor steps required to move an angular step (nxm).
+        - S2Pm: The joint2 forward motor steps required to move an angular step (nxm).
+        - S2Nm: The joint2 reverse motor steps required to move an angular step (nxm).        
+        - rf: The length transformation factor from mm to the L1 and L2 length units (n).
+        - distCobras: The separation between two consecutive cobras in length units (n).
+        - minDist: 2 times rf (n).
+        - rMin: The minimum radius that the cobra can reach in length units (n).
+        - rMax: The maximum radius that the cobra can reach in length units (n).
+        - home0: The home position for the same sense move-out in length units (n).
+        - home1: The home position for the opposite sense move-out in length units (n).
+        - thtOverlap: The theta overlap ??? (n)
+        - nnMap: Logical matrix containing the nearest neighbor map (nxn).
+        - NN: A more useful way to the express the the nearest neighbor map.
+        - field: An object containing the field geometry.
+        - dA: Parameter for populating the annular patrol areas uniformly (n).
+        - rRange: Parameter for populating the annular patrol areas uniformly (n).
+        - alpha: The motor noise normalization factor.
+        - beta: The motor noise exponent.
+        - thteps: Theta epsilon value.
+        - binWidth: Angular bind width.
+        - mids: The module ids from the calibration file (c).
+        - pids: The positioner ids from the calibration file (c).
+        - mapRangeTht: The theta angle map range in radians (cx2).
+        - mapRangePhi: The phi angle map range in radians (cx2).
         
     """
     # Check if we should read the bench calibration data from an XML file
@@ -231,21 +254,41 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     # Check if we should use the provided cobra center locations
     if centers is not None:
         # Get the total number of cobras 
-        csize = len(centers)
+        nCobras = len(centers)
         
-        # Some relative units
-        rf = 1 
+        # The centers should be in millimeters, so the length transformation 
+        # factor is 1
+        rf = np.ones(nCobras)
         
         # Simulate some theta ranges for each cobra
-        thtRange = np.deg2rad(385)
-        tht0 = 2 * np.pi * np.random.random(csize)
+        thtRange = np.deg2rad(385.0)
+        tht0 = 2 * np.pi * np.random.random(nCobras)
         tht1 = (tht0 + thtRange) % (2 * np.pi)
+        
+        # Check if we should use realistic link properties
+        if useRealLinks:
+            # Randomize the container indices
+            nDataContainers = len(calibrationData["L1"])
+            indices = np.random.randint(nDataContainers, size=(4, nCobras))
+
+            # Assign random link properties to each cobra
+            phiIn = calibrationData["phiIn"][indices[0]] 
+            phiOut = calibrationData["phiOut"][indices[1]] 
+            L1 = calibrationData["L1"][indices[2]] * calibrationData["pixelScale"][indices[2]]
+            L2 = calibrationData["L2"][indices[3]] * calibrationData["pixelScale"][indices[3]]
+        else: 
+            # Create some random values based on some realistic values
+            deltaPhi = np.pi - 2 * KEEP_OUT_ANGLE
+            phiOut = -KEEP_OUT_ANGLE * (1.0 + 0.2 * np.random.random(nCobras))
+            phiIn = phiOut - deltaPhi
+            L1 = np.full(nCobras, LINK_LENGTH)
+            L2 = np.full(nCobras, LINK_LENGTH)
 
         # Check if we should use realistic motor maps
         if useRealMaps:
             # Randomize the data container indices
             nDataContainers = calibrationData["S1Pm"].shape[0]
-            indices = np.random.randint(nDataContainers, size=(4, csize))
+            indices = np.random.randint(nDataContainers, size=(4, nCobras))
             
             # Assign a random motor map to each cobra
             S1Pm = calibrationData["S1Pm"][indices[0]]
@@ -257,25 +300,6 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
             S2Pm = None
             S1Nm = None
             S2Nm = None
-        
-        # Check if we should use realistic link properties
-        if useRealLinks:
-            # Randomize the container indices
-            nDataContainers = len(calibrationData["L1"])
-            indices = np.random.randint(nDataContainers, size=(4, csize))
-
-            # Assign random link properties to each cobra
-            phiIn = calibrationData["phiIn"][indices[0]] 
-            phiOut = calibrationData["phiOut"][indices[1]] 
-            L1 = calibrationData["L1"][indices[2]] * calibrationData["pixelScale"][indices[2]]
-            L2 = calibrationData["L2"][indices[3]] * calibrationData["pixelScale"][indices[3]]
-        else: 
-            # Create some random values based on some realistic values
-            deltaPhi = np.pi - 2 * KEEP_OUT_ANGLE
-            phiOut = -KEEP_OUT_ANGLE * (1.0 + 0.2 * np.random.random(csize))
-            phiIn = phiOut - deltaPhi
-            L1 = np.full(csize, LINK_LENGTH)
-            L2 = np.full(csize, LINK_LENGTH)
     else:
         # Use the calibration data
         centers = calibrationData["centers"]
@@ -290,47 +314,44 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
         S2Pm = calibrationData["S2Pm"]
         S2Nm = calibrationData["S2Nm"]
         
-        # Some relative units
-        rf = 1.0 / calibrationData["pixelScale"][0]
+        # The centers are in pixel units, so the length transformation 
+        # factor is the inverse of the pixel scale
+        rf = 1.0 / calibrationData["pixelScale"]
     
     # Calculate the maximum and minimum radius that the cobras can reach
     rMin = np.abs(L1 + L2 * np.exp(1j * phiIn))
     rMax = np.abs(L1 + L2 * np.exp(1j * phiOut))
-    
-    # Parameters for populating the annular patrol areas uniformly
-    dA = 1.0 / ((rMax / rMin) ** 2 - 1.0)  # fractional keepout area
-    rRange = np.sqrt(rMax ** 2 - rMin ** 2)
 
-    # By default phi home is phi in.  
-    # Existence of mat files *may* change phi home.
+    # By default phi home is phiIn
     phiHome = phiIn.copy()
 
-    # For the realities of the test bench, having phi too far in is
-    # inconvenient.  Use a larger value so that the theta arm does not
-    # go crazy.
+    # For the realities of the test bench, having phi too far in is inconvenient.  
+    # Use a larger value so that the theta arm does not go crazy.
     phiHome += 0.5
 
     # Read in phiHome from elsewhere
-    # TBD (See matlab code)
+    # TBD (See MATLAB code)
         
-    # Home positions (0 = ss, 1 = os)
+    # Calculate the home positions (0 = same sense, 1 = opposite sense)
     home0 = centers + L1 * np.exp(1j * tht0) + L2 * np.exp(1j * (tht0 + phiHome))
     home1 = centers + L1 * np.exp(1j * tht1) + L2 * np.exp(1j * (tht1 + phiHome))
 
     # Calculate the theta overlap
     thtOverlap = ((tht1 - tht0 + np.pi) % (2 * np.pi)) - np.pi
 
-    # Generate the nearest neighbor map/structure
-    csize = len(centers)
-    CCdist = np.zeros((csize, csize))
+    # Calculate the cobras distance matrix
+    nCobras = len(centers)
+    distanceMatrix = np.zeros((nCobras, nCobras))
 
-    for i in xrange(csize):
-        CCdist[i] = np.abs(centers - centers[i])
+    for i in range(nCobras):
+        distanceMatrix[i] = np.abs(centers - centers[i])
     
-    distCenters = COBRAS_SEPARATION * (2 * np.median(L1 + L2)) / (2 * LINK_LENGTH)
-    nnMap = np.logical_and(CCdist > 1e-9, CCdist < 1.5 * distCenters)
+    # Obtain the nearest neighbors map 
+    distCenters = COBRAS_SEPARATION * np.median(L1 + L2) / (2 * LINK_LENGTH)
+    nnMap = np.logical_and(distanceMatrix > 1e-9, distanceMatrix < 1.5 * distCenters)
+
+    # Save the nearest neighbors results on a more useful structure  
     (row, col) = np.where(nnMap)
-    
     NN = {}
     NN["row"] = row
     NN["col"] = col
@@ -341,11 +362,15 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     field["cm"] = np.mean(centers)
     field["R"] = np.max(np.abs(centers - field["cm"]) + rMax)
     
-    # Fit a line to the centers and calculate the slope
+    # Fit a line to the centers and calculate the field slope
     x = np.real(centers)
     y = np.imag(centers)
-    slope = (csize * (x * y).sum() - x.sum() * y.sum()) / (csize * (x * x).sum() - x.sum() ** 2);
+    slope = (nCobras * (x * y).sum() - x.sum() * y.sum()) / (nCobras * (x * x).sum() - x.sum() ** 2);
     field["ang"] = np.arctan([slope])
+    
+    # Calculate some parameters for populating the annular patrol areas uniformly
+    dA = 1.0 / ((rMax / rMin) ** 2 - 1.0) 
+    rRange = np.sqrt(rMax ** 2 - rMin ** 2)
 
     # Save the bench results
     bench = {}
@@ -365,40 +390,38 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     bench["minDist"] = 2 * rf
     bench["rMin"] = rMin
     bench["rMax"] = rMax
-    bench["dA"] = dA
-    bench["rRange"] = rRange
     bench["home0"] = home0
     bench["home1"] = home1
     bench["thtOverlap"] = thtOverlap
     bench["nnMap"] = nnMap
     bench["NN"] = NN
     bench["field"] = field
-    bench["binWidth"] = 2 * np.pi / 100
+    bench["dA"] = dA
+    bench["rRange"] = rRange
     bench["alpha"] = ALPHA
     bench["beta"] = BETA
     bench["thteps"] = THT_EPS
+    bench["binWidth"] = BIN_WIDTH
 
     if calibrationData is not None:
+        bench["mids"] = calibrationData["mids"]
+        bench["pids"] = calibrationData["pids"]
         bench["mapRangeTht"] = calibrationData["mapRangeTht"]
         bench["mapRangePhi"] = calibrationData["mapRangePhi"]
-        bench["pids"] = calibrationData["pids"]
-        bench["mids"] = calibrationData["mids"]
     else:
+        bench["mids"] = None
+        bench["pids"] = None
         bench["mapRangeTht"] = None
         bench["mapRangePhi"] = None
-        bench["pids"] = None
-        bench["mids"] = None
         
     return bench
 
 
 if __name__ == "__main__":
-    # Get the bench
+    # Get the bench from the calibration file
     bench = defineBenchGeometry(None, 1, 1)
     
     # Print the data in the console
     for key in bench:
         print("Bench data: " + key)
         print(bench[key])
-    
-    print(bench["home0"])
