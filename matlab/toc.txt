@@ -1,5 +1,10 @@
 ; -*- Org -*-
 
+Most of the files listed here have been deleted.  To recover, go back
+to commit 910851b48bfa3a72bbf6903a367846d4d701d647
+
+
+
 | time stamp   | file name                                  | used on/by                                            | probable author      |
 |--------------+--------------------------------------------+-------------------------------------------------------+----------------------|
 | Mar  3  2015 | AutogenerateMotorMaps.m                    | run before a2014_03_27_flowrateCalibration            | JG?                  |
