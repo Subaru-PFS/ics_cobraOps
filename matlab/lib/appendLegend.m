@@ -1,5 +1,8 @@
 function output = appendLegend(plotHandle,legendEntry,varargin)
-    
+% Note: this was written by Chaz Morantz for Matlab ~2014a.  At
+% 2016b, "legend" updates to include new entries in the figure.
+% At the moment, this does not reflect the change.
+%
     % Get object handles
     lh1 = legend;
 
