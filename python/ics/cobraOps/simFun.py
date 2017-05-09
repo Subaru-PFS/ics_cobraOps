@@ -81,6 +81,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
     # Plot the cobras central positions if necessary
     if toggle["showFigures"]:
         cobraUtils.plotCobrasCenters(bench["center"])
+        benchUtils.plotBench(bench)
 
     # Reassign the bench alpha value if requested by the used
     if varargin is not None and "alpha" in varargin:
@@ -122,8 +123,8 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
         # TODO See MATLAB code
         raise Exception("Impossible path: TGT_GEN_STRATEGY = 'patrol'")
 
-    if toggle["showFigures"]:
-        targetUtils.plotTargets(targets)
+    #if toggle["showFigures"]:
+        #targetUtils.plotTargets(targets)
     
     #------------------------------------------------------------------
     #    Targets defined, no end-point physical interferences (Rule 2)      
@@ -160,7 +161,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
 
 
 if __name__ == "__main__":
-    bench = simFun(cobraLayout="full", varargin={"showFigures": False})
+    bench = simFun(cobraLayout="full", varargin={"showFigures": True})
     
     # Print the data in the console
     for key in bench:

@@ -49,7 +49,8 @@ def getCobrasCenters(cobraLayout):
     elif cobraLayout == "hex":
         # The centers should follow an hexagon pattern.
         # (R3 collisions = 3.0e-4 w/ 100k targets)
-        centers = np.zeros(7, dtype="complex")
+        centers = np.empty(7, dtype="complex")
+        centers[0] = 0.0
         centers[1:] = COBRAS_SEPARATION * np.exp(np.arange(6) * 1j * np.pi / 3)
     elif cobraLayout == "line":
         # Line of 27 cobras. 
@@ -80,7 +81,7 @@ def getFirstSectorCenters():
     """
     # Create the cobras centers array
     cobrasPerModule = MODULE_FIRST_LINE_LENGTH + MODULE_SECOND_LINE_LENGTH
-    centers = np.zeros(cobrasPerModule * MODULES_PER_SECTOR, dtype="complex")
+    centers = np.empty(cobrasPerModule * MODULES_PER_SECTOR, dtype="complex")
     
     # Fill the first module
     firstModule = centers[:cobrasPerModule]
@@ -115,7 +116,7 @@ def getPFICenters():
          
     # Create the cobras centers array
     cobrasPerSector = len(firstSector)
-    centers = np.zeros(3 * cobrasPerSector, dtype="complex")
+    centers = np.empty(3 * cobrasPerSector, dtype="complex")
             
     # Add the first sector
     centers[:cobrasPerSector] = firstSector 
@@ -138,13 +139,19 @@ def plotCobrasCenters(centers):
         A numpy complex array with the cobras central positions. 
     
     """
-    if centers is not None:
-        plt.figure("Cobra centers", facecolor="white")
-        plt.scatter(np.real(centers), np.imag(centers), s=2)
-        plt.xlabel("x position")
-        plt.ylabel("y position")
-        plt.title("Cobra centers")
-        plt.show(block=False)
+    # Create the figure
+    plt.figure("Cobra centers", facecolor="white", tight_layout=True, figsize=(7, 7))
+    plt.title("Cobra centers")
+    plt.xlabel("x position")
+    plt.ylabel("y position")
+    plt.show(block=False)
+
+    # Fix the axes aspect ratio
+    ax = plt.gca()
+    ax.set_aspect("equal")
+
+    # Draw the cobra centers
+    ax.scatter(np.real(centers), np.imag(centers), s=2)
 
 
 if __name__ == "__main__":
