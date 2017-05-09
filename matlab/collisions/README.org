@@ -240,13 +240,13 @@ Collision simulation subroutine outline:
   486006 Sep  1  2016 updatedMotorMapsFromThisRun2.xml
 
 * routines in other directories
-   405 Aug 20  2013 ../peter/lib/cmplx.m
    888 Jun 18  2014 ../lib/dir2cell.m
-   509 Sep  2  2016 ../peter/lib/ls2cell.m
-   733 May 18  2010 ../peter/download/packstruct.m
-   441 Nov 11  2015 ../peter/lib/plotcircle.m
-  1291 Oct 14  2011 ../peter/download/subarray.m
   6955 May 21  2014 ../lib/xml2struct.m
+   405 Aug 20  2013 ../peter/lib/cmplx.m
+   509 Sep  2  2016 ../peter/lib/ls2cell.m
+   441 Nov 11  2015 ../peter/lib/plotcircle.m
+   733 May 18  2010 ../peter/download/packstruct.m
+  1291 Oct 14  2011 ../peter/download/subarray.m
 
 * other routines in directory
 
