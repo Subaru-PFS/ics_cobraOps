@@ -12,6 +12,8 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib.collections as collections
 import xml.etree.ElementTree as ET
 
 
@@ -42,6 +44,9 @@ on a full instrument basis, as is implemented here."""
 
 BIN_WIDTH = 2 * np.pi / 100
 """Angular bin width."""
+
+BENCH_CALIBRATION_FILE = "updatedMotorMapsFromThisRun2.xml"
+"""The path to the bench calibration XML file."""
 
 
 def getBenchCalibrationData(fileName):
@@ -92,23 +97,23 @@ def getBenchCalibrationData(fileName):
         nSteps = 0
     
     # Save some of the calibration information
-    mids = np.zeros(nDataContainers, dtype="int")
-    pids = np.zeros(nDataContainers, dtype="int")
-    centers = np.zeros(nDataContainers, dtype="complex")
-    tht0 = np.zeros(nDataContainers)
-    tht1 = np.zeros(nDataContainers)
-    phiIn = np.zeros(nDataContainers)
-    phiOut = np.zeros(nDataContainers)
-    pixelScale = np.zeros(nDataContainers)
-    L1 = np.zeros(nDataContainers)
-    L2 = np.zeros(nDataContainers)
+    mids = np.empty(nDataContainers, dtype="int")
+    pids = np.empty(nDataContainers, dtype="int")
+    centers = np.empty(nDataContainers, dtype="complex")
+    tht0 = np.empty(nDataContainers)
+    tht1 = np.empty(nDataContainers)
+    phiIn = np.empty(nDataContainers)
+    phiOut = np.empty(nDataContainers)
+    pixelScale = np.empty(nDataContainers)
+    L1 = np.empty(nDataContainers)
+    L2 = np.empty(nDataContainers)
     angularStep = np.zeros(nDataContainers)
     mapRangeTht = np.zeros((nDataContainers, 2))
     mapRangePhi = np.zeros((nDataContainers, 2))
-    S1Pm = np.zeros((nDataContainers, nSteps))
-    S1Nm = np.zeros((nDataContainers, nSteps))
-    S2Pm = np.zeros((nDataContainers, nSteps))
-    S2Nm = np.zeros((nDataContainers, nSteps))
+    S1Pm = np.empty((nDataContainers, nSteps))
+    S1Nm = np.empty((nDataContainers, nSteps))
+    S2Pm = np.empty((nDataContainers, nSteps))
+    S2Nm = np.empty((nDataContainers, nSteps))
 
     for i in range(nDataContainers):
         # Save some of the data header information
@@ -135,11 +140,10 @@ def getBenchCalibrationData(fileName):
         else:
             L2[i] = 25.0
 
-        # Save some of the slow calibration table information
-        slowCalTable = dataContainers[i].find("SLOW_CALIBRATION_TABLE")
-
-        if slowCalTable is not None and slowCalTable.find("Joint1_fwd_stepsizes") is not None:
+        # Save the motor information
+        if nSteps > 0:
             # Get the angular step used in the measurements
+            slowCalTable = dataContainers[i].find("SLOW_CALIBRATION_TABLE")
             angularPositions = slowCalTable.find("Joint1_fwd_regions").text.split(",")[2:-1]
             angularStep[i] = float(angularPositions[1]) - float(angularPositions[0])
 
@@ -247,7 +251,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     """
     # Check if we should read the bench calibration data from an XML file
     if useRealMaps or useRealLinks or centers is None:
-        calibrationData = getBenchCalibrationData("updatedMotorMapsFromThisRun2.xml")
+        calibrationData = getBenchCalibrationData(BENCH_CALIBRATION_FILE)
     else:
         calibrationData = None        
 
@@ -258,7 +262,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
         
         # The centers should be in millimeters, so the length transformation 
         # factor is 1
-        rf = np.ones(nCobras)
+        lengthTransformationFactor = np.ones(nCobras)
         
         # Simulate some theta ranges for each cobra
         thtRange = np.deg2rad(385.0)
@@ -316,7 +320,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
         
         # The centers are in pixel units, so the length transformation 
         # factor is the inverse of the pixel scale
-        rf = 1.0 / calibrationData["pixelScale"]
+        lengthTransformationFactor = 1.0 / calibrationData["pixelScale"]
     
     # Calculate the maximum and minimum radius that the cobras can reach
     rMin = np.abs(L1 + L2 * np.exp(1j * phiIn))
@@ -340,11 +344,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     thtOverlap = ((tht1 - tht0 + np.pi) % (2 * np.pi)) - np.pi
 
     # Calculate the cobras distance matrix
-    nCobras = len(centers)
-    distanceMatrix = np.zeros((nCobras, nCobras))
-
-    for i in range(nCobras):
-        distanceMatrix[i] = np.abs(centers - centers[i])
+    distanceMatrix = np.abs(centers[:, np.newaxis] - centers)
     
     # Obtain the nearest neighbors map 
     distCenters = COBRAS_SEPARATION * np.median(L1 + L2) / (2 * LINK_LENGTH)
@@ -365,7 +365,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     # Fit a line to the centers and calculate the field slope
     x = np.real(centers)
     y = np.imag(centers)
-    slope = (nCobras * (x * y).sum() - x.sum() * y.sum()) / (nCobras * (x * x).sum() - x.sum() ** 2);
+    slope = (len(x) * (x * y).sum() - x.sum() * y.sum()) / (len(x) * (x * x).sum() - x.sum() ** 2)
     field["ang"] = np.arctan([slope])
     
     # Calculate some parameters for populating the annular patrol areas uniformly
@@ -385,9 +385,9 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     bench["S1Nm"] = S1Nm
     bench["S2Pm"] = S2Pm
     bench["S2Nm"] = S2Nm
-    bench["rf"] = rf
-    bench["distCobras"] = COBRAS_SEPARATION * rf
-    bench["minDist"] = 2 * rf
+    bench["rf"] = lengthTransformationFactor
+    bench["distCobras"] = COBRAS_SEPARATION * lengthTransformationFactor
+    bench["minDist"] = 2 * lengthTransformationFactor
     bench["rMin"] = rMin
     bench["rMax"] = rMax
     bench["home0"] = home0
@@ -417,11 +417,74 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     return bench
 
 
+def getCobraPatrolAreas(bench):
+    """Calculates the patrol areas for the bench cobras.
+
+    Parameters
+    ----------
+    bench: Object
+        The bench object. 
+    
+    Returns
+    -------
+    Object
+        Pyhton tuple with the cobras inner and outer patrol area collections
+         
+    """
+    centers = bench["center"]     
+    rMin = bench["rMin"]        
+    rMax = bench["rMax"]
+    innerPatches = [patches.Circle((c.real, c.imag), r) for c, r in zip(centers, rMin)]
+    outerPatches = [patches.Circle((c.real, c.imag), r) for c, r in zip(centers, rMax)]
+    innerCollection = collections.PatchCollection(innerPatches, color="white", edgecolor='none')
+    outerCollection = collections.PatchCollection(outerPatches, color="blue", edgecolor='none', alpha=0.2)
+
+    return (innerCollection, outerCollection)
+
+
+def plotBench(bench):
+    """Plots the bench geometry.
+
+    Parameters
+    ----------
+    bench: Object
+        The bench object. 
+    
+    """
+    # Create the figure
+    plt.figure("Bench geometry", facecolor="white", tight_layout=True, figsize=(7, 7))
+    plt.title("Bench geometry")
+    plt.xlabel("x position")
+    plt.ylabel("y position")
+    plt.show(block=False)
+
+    # Fix the axes aspect ratio
+    ax = plt.gca()
+    ax.set_aspect("equal")
+
+    # Set the axes limits
+    limRange = 1.05 * bench["field"]["R"] * np.array([-1, 1]) 
+    ax.set_xlim(bench["field"]["cm"].real + limRange)
+    ax.set_ylim(bench["field"]["cm"].imag + limRange)
+      
+    # Obtain the cobras inner and outer patrol area collections
+    (innerCollection, outerCollection) = getCobraPatrolAreas(bench)
+        
+    # Add the collections to the figure
+    ax.add_collection(outerCollection)
+    ax.add_collection(innerCollection)
+
+
 if __name__ == "__main__":
     # Get the bench from the calibration file
     bench = defineBenchGeometry(None, 1, 1)
-    
+        
     # Print the data in the console
     for key in bench:
         print("Bench data: " + key)
         print(bench[key])
+    
+    # Plot the bench
+    plotBench(bench)
+    plt.show()
+
