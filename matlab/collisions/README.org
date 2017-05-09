@@ -1,7 +1,23 @@
 #+STARTUP: hidestars
 Collision simulation subroutine outline:
 
-* simFun
+* START HERE
+  open matlab, have this directory in your path.
+  >> q = simFun(1.5,'full',1,1)
+* CONTENTS
+   [[CalcDistanceMatrix]].m
+   [[XY2TP]].m
+   [[assign_targets]].m
+   [[defineBenchGeometry]].m
+   [[detectCollisionsSparse]].m
+   [[generateTargets]].m
+   [[generateTrajectory2]].m
+   [[getCentersRails]].m
+   [[mapFactor]].m
+   [[pt2linesegment]].m
+   [[realizeTrajectory2]].m
+   [[simFun]].m
+* simFun documentation
 ** inputs
 *** numtrg=1: (complex array of targets | floating scalar as target density)
      sets TGT_GEN_STRATEGY = ('targetlist'|'field')
@@ -97,6 +113,7 @@ Collision simulation subroutine outline:
      - srtDIST    : float array of distance from target to cobras [#cobras x #targets]
      - srtTGT_ID  : int array of target IDs associated with srtDIST [#cobras x #targets]
 *** mapFactor
+    calculates error factors for moves with real maps
 *** generateTrajectory2
     generates the two stage-1 (theta) motions and the stage-2 (phi)
     motion from the resepctive home position to thet target
