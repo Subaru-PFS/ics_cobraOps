@@ -11,7 +11,8 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
+
+import plotUtils as plotUtils
 
 
 COBRAS_SEPARATION = 8.0
@@ -140,18 +141,10 @@ def plotCobrasCenters(centers):
     
     """
     # Create the figure
-    plt.figure("Cobra centers", facecolor="white", tight_layout=True, figsize=(7, 7))
-    plt.title("Cobra centers")
-    plt.xlabel("x position")
-    plt.ylabel("y position")
-    plt.show(block=False)
-
-    # Fix the axes aspect ratio
-    ax = plt.gca()
-    ax.set_aspect("equal")
+    plotUtils.createNewFigure("Cobra centers", "x position", "y position")
 
     # Draw the cobra centers
-    ax.scatter(np.real(centers), np.imag(centers), s=2)
+    plotUtils.addPoints(centers, s=2)
 
 
 if __name__ == "__main__":
@@ -160,4 +153,5 @@ if __name__ == "__main__":
     
     # Plot the centers
     plotCobrasCenters(centers)
-    plt.show()
+    plotUtils.pauseExecution()
+    

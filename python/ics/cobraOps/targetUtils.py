@@ -11,13 +11,11 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib.collections as collections
 import time as time
 
 import cobraUtils as cobraUtils
 import benchUtils as benchUtils
+import plotUtils as plotUtils
 
 
 def generateTargets(density, bench):
@@ -58,8 +56,8 @@ def assignTargets(targets, bench=None):
     Parameters
     ----------
     targets: object
-        Target list (complex) or density (real scalar).
-    bench: object
+        Target list (complex numpy array) or density (number).
+    bench: object, optional
         The bench to use. If None, a full bench will be generated.
         Default is None.
     
@@ -85,123 +83,237 @@ def assignTargets(targets, bench=None):
         targetDensity = targets
         targets = generateTargets(targetDensity, bench)
 
-    # Calculate the distance matrix between the cobras and the targets positions
+    # Calculate the distance matrix between the cobras center and the targets positions
     distanceMatrix = np.abs(bench["center"][:, np.newaxis] - targets)
     
     # Set to zero the distances from those targets that cannot be reached by the cobras
     unreachableTargets = np.logical_or(distanceMatrix < bench["rMin"][:, np.newaxis], distanceMatrix > bench["rMax"][:, np.newaxis])
     distanceMatrix[unreachableTargets] = 0
     
-    # Calculate the number of targets associated to eacg cobra
-    nTargetsForCobra = np.sum(distanceMatrix > 0, axis=1)
+    # Calculate the number of targets associated to each cobra
+    nTargetsPerCobra = np.sum(distanceMatrix > 0, axis=1)
     
     # Reorganize the distance information to have them ordered by distance to the cobra
     nCobras = len(bench["center"]) 
-    maxTagetsForCobra = np.max(nTargetsForCobra)
-    targetIndices = np.full((nCobras, maxTagetsForCobra), -1, dtype="int")
-    targetDistances = np.zeros((nCobras, maxTagetsForCobra))
+    maxTagetsPerCobra = np.max(nTargetsPerCobra)
+    targetIndices = np.full((nCobras, maxTagetsPerCobra), -1, dtype="int")
+    targetDistances = np.zeros((nCobras, maxTagetsPerCobra))
 
     for i in range(nCobras):
-        # Get only those indices where the distance is not zero
-        (validIndices,) = distanceMatrix[i].nonzero()
+        # Get the target distances to this cobra
+        distances = distanceMatrix[i]
 
-        # Sort the valid indices by their distance
-        sortedIndices = validIndices[distanceMatrix[i, validIndices].argsort()]
+        # Select only those target indices where the distance is not zero
+        (validTargetIndices,) = distances.nonzero()
+
+        # Sort the valid target indices by their distance to the cobra
+        sortedTargetIndices = validTargetIndices[distances[validTargetIndices].argsort()]
         
         # Fill the target arrays
-        targetIndices[i, :len(sortedIndices)] = sortedIndices
-        targetDistances[i, :len(sortedIndices)] = distanceMatrix[i, sortedIndices]
+        targetIndices[i, :len(sortedTargetIndices)] = sortedTargetIndices
+        targetDistances[i, :len(sortedTargetIndices)] = distances[sortedTargetIndices]
 
-    # Assign a targets to cobras looping from the closest targets to the more 
-    # far away ones
+    # Assign targets to cobras looping from the closest to the more far away ones
     assignedTarget = np.full(nCobras, -1, dtype="int")
-    
-    for i in range(targetIndices.shape[1]):
+        
+    for i in range(maxTagetsPerCobra):
+        # Consider only cobras that do not have an assigned target
+        freeCobras = assignedTarget < 0
+
         # Get a list with the unique targets in the given column 
-        uniqueTargetIndices = np.unique(targetIndices[:, i])
+        uniqueTargetIndices = np.unique(targetIndices[freeCobras, i])
 
         # Loop over the unique target indices
         for targetIndex in uniqueTargetIndices:    
             # Jump to the next target if the index does not represents a real target
             if targetIndex == -1:
                 continue
-            
-            # Get the cobras for which this target is the closest in the current column
-            (associatedCobras,) = np.where(targetIndices[:, i] == targetIndex)
+
+            # Get the free cobras for which this target is the closest in the current column
+            (associatedCobras,) = np.where(np.logical_and(targetIndices[:, i] == targetIndex, freeCobras))
             
             # Check how many associated cobras we have
             if len(associatedCobras) == 1:
-                # Assign this cobra to the target
-                assignedCobra = associatedCobras[0]
+                # Use this single cobra for this target
+                cobraToUse = associatedCobras[0]
             else:
-                # Get the number of target that can be reached by each associated cobra
-                nTargets = nTargetsForCobra[associatedCobras]
-            
-                # Get the cobras for which this is the only target
-                singleTargetCobras = associatedCobras[np.where(nTargets == 1)[0]]
-   
-                #              
+                # Select the cobras for which this is the only target
+                singleTargetCobras = associatedCobras[nTargetsPerCobra[associatedCobras] == 1]
+                
+                # Decide depending on home many of these cobras we have
                 if len(singleTargetCobras) == 0:
                     # All cobras have multiple targets
                     # HACK SOLUTION: assign the target to the first cobra in the list
-                    assignedCobra = associatedCobras[0]
+                    cobraToUse = associatedCobras[0]
                 elif len(singleTargetCobras) == 1:
                     # Assign the target to the cobra that can only reach this target
-                    assignedCobra = singleTargetCobras[0]
+                    cobraToUse = singleTargetCobras[0]
                 else:
-                    # Multiple cobras have only one choice.
-                    # Assign the target to the closest cobra.
+                    # Assign the target to the closest cobra
                     distances = targetDistances[singleTargetCobras, i]
-                    assignedCobra = singleTargetCobras[np.where(distances == np.min(distances))[0]]
+                    cobraToUse = singleTargetCobras[distances == np.min(distances)]
             
             # Assign the target to the correct cobra
-            assignedTarget[assignedCobra] = targetIndex
+            assignedTarget[cobraToUse] = targetIndex
             
             # Remove the target from the target arrays
             indicesToClean = np.where(targetIndices == targetIndex)
             targetIndices[indicesToClean] = -1
             targetDistances[indicesToClean] = 0
             
-            # Make sure that we don't use the assign cobra anymore
-            targetIndices[assignedCobra, :] = -1
-            targetDistances[assignedCobra, :] = 0
-            
             # Update the number of targets per cobra array
-            nTargetsForCobra = np.sum(targetDistances > 0, axis=1)
+            nTargetsPerCobra = np.sum(targetDistances > 0, axis=1)
+    
+    # Calculate the cobra collisions
+    collisions = nCobras
+    
+    while collisions > 0:
+        # Calculate the expected cobra positions (leave at home unused cobras) 
+        cobraPositions = bench["home0"].copy()
+        usedCobras = assignedTarget >= 0
+        cobraPositions[usedCobras] = targets[assignedTarget[usedCobras]]  
+    
+        # Calculate the collision distance matrix between the cobra positions 
+        # and the nearby cobra arm positions.
+        collisionMatrix = calculateCollisionMatrix(cobraPositions, bench)
+
+        # Get the cobra collisions for the current configuration
+        tooClose = np.logical_and(collisionMatrix > 0, collisionMatrix < bench["minDist"])
+        (problematicCobras, neabyCobras) = np.where(tooClose)
+
+        # Solve the binary collisions
+        collisions = 0
+    
     
     # Save the output data
     output = {}
     output["bench"] = bench
     output["tgt"] = targets
-    output["nTargetsForCobra"] = nTargetsForCobra 
+    output["nTargetsForCobra"] = nTargetsPerCobra 
     output["targetIndices"] = targetIndices 
     output["targetDistances"] = targetDistances 
     output["assignedTarget"] = assignedTarget
+    output["collisions"] = problematicCobras
 
     return output
 
 
-def getCobraTargetConnections(centers, targets, indices):
-    """Calculates the patrol areas for the bench cobras.
-
+def calculateCollisionMatrix(positions, bench):
+    """Calculates the collision distance matrix between the cobra positions 
+    and the nearby cobra arm positions.
+    
     Parameters
     ----------
-    bench: Object
-        The bench object. 
-    
+    positions: object
+        Complex numpy array with the cobras commanded positions.
+    bench: object
+        The bench geometry
+
     Returns
     -------
-    Object
-        Pyhton tuple with the cobras inner and outer patrol area collections
-         
+    object
+        The collision distance matrix.
+    
+    """  
+    # Calculate the cobras rotation angles to reach the given position
+    (tht, phi) = getCobraRotationAngles(positions - bench["center"], bench["L1"], bench["L2"])
+    
+    # Compute the cobras elbow positions
+    elbows = positions - bench["L2"] * np.exp(1j * (tht + phi))
+  
+    # Use the bench precalculated nearest neighbors information
+    distanceMatrix = np.zeros(bench["nnMap"].shape)
+    cobras = bench["NN"]["row"]
+    nearbyCobras = bench["NN"]["col"]
+    
+    targetPositions = positions[cobras]
+    nearbyTargetPositions = positions[nearbyCobras]
+    nearbyElbowPositions = elbows[nearbyCobras]
+
+    # 
+    distances = distanceToLineSegment(targetPositions, nearbyElbowPositions, nearbyTargetPositions)
+    distanceMatrix[cobras, nearbyCobras] = distances
+    
+    return distanceMatrix
+
+
+def getCobraRotationAngles(targetPostions, link1, link2):
+    """Calculates the cobra rotation angles to reach the given target position. 
+    
+    Parameters
+    ----------
+    targetPositions: object
+        Complex numpy array with the target coordinates centered at the cobra
+        position.
+    link1: object
+        Numpy array or constant with the links1 lengths.
+    link2: object
+        Numpy array or constant with the links2 lengths.
+
+    Returns
+    -------
+    tuple
+        A python tuple with two numpy arrays containing the (tht, phi) cobra 
+        rotation angles. 
+    
+    """  
+    # Calculate the cobra angles applying the law of cosines
+    targetAngle = np.angle(targetPostions)
+    distance = np.abs(targetPostions)
+    distanceSq = distance ** 2
+    link1Sq = link1 ** 2
+    link2Sq = link2 ** 2    
+    phi = -np.arccos((distanceSq - link1Sq - link2Sq) / (2 * link1 * link2))
+    tht = targetAngle - np.sign(phi) * np.arccos(-(link2Sq - link1Sq - distanceSq) / (2 * link1 * distance))
+    
+    # Force tht go from 0 to pi and from -pi to 0
+    tht = (tht - np.pi) % (2 * np.pi) - np.pi
+
+    return (tht, phi)
+
+
+def distanceToLineSegment(points, startPoints, endPoints):
+    """Calculates the minimum distances between points and line segments.
+    
+    Parameters
+    ----------
+    points: object
+        Complex numpy array with the point coordinates. 
+    startPoints: object
+        Complex numpy array with the lines start coordinates. 
+    endPoints: object
+        Complex numpy array with the lines end coordinates. 
+
+    Returns
+    -------
+    object
+        A numpy array with the point to line distances.
+        
     """
-    delta = targets[indices] - centers
-    arrowPatches = [patches.Arrow(c.real, c.imag, d.real, d.imag) for c, d, i in zip(centers, delta, indices) if i != -1]
-    collection = collections.PatchCollection(arrowPatches, color="black")
+    # Translate the points and the line end points to the lines starting points
+    translatedPoints = points - startPoints
+    translatedEndPoints = endPoints - startPoints
+    
+    # Rotate the translated points to have the lines on the x axis
+    rotatedPoints = translatedPoints * np.exp(-1j * np.angle(translatedEndPoints))
+    
+    # Define 3 regions for the points: left of origin, over the lines, right of the lines
+    x = np.real(rotatedPoints)
+    lineLengths = np.abs(translatedEndPoints)
+    (region1,) = np.where(x <= 0)
+    (region2,) = np.where(np.logical_and(x > 0 , x < lineLengths))
+    (region3,) = np.where(x >= lineLengths)
 
-    return collection
+    # Calculate the distances in each region
+    distances = np.empty(len(points))
+    distances[region1] = np.abs(rotatedPoints[region1])
+    distances[region2] = np.abs(np.imag(rotatedPoints[region2]))
+    distances[region3] = np.abs(rotatedPoints[region3] - lineLengths[region3])
 
-def plotTargets(targets, indices, bench):
+    return distances
+
+
+def plotTargets(targets, indices, colIndices, bench):
     """Plots the target positions.
 
     Parameters
@@ -211,40 +323,52 @@ def plotTargets(targets, indices, bench):
     
     """
     # Create the figure
-    plt.figure("Target positions", facecolor="white", tight_layout=True, figsize=(7, 7))
-    plt.title("Target positions")
-    plt.xlabel("x position")
-    plt.ylabel("y position")
-    plt.show(block=False)
-
-    # Fix the axes aspect ratio
-    ax = plt.gca()
-    ax.set_aspect("equal")
+    plotUtils.createNewFigure("Target-cobra associations", "x position", "y position")
       
     # Set the axes limits
     limRange = 1.05 * bench["field"]["R"] * np.array([-1, 1]) 
-    ax.set_xlim(bench["field"]["cm"].real + limRange)
-    ax.set_ylim(bench["field"]["cm"].imag + limRange)
+    xLim = bench["field"]["cm"].real + limRange
+    yLim = bench["field"]["cm"].imag + limRange
+    plotUtils.setAxesLimits(xLim, yLim)
+    
+    # Plot the cobra patrol areas using circles
+    plotUtils.addCircles(bench["center"], bench["rMax"], color="blue", edgecolor="none", alpha=0.15)  
+    plotUtils.addCircles(bench["center"], bench["rMin"], color="white", edgecolor="none")  
 
-    # Obtain the cobras inner and outer patrol area collections
-    (innerCollection, outerCollection) = benchUtils.getCobraPatrolAreas(bench)
-    arrowCollection = getCobraTargetConnections(bench["center"], targets, indices)
-            
-    # Add the collections to the figure
-    ax.add_collection(outerCollection)
-    ax.add_collection(innerCollection)
-    ax.add_collection(arrowCollection)
+    # Highlight cobra collisions with a different color
+    collisionCenters = bench["center"][colIndices]
+    collisionRmin = bench["rMin"][colIndices]
+    collisionRmax = bench["rMax"][colIndices]
+    plotUtils.addCircles(collisionCenters, collisionRmax, color=[0, 1, 0], edgecolor="none", alpha=0.5)  
+    plotUtils.addCircles(collisionCenters, collisionRmin, color="white", edgecolor="none")  
+
+    # Draw the links positions for the assigned cobras
+    (assignedCobras,) = np.where(indices >= 0)
+    assignedCenters = bench["center"][assignedCobras]
+    assignedL1 = bench["L1"][assignedCobras]
+    assignedL2 = bench["L2"][assignedCobras]
+    delta = targets[indices[assignedCobras]] - assignedCenters
+    (tht, phi) = getCobraRotationAngles(delta, assignedL1, assignedL2)
+    link1 = assignedCenters + assignedL1 * np.exp(1j * tht)
+    link2 = link1 + assignedL2 * np.exp(1j * (tht + phi))
+    p1List = np.append(assignedCenters, link1)
+    p2List = np.append(link1, link2)
+    plotUtils.addLines(p1List, p2List, color="blue", linewidths=2)
 
     # Draw the target positions and highlight those that can be reached by a cobra
-    ax.scatter(np.real(targets), np.imag(targets), s=2)
-    ax.scatter(np.real(targets[indices]), np.imag(targets[indices]), s=2, color="red")
+    plotUtils.addPoints(targets, s=2)
+    plotUtils.addPoints(targets[indices[assignedCobras]], s=2, color="red")
 
 
 if __name__ == "__main__":
     # Assign the target positions
-    out = assignTargets(3.0, None)
-        
-    # Plot the target positions
-    plotTargets(out["tgt"], out["assignedTarget"], out["bench"])
-    plt.show()
+    start = time.time()   
+    out = assignTargets(1.0, None)
+    print("Target calculation time:" + str(time.time() - start))
 
+    # Plot the target positions
+    start = time.time()
+    plotTargets(out["tgt"], out["assignedTarget"], out["collisions"], out["bench"])
+    print("Ploting time:" + str(time.time() - start))
+    plotUtils.pauseExecution()
+   

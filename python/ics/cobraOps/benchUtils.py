@@ -11,10 +11,9 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib.collections as collections
 import xml.etree.ElementTree as ET
+
+import plotUtils as plotUtils
 
 
 KEEP_OUT_ANGLE = 0.1
@@ -417,31 +416,6 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     return bench
 
 
-def getCobraPatrolAreas(bench):
-    """Calculates the patrol areas for the bench cobras.
-
-    Parameters
-    ----------
-    bench: Object
-        The bench object. 
-    
-    Returns
-    -------
-    Object
-        Pyhton tuple with the cobras inner and outer patrol area collections
-         
-    """
-    centers = bench["center"]     
-    rMin = bench["rMin"]        
-    rMax = bench["rMax"]
-    innerPatches = [patches.Circle((c.real, c.imag), r) for c, r in zip(centers, rMin)]
-    outerPatches = [patches.Circle((c.real, c.imag), r) for c, r in zip(centers, rMax)]
-    innerCollection = collections.PatchCollection(innerPatches, color="white", edgecolor='none')
-    outerCollection = collections.PatchCollection(outerPatches, color="blue", edgecolor='none', alpha=0.2)
-
-    return (innerCollection, outerCollection)
-
-
 def plotBench(bench):
     """Plots the bench geometry.
 
@@ -452,27 +426,17 @@ def plotBench(bench):
     
     """
     # Create the figure
-    plt.figure("Bench geometry", facecolor="white", tight_layout=True, figsize=(7, 7))
-    plt.title("Bench geometry")
-    plt.xlabel("x position")
-    plt.ylabel("y position")
-    plt.show(block=False)
-
-    # Fix the axes aspect ratio
-    ax = plt.gca()
-    ax.set_aspect("equal")
+    plotUtils.createNewFigure("Bench geometry", "x position", "y position")
 
     # Set the axes limits
     limRange = 1.05 * bench["field"]["R"] * np.array([-1, 1]) 
-    ax.set_xlim(bench["field"]["cm"].real + limRange)
-    ax.set_ylim(bench["field"]["cm"].imag + limRange)
-      
-    # Obtain the cobras inner and outer patrol area collections
-    (innerCollection, outerCollection) = getCobraPatrolAreas(bench)
-        
-    # Add the collections to the figure
-    ax.add_collection(outerCollection)
-    ax.add_collection(innerCollection)
+    xLim = bench["field"]["cm"].real + limRange
+    yLim = bench["field"]["cm"].imag + limRange
+    plotUtils.setAxesLimits(xLim, yLim)
+    
+    # Plot the cobra patrol areas using circles
+    plotUtils.addCircles(bench["center"], bench["rMax"], color="blue", edgecolor="none", alpha=0.15)  
+    plotUtils.addCircles(bench["center"], bench["rMin"], color="white", edgecolor="none")  
 
 
 if __name__ == "__main__":
@@ -486,5 +450,5 @@ if __name__ == "__main__":
     
     # Plot the bench
     plotBench(bench)
-    plt.show()
+    plotUtils.pauseExecution()
 
