@@ -11,11 +11,11 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import cobraUtils as cobraUtils
 import benchUtils as benchUtils
 import targetUtils as targetUtils
+import plotUtils as plotUtils
 
 
 def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, varargin=None):
@@ -153,7 +153,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
     # $$$ use_os  = s_or_os & (dtht0 > -dtht1) | only_os
 
     # Pause the execution to have time to inspect any open figure
-    plt.show()
+    plotUtils.pauseExecution()
 
     # ## TBD
 
