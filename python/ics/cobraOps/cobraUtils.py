@@ -40,7 +40,7 @@ def getCobrasCenters(cobraLayout):
     
     Returns
     -------
-    Object
+    object
         Complex numpy array with the cobras central positions.
     
     """
@@ -76,7 +76,7 @@ def getFirstSectorCenters():
     
     Returns
     -------
-    Object
+    object
         Complex numpy array with the cobras central positions.
     
     """
@@ -108,7 +108,7 @@ def getPFICenters():
     
     Returns
     -------
-    Object
+    object
         Complex numpy array with the cobras central positions.
     
     """
@@ -131,27 +131,12 @@ def getPFICenters():
     return centers
 
 
-def plotCobrasCenters(centers):
-    """Plots the cobras central positions.
-
-    Parameters
-    ----------
-    centers: Object
-        A numpy complex array with the cobras central positions. 
-    
-    """
-    # Create the figure
-    plotUtils.createNewFigure("Cobra centers", "x position", "y position")
-
-    # Draw the cobra centers
-    plotUtils.addPoints(centers, s=2)
-
-
 if __name__ == "__main__":
-    # Get the centers for the full PFI
+    # Get the cobra centers for the full PFI
     centers = getCobrasCenters("full")
     
     # Plot the centers
-    plotCobrasCenters(centers)
+    plotUtils.createNewFigure("Cobra centers", "x position", "y position")
+    plotUtils.addPoints(centers, s=2)
     plotUtils.pauseExecution()
     

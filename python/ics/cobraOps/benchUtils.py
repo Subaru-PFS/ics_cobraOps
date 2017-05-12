@@ -58,7 +58,7 @@ def getBenchCalibrationData(fileName):
     
     Returns
     -------
-    Object
+    object
         The bench calibration data, containing the following elements:
         - mids: The module ids (n).
         - pids: The positioner ids (n).
@@ -200,7 +200,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     
     Parameters
     ----------
-    centers: Object
+    centers: object
         A numpy array with the cobras central positions. If none, the cobras
         positions from a configuration file will be used.
     useRealMaps: bool
@@ -212,7 +212,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
 
     Returns
     -------
-    Object
+    object
         The bench geometry object, containing the following elements:
         - center: The cobra central positions in mm or pixel units (n).
         - tht0: The hard stop angle for same sense move-out in radians (n).
@@ -416,12 +416,12 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     return bench
 
 
-def plotBench(bench):
+def plotBenchGeometry(bench):
     """Plots the bench geometry.
 
     Parameters
     ----------
-    bench: Object
+    bench: object
         The bench object. 
     
     """
@@ -434,9 +434,9 @@ def plotBench(bench):
     yLim = bench["field"]["cm"].imag + limRange
     plotUtils.setAxesLimits(xLim, yLim)
     
-    # Plot the cobra patrol areas using circles
-    plotUtils.addCircles(bench["center"], bench["rMax"], color="blue", edgecolor="none", alpha=0.15)  
-    plotUtils.addCircles(bench["center"], bench["rMin"], color="white", edgecolor="none")  
+    # Plot the cobra patrol areas using ring shapes
+    colors = np.full((len(bench["center"]), 4), [0.0, 0.0, 1.0, 0.15])
+    plotUtils.addRings(bench["center"], bench["rMin"], bench["rMax"], colors, edgecolor="none")
 
 
 if __name__ == "__main__":
@@ -448,7 +448,7 @@ if __name__ == "__main__":
         print("Bench data: " + key)
         print(bench[key])
     
-    # Plot the bench
-    plotBench(bench)
+    # Plot the bench geomtry
+    plotBenchGeometry(bench)
     plotUtils.pauseExecution()
 
