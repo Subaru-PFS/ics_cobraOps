@@ -11,11 +11,11 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import cobraUtils as cobraUtils
 import benchUtils as benchUtils
 import targetUtils as targetUtils
+import plotUtils as plotUtils
 
 
 def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, varargin=None):
@@ -78,9 +78,9 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
         # Define the bench geometry
         bench = benchUtils.defineBenchGeometry(centers, useRealMaps, useRealLinks)
 
-    # Plot the cobras central positions if necessary
+    # Plot the bench geometry if necessary
     if toggle["showFigures"]:
-        cobraUtils.plotCobrasCenters(bench["center"])
+        benchUtils.plotBenchGeometry(bench)
 
     # Reassign the bench alpha value if requested by the used
     if varargin is not None and "alpha" in varargin:
@@ -122,8 +122,8 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
         # TODO See MATLAB code
         raise Exception("Impossible path: TGT_GEN_STRATEGY = 'patrol'")
 
-    if toggle["showFigures"]:
-        targetUtils.plotTargets(targets)
+    #if toggle["showFigures"]:
+        #targetUtils.plotTargets(targets)
     
     #------------------------------------------------------------------
     #    Targets defined, no end-point physical interferences (Rule 2)      
@@ -152,7 +152,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
     # $$$ use_os  = s_or_os & (dtht0 > -dtht1) | only_os
 
     # Pause the execution to have time to inspect any open figure
-    plt.show()
+    plotUtils.pauseExecution()
 
     # ## TBD
 
@@ -160,7 +160,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
 
 
 if __name__ == "__main__":
-    bench = simFun(cobraLayout="full", varargin={"showFigures": False})
+    bench = simFun(cobraLayout="full", varargin={"showFigures": True})
     
     # Print the data in the console
     for key in bench:
