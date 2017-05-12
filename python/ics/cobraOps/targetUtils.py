@@ -237,8 +237,10 @@ def calculateCollisionMatrix(positions, bench):
     return distanceMatrix
 
 
-def getCobraRotationAngles(targetPostions, link1, link2):
+def getCobraRotationAngles(targetPostions, link1, link2, useNegativePhi=True):
     """Calculates the cobra rotation angles to reach the given target position. 
+    
+    The code assumes that the cobras can reach the given positions.
     
     Parameters
     ----------
@@ -249,6 +251,9 @@ def getCobraRotationAngles(targetPostions, link1, link2):
         Numpy array or constant with the links1 lengths.
     link2: object
         Numpy array or constant with the links2 lengths.
+    useNegativePhi: bool, optional
+        If True the phi values will be negative. If False, they will be
+        positive. Default is True.
 
     Returns
     -------
@@ -258,15 +263,15 @@ def getCobraRotationAngles(targetPostions, link1, link2):
     
     """  
     # Calculate the cobra angles applying the law of cosines
-    targetAngle = np.angle(targetPostions)
     distance = np.abs(targetPostions)
     distanceSq = distance ** 2
     link1Sq = link1 ** 2
     link2Sq = link2 ** 2    
-    phi = -np.arccos((distanceSq - link1Sq - link2Sq) / (2 * link1 * link2))
-    tht = targetAngle - np.sign(phi) * np.arccos(-(link2Sq - link1Sq - distanceSq) / (2 * link1 * distance))
+    phiSign = 1 - 2 * useNegativePhi
+    phi = phiSign * np.arccos((distanceSq - link1Sq - link2Sq) / (2 * link1 * link2))
+    tht = np.angle(targetPostions) - phiSign * np.arccos(-(link2Sq - link1Sq - distanceSq) / (2 * link1 * distance))
     
-    # Force tht go from 0 to pi and from -pi to 0
+    # Force tht go from -pi to pi instead of from 0 to 2pi
     tht = (tht - np.pi) % (2 * np.pi) - np.pi
 
     return (tht, phi)
@@ -313,17 +318,17 @@ def distanceToLineSegment(points, startPoints, endPoints):
     return distances
 
 
-def plotTargets(targets, indices, colIndices, bench):
-    """Plots the target positions.
+def plotCollisions(targets, indices, colIndices, bench):
+    """Plots the cobra collisions.
 
     Parameters
     ----------
-    targets: Object
+    targets: object
         A numpy complex array with the target positions. 
     
     """
     # Create the figure
-    plotUtils.createNewFigure("Target-cobra associations", "x position", "y position")
+    plotUtils.createNewFigure("Cobra collisions", "x position", "y position")
       
     # Set the axes limits
     limRange = 1.05 * bench["field"]["R"] * np.array([-1, 1]) 
@@ -331,31 +336,32 @@ def plotTargets(targets, indices, colIndices, bench):
     yLim = bench["field"]["cm"].imag + limRange
     plotUtils.setAxesLimits(xLim, yLim)
     
-    # Plot the cobra patrol areas using circles
-    plotUtils.addCircles(bench["center"], bench["rMax"], color="blue", edgecolor="none", alpha=0.15)  
-    plotUtils.addCircles(bench["center"], bench["rMin"], color="white", edgecolor="none")  
-
-    # Highlight cobra collisions with a different color
-    collisionCenters = bench["center"][colIndices]
-    collisionRmin = bench["rMin"][colIndices]
-    collisionRmax = bench["rMax"][colIndices]
-    plotUtils.addCircles(collisionCenters, collisionRmax, color=[0, 1, 0], edgecolor="none", alpha=0.5)  
-    plotUtils.addCircles(collisionCenters, collisionRmin, color="white", edgecolor="none")  
-
-    # Draw the links positions for the assigned cobras
+    # Plot the cobra patrol areas using ring shapes and use a 
+    # different color for those with detected collisions
+    centers = bench["center"]
+    rMin = bench["rMin"]
+    rMax = bench["rMax"]
+    colors = np.full((len(centers), 4), [0.0, 0.0, 1.0, 0.15])
+    colors[colIndices] = [0.0, 1.0, 0.0, 0.5]
+    plotUtils.addRings(centers, rMin, rMax, colors, edgecolor="none")
+ 
+    # Draw the cobras positions using a different color for those
+    # that do not have an assigned target
     (assignedCobras,) = np.where(indices >= 0)
-    assignedCenters = bench["center"][assignedCobras]
-    assignedL1 = bench["L1"][assignedCobras]
-    assignedL2 = bench["L2"][assignedCobras]
-    delta = targets[indices[assignedCobras]] - assignedCenters
-    (tht, phi) = getCobraRotationAngles(delta, assignedL1, assignedL2)
-    link1 = assignedCenters + assignedL1 * np.exp(1j * tht)
-    link2 = link1 + assignedL2 * np.exp(1j * (tht + phi))
-    p1List = np.append(assignedCenters, link1)
-    p2List = np.append(link1, link2)
-    plotUtils.addLines(p1List, p2List, color="blue", linewidths=2)
+    positions = bench["home0"]
+    positions[assignedCobras] = targets[indices[assignedCobras]]
+    cobraCenters = bench["center"]
+    L1 = bench["L1"]
+    L2 = bench["L2"]
+    (tht, phi) = getCobraRotationAngles(positions - cobraCenters, L1, L2)
+    link1 = cobraCenters + L1 * np.exp(1j * tht)
+    link2 = link1 + L2 * np.exp(1j * (tht + phi))
+    colors = np.full((len(positions), 4), [1.0, 0.0, 0.0, 0.25])
+    colors[assignedCobras] = [0.0, 0.0, 1.0, 0.5]
+    plotUtils.addLines(cobraCenters, link1, color=colors, linewidths=2)
+    plotUtils.addThickLines(link1, link2, 0.5 * bench["minDist"], color=colors, edgecolor="none")  
 
-    # Draw the target positions and highlight those that can be reached by a cobra
+    # Draw the target positions and highlight those that are assigned to a cobra
     plotUtils.addPoints(targets, s=2)
     plotUtils.addPoints(targets[indices[assignedCobras]], s=2, color="red")
 
@@ -368,7 +374,7 @@ if __name__ == "__main__":
 
     # Plot the target positions
     start = time.time()
-    plotTargets(out["tgt"], out["assignedTarget"], out["collisions"], out["bench"])
+    plotCollisions(out["tgt"], out["assignedTarget"], out["collisions"], out["bench"])
     print("Ploting time:" + str(time.time() - start))
     plotUtils.pauseExecution()
    

@@ -78,10 +78,9 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
         # Define the bench geometry
         bench = benchUtils.defineBenchGeometry(centers, useRealMaps, useRealLinks)
 
-    # Plot the cobras central positions if necessary
+    # Plot the bench geometry if necessary
     if toggle["showFigures"]:
-        cobraUtils.plotCobrasCenters(bench["center"])
-        benchUtils.plotBench(bench)
+        benchUtils.plotBenchGeometry(bench)
 
     # Reassign the bench alpha value if requested by the used
     if varargin is not None and "alpha" in varargin:
