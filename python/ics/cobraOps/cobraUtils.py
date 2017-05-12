@@ -11,7 +11,8 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
+
+import plotUtils as plotUtils
 
 
 COBRAS_SEPARATION = 8.0
@@ -39,7 +40,7 @@ def getCobrasCenters(cobraLayout):
     
     Returns
     -------
-    Object
+    object
         Complex numpy array with the cobras central positions.
     
     """
@@ -49,7 +50,8 @@ def getCobrasCenters(cobraLayout):
     elif cobraLayout == "hex":
         # The centers should follow an hexagon pattern.
         # (R3 collisions = 3.0e-4 w/ 100k targets)
-        centers = np.zeros(7, dtype="complex")
+        centers = np.empty(7, dtype="complex")
+        centers[0] = 0.0
         centers[1:] = COBRAS_SEPARATION * np.exp(np.arange(6) * 1j * np.pi / 3)
     elif cobraLayout == "line":
         # Line of 27 cobras. 
@@ -74,13 +76,13 @@ def getFirstSectorCenters():
     
     Returns
     -------
-    Object
+    object
         Complex numpy array with the cobras central positions.
     
     """
     # Create the cobras centers array
     cobrasPerModule = MODULE_FIRST_LINE_LENGTH + MODULE_SECOND_LINE_LENGTH
-    centers = np.zeros(cobrasPerModule * MODULES_PER_SECTOR, dtype="complex")
+    centers = np.empty(cobrasPerModule * MODULES_PER_SECTOR, dtype="complex")
     
     # Fill the first module
     firstModule = centers[:cobrasPerModule]
@@ -106,7 +108,7 @@ def getPFICenters():
     
     Returns
     -------
-    Object
+    object
         Complex numpy array with the cobras central positions.
     
     """
@@ -115,7 +117,7 @@ def getPFICenters():
          
     # Create the cobras centers array
     cobrasPerSector = len(firstSector)
-    centers = np.zeros(3 * cobrasPerSector, dtype="complex")
+    centers = np.empty(3 * cobrasPerSector, dtype="complex")
             
     # Add the first sector
     centers[:cobrasPerSector] = firstSector 
@@ -129,28 +131,12 @@ def getPFICenters():
     return centers
 
 
-def plotCobrasCenters(centers):
-    """Plots the cobras central positions.
-
-    Parameters
-    ----------
-    centers: Object
-        A numpy complex array with the cobras central positions. 
-    
-    """
-    if centers is not None:
-        plt.figure("Cobra centers", facecolor="white")
-        plt.scatter(np.real(centers), np.imag(centers), s=2)
-        plt.xlabel("x position")
-        plt.ylabel("y position")
-        plt.title("Cobra centers")
-        plt.show(block=False)
-
-
 if __name__ == "__main__":
-    # Get the centers for the full PFI
+    # Get the cobra centers for the full PFI
     centers = getCobrasCenters("full")
     
     # Plot the centers
-    plotCobrasCenters(centers)
-    plt.show()
+    plotUtils.createNewFigure("Cobra centers", "x position", "y position")
+    plotUtils.addPoints(centers, s=2)
+    plotUtils.pauseExecution()
+    
