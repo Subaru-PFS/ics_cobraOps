@@ -435,8 +435,7 @@ def plotBenchGeometry(bench):
     plotUtils.setAxesLimits(xLim, yLim)
     
     # Plot the cobra patrol areas using ring shapes
-    colors = np.full((len(bench["center"]), 4), [0.0, 0.0, 1.0, 0.15])
-    plotUtils.addRings(bench["center"], bench["rMin"], bench["rMax"], colors, edgecolor="none")
+    plotUtils.addRings(bench["center"], bench["rMin"], bench["rMax"], facecolors="blue", alpha=0.15)
 
 
 if __name__ == "__main__":

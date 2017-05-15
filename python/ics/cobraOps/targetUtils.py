@@ -343,7 +343,7 @@ def plotCollisions(targets, indices, colIndices, bench):
     rMax = bench["rMax"]
     colors = np.full((len(centers), 4), [0.0, 0.0, 1.0, 0.15])
     colors[colIndices] = [0.0, 1.0, 0.0, 0.5]
-    plotUtils.addRings(centers, rMin, rMax, colors, edgecolor="none")
+    plotUtils.addRings(centers, rMin, rMax, facecolors=colors)
  
     # Draw the cobras positions using a different color for those
     # that do not have an assigned target
@@ -358,12 +358,12 @@ def plotCollisions(targets, indices, colIndices, bench):
     link2 = link1 + L2 * np.exp(1j * (tht + phi))
     colors = np.full((len(positions), 4), [1.0, 0.0, 0.0, 0.25])
     colors[assignedCobras] = [0.0, 0.0, 1.0, 0.5]
-    plotUtils.addLines(cobraCenters, link1, color=colors, linewidths=2)
-    plotUtils.addThickLines(link1, link2, 0.5 * bench["minDist"], color=colors, edgecolor="none")  
+    plotUtils.addLines(cobraCenters, link1, edgecolor=colors, linewidths=2)
+    plotUtils.addThickLines(link1, link2, 0.5 * bench["minDist"], facecolors=colors)  
 
     # Draw the target positions and highlight those that are assigned to a cobra
-    plotUtils.addPoints(targets, s=2)
-    plotUtils.addPoints(targets[indices[assignedCobras]], s=2, color="red")
+    plotUtils.addPoints(targets, s=2, facecolor="0.4")
+    plotUtils.addPoints(targets[indices[assignedCobras]], s=2, facecolor="red")
 
 
 if __name__ == "__main__":
@@ -377,4 +377,4 @@ if __name__ == "__main__":
     plotCollisions(out["tgt"], out["assignedTarget"], out["collisions"], out["bench"])
     print("Ploting time:" + str(time.time() - start))
     plotUtils.pauseExecution()
-   
+
