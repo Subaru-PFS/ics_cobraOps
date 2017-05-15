@@ -122,8 +122,6 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
         # TODO See MATLAB code
         raise Exception("Impossible path: TGT_GEN_STRATEGY = 'patrol'")
 
-    #if toggle["showFigures"]:
-        #targetUtils.plotTargets(targets)
     
     #------------------------------------------------------------------
     #    Targets defined, no end-point physical interferences (Rule 2)      

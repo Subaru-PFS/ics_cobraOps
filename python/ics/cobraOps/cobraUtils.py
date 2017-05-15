@@ -137,6 +137,6 @@ if __name__ == "__main__":
     
     # Plot the centers
     plotUtils.createNewFigure("Cobra centers", "x position", "y position")
-    plotUtils.addPoints(centers, s=2)
+    plotUtils.addPoints(centers, s=2, facecolor="0.4")
     plotUtils.pauseExecution()
     

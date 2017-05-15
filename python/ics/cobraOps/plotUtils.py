@@ -11,7 +11,7 @@ import matplotlib.path as path
 import matplotlib.collections as collections
 
 
-def createNewFigure(title, xLabel, yLabel, size=(10, 10), **kwargs):
+def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
     """Initializes a new matplotlib figure.
     
     Parameters
@@ -87,7 +87,7 @@ def addCircles(centers, radii, **kwargs):
     diameters = 2 * radii
     offsets = np.hstack((np.real(centers)[:, np.newaxis], np.imag(centers)[:, np.newaxis]))
     angles = np.zeros(len(centers))
-    params = {"offsets":offsets, "units":"x", "transOffset":plt.gca().transData}
+    params = {"offsets":offsets, "units":"xy", "transOffset":plt.gca().transData}
     params.update(kwargs)
     ellipseCollection = collections.EllipseCollection(diameters, diameters, angles, **params)
  
@@ -95,7 +95,7 @@ def addCircles(centers, radii, **kwargs):
     plt.gca().add_collection(ellipseCollection)
 
 
-def addRings(centers, innerRadii, outerRadii, colors, **kwargs):
+def addRings(centers, innerRadii, outerRadii, **kwargs):
     """Adds a set of rings to an already initialized figure.
 
     Parameters
@@ -106,20 +106,16 @@ def addRings(centers, innerRadii, outerRadii, colors, **kwargs):
         Numpy array with the ring inner radii. 
     outerRadii: object
         Numpy array with the ring outer radii. 
-    colors: object
-        Numpy array with the ring colors, expressed as a set of 4 numbers. 
     kwargs: collections.EllipseCollection properties
         Any additional property that should be passed to the ellipse collection.
          
     """
     # Create the rings using 2 sets of circles
-    circleCenters = np.hstack((centers, centers))
-    circleRadii = np.hstack((outerRadii, innerRadii))    
-    circleColors = np.vstack((colors, np.full(colors.shape, [1.0, 1.0, 1.0, 1.0])))
-    addCircles(circleCenters, circleRadii, color=circleColors, **kwargs)
+    addCircles(centers, outerRadii, **kwargs)
+    addCircles(centers, innerRadii, facecolors="white")
 
 
-def addRingsSlow(centers, innerRadii, outerRadii, colors, **kwargs):
+def addRingsSlow(centers, innerRadii, outerRadii, **kwargs):
     """Adds a set of rings to an already initialized figure.
 
     Parameters
@@ -130,15 +126,13 @@ def addRingsSlow(centers, innerRadii, outerRadii, colors, **kwargs):
         Numpy array with the ring inner radii. 
     outerRadii: object
         Numpy array with the ring outer radii. 
-    colors: object
-        Numpy array with the ring colors, expressed as a set of 4 numbers. 
     kwargs: collections.PatchCollection properties
         Any additional property that should be passed to the patch collection.
          
     """
     # Create the ring collection
     ringList = [patches.Wedge((c.real, c.imag), r1, 0, 360, r1 - r2) for c, r1, r2 in zip(centers, outerRadii, innerRadii)]
-    ringCollection = collections.PatchCollection(ringList, color=colors, **kwargs)
+    ringCollection = collections.PatchCollection(ringList, **kwargs)
 
     # Plot the rings in the current figure
     plt.gca().add_collection(ringCollection)
@@ -202,7 +196,7 @@ def getThickLinePath(center, width, thickness, angle):
     width: float
         The line width.
     thicknesses: float
-        The line thickness. The line with will be twice the thickness.
+        The line thickness. The line height will be twice the thickness.
     angle: float
         The line rotation angle.
          
@@ -216,21 +210,20 @@ def getThickLinePath(center, width, thickness, angle):
     circlePoints = circlePath.vertices.shape[0]
     middleIndex = circlePoints / 2
 
-    # Create the thick line vertices array using the circle ones
+    # Create the thick line vertices array reusing the circle ones
     vertices = np.empty((circlePoints + 1, 2), dtype=circleVerts.dtype)
     vertices[:middleIndex] = circleVerts[:middleIndex] + [0.5 * width, 0.0]
     vertices[middleIndex] = [-0.5 * width, thickness]
     vertices[-middleIndex:] = circleVerts[-middleIndex:] - [0.5 * width, 0.0]
 
-    # Rotate and translate the vertices to given center and angle
+    # Rotate and translate the vertices to the given center and angle
     cos = np.cos(angle)
     sin = np.sin(angle)
     x = cos * vertices[:, 0] - sin * vertices[:, 1] + center.real
-    y = sin * vertices[:, 0] + cos * vertices[:, 1] + center.imag
+    vertices[:, 1] = sin * vertices[:, 0] + cos * vertices[:, 1] + center.imag
     vertices[:, 0] = x
-    vertices[:, 1] = y
     
-    # Create the thick line codes array using the circle ones
+    # Create the thick line codes array reusing the circle ones
     codes = np.empty(circlePoints + 1, dtype=circleCodes.dtype)
     codes[:middleIndex] = circleCodes[:middleIndex]
     codes[middleIndex] = path.Path.LINETO
@@ -245,3 +238,4 @@ def pauseExecution():
     
     """
     plt.show()
+
