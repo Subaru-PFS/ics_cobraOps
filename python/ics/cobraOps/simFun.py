@@ -114,8 +114,9 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
         targets = np.zeros((numFields, numPos), dtype="complex")
         
         for i in range(numFields):
-            assignments = targetUtils.assignTargets(numtrg, bench)
-            # targets[i] = assignments["tgt"]
+            tgt = targetUtils.generateTargets(numtrg, bench)
+            (assignedTargets, cobraPositions) = targetUtils.assignTargets(tgt, bench)
+            targets[i] = cobraPositions
         
         PM["R2_percentColl"] = None
     elif TGT_GEN_STRATEGY == "patrol":
