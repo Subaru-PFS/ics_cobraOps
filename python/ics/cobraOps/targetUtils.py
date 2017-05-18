@@ -563,13 +563,15 @@ def distanceToLineSegment(points, startPoints, endPoints):
     return distances
 
 
-def plotCobraTargetAssociations(cobraPositions, assignedTargets, targetPositions, bench):
+def plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTargets, targetPositions, bench):
     """Plots the cobra-target associations.
 
     Parameters
     ----------
     cobraPositions
         A complex numpy array with the cobra positions.
+    problematicCobras: object
+        A numpy array with the indices of the cobras involved on a collision.
     assignedTargets: object
         A numpy array with the indices of the targets assigned to each cobra.
     targetPositions: object
@@ -591,7 +593,6 @@ def plotCobraTargetAssociations(cobraPositions, assignedTargets, targetPositions
     
     # Plot the cobra patrol areas using ring shapes and use a 
     # different color for those with detected collisions
-    (problematicCobras, nearbyProblematicCobras) = getProblematicCobras(cobraPositions, bench)
     cobraCenters = bench["center"]
     rMin = bench["rMin"]
     rMax = bench["rMax"]
@@ -617,6 +618,9 @@ def plotCobraTargetAssociations(cobraPositions, assignedTargets, targetPositions
 
 
 if __name__ == "__main__":
+    # Define the target density to use
+    targetDensity = 5
+    
     # Get the cobras central positions for the full PFI
     start = time.time()
     centers = cobraUtils.getPFICenters()
@@ -626,16 +630,20 @@ if __name__ == "__main__":
     bench = benchUtils.defineBenchGeometry(centers, True, True)
 
     # Create a random sample of targets
-    targetPositions = generateTargets(2.0, bench)
+    targetPositions = generateTargets(targetDensity, bench)
     print("Number of simulated targets: " + str(len(targetPositions)))
 
     # Assign the target positions
     (assignedTargets, cobraPositions) = assignTargets(targetPositions, bench)
+    
+    # Get the cobra for which the collision could not solved
+    (problematicCobras, nearbyProblematicCobras) = getProblematicCobras(cobraPositions, bench)
+    print("Number of unsolved collisions: " + str(len(problematicCobras)/2))
     print("Total computation time (s): " + str(time.time() - start))
 
     # Plot the cobra-target associations
     start = time.time()
-    plotCobraTargetAssociations(cobraPositions, assignedTargets, targetPositions, bench)
+    plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTargets, targetPositions, bench)
     print("Plotting time (s): " + str(time.time() - start))
     plotUtils.pauseExecution()
 

@@ -208,7 +208,7 @@ def getThickLinePath(center, width, thickness, angle):
     circleVerts = circlePath.vertices
     circleCodes = circlePath.codes
     circlePoints = circlePath.vertices.shape[0]
-    middleIndex = circlePoints / 2
+    middleIndex = int(circlePoints / 2)
 
     # Create the thick line vertices array reusing the circle ones
     vertices = np.empty((circlePoints + 1, 2), dtype=circleVerts.dtype)
