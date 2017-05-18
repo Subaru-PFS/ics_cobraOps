@@ -29,7 +29,7 @@ def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
     
     """
     # Create the figure
-    plt.figure(title, figsize=size, facecolor="white", tight_layout=True, **kwargs)
+    plt.figure(figsize=size, facecolor="white", tight_layout=True, **kwargs)
     plt.title(title)
     plt.xlabel(xLabel)
     plt.ylabel(yLabel)
@@ -67,7 +67,7 @@ def addPoints(points, **kwargs):
         Any additional property that should be passed to the scatter function.
     
     """
-    plt.scatter(np.real(points), np.imag(points), **kwargs)
+    plt.scatter(points.real, points.imag, **kwargs)
 
 
 def addCircles(centers, radii, **kwargs):
@@ -85,7 +85,7 @@ def addCircles(centers, radii, **kwargs):
     """
     # Create the ellipse collection
     diameters = 2 * radii
-    offsets = np.hstack((np.real(centers)[:, np.newaxis], np.imag(centers)[:, np.newaxis]))
+    offsets = np.hstack((centers.real[:, np.newaxis], centers.imag[:, np.newaxis]))
     angles = np.zeros(len(centers))
     params = {"offsets":offsets, "units":"xy", "transOffset":plt.gca().transData}
     params.update(kwargs)

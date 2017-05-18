@@ -233,9 +233,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
         - home0: The home position for the same sense move-out in length units (n).
         - home1: The home position for the opposite sense move-out in length units (n).
         - thtOverlap: The theta overlap ??? (n)
-        - nnMap: Logical matrix containing the nearest neighbor map (nxn).
         - NN: A more useful way to the express the the nearest neighbor map.
-        - field: An object containing the field geometry.
         - dA: Parameter for populating the annular patrol areas uniformly (n).
         - rRange: Parameter for populating the annular patrol areas uniformly (n).
         - alpha: The motor noise normalization factor.
@@ -355,17 +353,6 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     NN["row"] = row
     NN["col"] = col
     NN["xy"] = (centers[row] + centers[col]) / 2
-
-    # Calculate some parameters for the field geometry
-    field = {}
-    field["cm"] = np.mean(centers)
-    field["R"] = np.max(np.abs(centers - field["cm"]) + rMax)
-    
-    # Fit a line to the centers and calculate the field slope
-    x = np.real(centers)
-    y = np.imag(centers)
-    slope = (len(x) * (x * y).sum() - x.sum() * y.sum()) / (len(x) * (x * x).sum() - x.sum() ** 2)
-    field["ang"] = np.arctan([slope])
     
     # Calculate some parameters for populating the annular patrol areas uniformly
     dA = 1.0 / ((rMax / rMin) ** 2 - 1.0) 
@@ -392,9 +379,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     bench["home0"] = home0
     bench["home1"] = home1
     bench["thtOverlap"] = thtOverlap
-    bench["nnMap"] = nnMap
     bench["NN"] = NN
-    bench["field"] = field
     bench["dA"] = dA
     bench["rRange"] = rRange
     bench["alpha"] = ALPHA
@@ -429,9 +414,11 @@ def plotBenchGeometry(bench):
     plotUtils.createNewFigure("Bench geometry", "x position", "y position")
 
     # Set the axes limits
-    limRange = 1.05 * bench["field"]["R"] * np.array([-1, 1]) 
-    xLim = bench["field"]["cm"].real + limRange
-    yLim = bench["field"]["cm"].imag + limRange
+    benchCenter = np.mean(bench["center"])
+    benchRadius = np.max(np.abs(bench["center"] - benchCenter) + bench["rMax"])
+    limRange = 1.05 * benchRadius * np.array([-1, 1]) 
+    xLim = benchCenter.real + limRange
+    yLim = benchCenter.imag + limRange
     plotUtils.setAxesLimits(xLim, yLim)
     
     # Plot the cobra patrol areas using ring shapes
