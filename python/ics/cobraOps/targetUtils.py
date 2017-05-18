@@ -619,7 +619,7 @@ def plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTarge
 
 if __name__ == "__main__":
     # Define the target density to use
-    targetDensity = 5
+    targetDensity = 1.5
     
     # Get the cobras central positions for the full PFI
     start = time.time()
@@ -633,10 +633,10 @@ if __name__ == "__main__":
     targetPositions = generateTargets(targetDensity, bench)
     print("Number of simulated targets: " + str(len(targetPositions)))
 
-    # Assign the target positions
+    # Assign the target to the cobras and get the cobra positions
     (assignedTargets, cobraPositions) = assignTargets(targetPositions, bench)
     
-    # Get the cobra for which the collision could not solved
+    # Get the cobras for which the collision could not solved
     (problematicCobras, nearbyProblematicCobras) = getProblematicCobras(cobraPositions, bench)
     print("Number of unsolved collisions: " + str(len(problematicCobras)/2))
     print("Total computation time (s): " + str(time.time() - start))
