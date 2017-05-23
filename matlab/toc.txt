@@ -3,6 +3,7 @@
 Most of the files listed here have been deleted.  To recover, go back
 to commit 910851b48bfa3a72bbf6903a367846d4d701d647
 
+git checkout 910851b48bfa3a72bbf6903a367846d4d701d647 -- <file_path>
 
 
 | time stamp   | file name                                  | used on/by                                            | probable author      |
