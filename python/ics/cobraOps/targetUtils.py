@@ -72,9 +72,9 @@ def assignTargets(targetPositions, bench):
     
     # Assign a single target to each cobra based of the target distances
     assignedTargets = assignTargetsByDistance(targetIndices, targetDistances)
-    
+   
     # Calculate the cobra positions solving possible collisions between cobras
-    cobraPositions = solveCobraCollisions(assignedTargets, targetIndices, targetDistances, targetPositions, bench)
+    cobraPositions = solveCobraCollisions(assignedTargets, targetIndices, targetPositions, bench)
 
     return (assignedTargets, cobraPositions)
 
@@ -96,44 +96,45 @@ def getAccesibleTargets(targetPositions, bench):
         be reached by the cobra.
 
     """
-    # Calculate the distance matrix between the cobra centers and the target
-    # positions: select first by the x axis distance, then by the y axis 
-    # distance, and finally by the radial distance.
-    distanceMatrix = np.abs(bench["center"].real[:, np.newaxis] - targetPositions.real)
-    (cobras, targets) = np.where(distanceMatrix < bench["rMax"][:, np.newaxis])
+    # Obtain the cobra-target associations: select first by the x axis 
+    # distance and then by the y axis distance
+    xDistanceMatrix = np.abs(bench["center"].real[:, np.newaxis] - targetPositions.real)
+    (cobras, targets) = np.where(xDistanceMatrix < bench["rMax"][:, np.newaxis])
     yDistance = np.abs(bench["center"][cobras].imag - targetPositions[targets].imag)
-    distanceMatrix[cobras, targets] = yDistance
-    (indx,) = np.where(yDistance < bench["rMax"][cobras])
-    cobras = cobras[indx]
-    targets = targets[indx]
-    distanceMatrix[cobras, targets] = np.abs(bench["center"][cobras] - targetPositions[targets])
-
-    # This is simpler method, but it's two to three times slower.
-    # distanceMatrixOld = np.abs(bench["center"][:, np.newaxis] - targetPositions)
+    validIndices = yDistance < bench["rMax"][cobras]
+    cobras = cobras[validIndices]
+    targets = targets[validIndices]
     
-    # Check which targets can be reached by each cobra
-    reachableTargets = np.logical_and(distanceMatrix > bench["rMin"][:, np.newaxis], distanceMatrix < bench["rMax"][:, np.newaxis])
+    # Select only those targets that can be reached by each cobra
+    distances = np.abs(bench["center"][cobras] - targetPositions[targets])
+    validIndices = np.logical_and(distances > bench["rMin"][cobras], distances < bench["rMax"][cobras])
+    cobras = cobras[validIndices]
+    targets = targets[validIndices]
+    distances = distances[validIndices]
 
     # Calculate the total number of targets that each cobra can reach
-    nTargetsPerCobra = np.sum(reachableTargets, axis=1)
-
+    nTargetsPerCobra = np.bincount(cobras)
+    
     # Order the targets by their distance to the cobra
     nCobras = len(bench["center"])
     maxTagetsPerCobra = np.max(nTargetsPerCobra)
     targetIndices = np.full((nCobras, maxTagetsPerCobra), -1, dtype="int")
     targetDistances = np.zeros((nCobras, maxTagetsPerCobra))
+    counter = 0
+    
+    for i in range(len(nTargetsPerCobra)):
+        # Get the target indices and distances for this cobra
+        nTargetsForThisCobra = nTargetsPerCobra[i]
+        targetsForThisCobra = targets[counter:counter + nTargetsForThisCobra]
+        distancesForThisCobra = distances[counter:counter + nTargetsForThisCobra]
 
-    for i in range(nCobras):
-        # Get the indices of the targets that can be reached by the cobra
-        (validTargetIndices,) = np.where(reachableTargets[i])
+        # Sort the targets by their distance to the cobra and fill the arrays
+        orderedIndices = distancesForThisCobra.argsort()
+        targetIndices[i, :nTargetsForThisCobra] = targetsForThisCobra[orderedIndices]
+        targetDistances[i, :nTargetsForThisCobra] = distancesForThisCobra[orderedIndices]
 
-        # Sort the valid target indices by their distance to the cobra
-        distances = distanceMatrix[i]
-        orderedTargetIndices = validTargetIndices[distances[validTargetIndices].argsort()]
-        
-        # Fill the target arrays
-        targetIndices[i, :nTargetsPerCobra[i]] = orderedTargetIndices
-        targetDistances[i, :nTargetsPerCobra[i]] = distances[orderedTargetIndices]
+        # Increase the counter
+        counter += nTargetsForThisCobra
 
     return (targetIndices, targetDistances)
 
@@ -143,9 +144,6 @@ def assignTargetsByDistance(targetIndices, targetDistances):
     
     This method assumes that the input arrays are ordered by the target 
     distance to the center of the cobra.
-    
-    This method changes the input arrays, removing references to the assigned 
-    cobras.
 
     Parameters
     ----------
@@ -166,19 +164,22 @@ def assignTargetsByDistance(targetIndices, targetDistances):
     nCobras = targetIndices.shape[0]
     maxTargetsPerCobra = targetIndices.shape[1]
     assignedTargets = np.full(nCobras, -1, dtype="int")       
-    freeCobras = assignedTargets < 0
-    
+    freeCobras = np.full(nCobras, True, dtype="bool")
+    freeTargets = np.full(targetIndices.max() + 1, True, dtype="bool")
+
     for i in range(maxTargetsPerCobra):
         # Get a list with the unique targets in the given column
         columnTargetIndices = targetIndices[:, i]
         uniqueTargetIndices = np.unique(columnTargetIndices[freeCobras])
 
+        # Remove from the list the -1 value if it's present 
+        uniqueTargetIndices = uniqueTargetIndices[uniqueTargetIndices != -1]
+        
+        # Select free targets only
+        uniqueTargetIndices = uniqueTargetIndices[freeTargets[uniqueTargetIndices]]
+        
         # Loop over the unique target indices
         for targetIndex in uniqueTargetIndices:    
-            # Jump to the next target if the index does not represents a real target
-            if targetIndex == -1:
-                continue
-
             # Get the free cobras for which this target is the closest in the current column
             (associatedCobras,) = np.where(np.logical_and(columnTargetIndices == targetIndex, freeCobras))
             
@@ -188,7 +189,9 @@ def assignTargetsByDistance(targetIndices, targetDistances):
                 cobraToUse = associatedCobras[0]
             else:
                 # Select the cobras for which this is the only target
-                nAvailableTargets = np.sum(targetIndices[associatedCobras] != -1, axis=1)
+                accessibleTargets = targetIndices[associatedCobras, i:]
+                targetIsAvailable = np.logical_and(accessibleTargets != -1, freeTargets[accessibleTargets])
+                nAvailableTargets = np.sum(targetIsAvailable, axis=1)
                 singleTargetCobras = associatedCobras[nAvailableTargets == 1]
                 
                 # Decide depending on how many of these cobras we have
@@ -205,35 +208,29 @@ def assignTargetsByDistance(targetIndices, targetDistances):
                     cobraToUse = singleTargetCobras[distances.argmin()]
 
             
-            # Assign the target to the correct cobra
+            # Assign the target to the selected cobra
             assignedTargets[cobraToUse] = targetIndex
             freeCobras[cobraToUse] = False
-            
-            # Remove the target from the target indices array
-            targetIndices[targetIndices == targetIndex] = -1
+            freeTargets[targetIndex] = False
 
     return assignedTargets
 
 
-def solveCobraCollisions(assignedTargets, targetIndices, targetDistances, targetPositions, bench):
+def solveCobraCollisions(assignedTargets, targetIndices, targetPositions, bench):
     """Detects and solves cobra collisions assigning them alternative targets.
 
-    This method assumes that the targetIndices and targetDistances arrays are 
-    ordered by the target distance to the center of the cobra.
+    This method assumes that the targetIndices array is ordered by the target 
+    distance to the center of the cobra.
 
-    This method changes the assignedTargets, targetIndices and targetDistances 
-    input arrays.
+    This method changes the assignedTargets input array.
 
     Parameters
     ----------
     assignedTargets: object
         A numpy array with the indices of the targets assigned to each cobra.
     targetIndices: object
-        A numpy array with the indices of all other alternative targets that
-        can be assigned to each cobra.
-    targetDistances: object
-        A numpy array with the distances of all the alternative targets that
-        can be assigned to each cobra.
+        A numpy array with the indices of the targets that can be reached by
+        a given cobra.
     targetPositions: object
         A complex numpy array with the targets coordinates.
     bench: object
@@ -255,6 +252,9 @@ def solveCobraCollisions(assignedTargets, targetIndices, targetDistances, target
     (problematicCobras, nearbyProblematicCobras) = getProblematicCobras(cobraPositions, bench)
  
     # Try to solve the collisions one by one
+    freeTargets = np.full(len(targetPositions), True, dtype="bool")
+    freeTargets[assignedTargets[usedCobras]] = False
+    
     for c, nc in zip(problematicCobras, nearbyProblematicCobras):
         # We only need to solve the first half of the problematic cases
         if nc > c:
@@ -297,27 +297,36 @@ def solveCobraCollisions(assignedTargets, targetIndices, targetDistances, target
                 collisions = getCollisionsForCobra(c, cobraPositions, bench)
                 collisions += getCollisionsForCobra(nc, cobraPositions, bench)
 
-                # Get the targets that can be reached by the each cobra
+                # Free the current targets
                 initialTarget1 = assignedTargets[c]
                 initialTarget2 = assignedTargets[nc]
-                targets1 = np.append(initialTarget1, targetIndices[c][targetIndices[c] >= 0])
-                targets2 = np.append(initialTarget2, targetIndices[nc][targetIndices[nc] >= 0])
+                freeTargets[initialTarget1] = True
+                freeTargets[initialTarget2] = True
+
+                # Get the targets that can be reached by each cobra
+                targets1 = targetIndices[c][targetIndices[c] >= 0]
+                targets2 = targetIndices[nc][targetIndices[nc] >= 0]
+                
+                # Select only the free targets
+                targets1 = targets1[freeTargets[targets1]]
+                targets2 = targets2[freeTargets[targets2]]
                 
                 # Create two arrays reflecting all the possible target combinations
                 targetsCombination1 = np.repeat(targets1, len(targets2))
                 targetsCombination2 = np.tile(targets2, len(targets1))
                 
-                # Exclude the current target combination
-                targetsCombination1 = targetsCombination1[1:]
-                targetsCombination2 = targetsCombination2[1:]
+                # Exclude the current target combination and combinations that
+                # use the same target for the two cobras
+                validCombinations = np.logical_or(targetsCombination1 != initialTarget1, targetsCombination2 != initialTarget2)
+                validCombinations = np.logical_and(validCombinations, targetsCombination1 != targetsCombination2)
+                targetsCombination1 = targetsCombination1[validCombinations]
+                targetsCombination2 = targetsCombination2[validCombinations]
                 
                 # Loop over all the possible combinations until we find the minimum 
                 # number of collisions
                 bestTarget1 = initialTarget1    
                 bestTarget2 = initialTarget2    
-                bestPosition1 = cobraPositions[c]
-                bestPosition2 = cobraPositions[nc]
- 
+
                 for newTarget1, newTarget2 in zip(targetsCombination1, targetsCombination2):
                     # Assign the new cobra positions
                     cobraPositions[c] = targetPositions[newTarget1]
@@ -327,15 +336,13 @@ def solveCobraCollisions(assignedTargets, targetIndices, targetDistances, target
                     currentCollisions = getCollisionsForCobra(c, cobraPositions, bench)
                     currentCollisions += getCollisionsForCobra(nc, cobraPositions, bench)
                                
-                    # Check if the number of collisions decreased significantly
+                    # Check if the number of collisions decreased significantly.
                     # A decrease of one means that we solved the current collision,
                     # but we created a new collision with another nearby cobra.
                     if currentCollisions <= collisions - 2:
                         # Save the information from these targets
                         bestTarget1 = newTarget1
                         bestTarget2 = newTarget2
-                        bestPosition1 = cobraPositions[c]
-                        bestPosition2 = cobraPositions[nc]
                         collisions = currentCollisions
                     
                     # Exit the loop if the number of collisions is already zero
@@ -345,20 +352,10 @@ def solveCobraCollisions(assignedTargets, targetIndices, targetDistances, target
                 # Use the targets where we had less collisions
                 assignedTargets[c] = bestTarget1
                 assignedTargets[nc] = bestTarget2
-                cobraPositions[c] = bestPosition1
-                cobraPositions[nc] = bestPosition2
-                
-                # Swap the initial and best targets information in the targets arrays
-                (index,) = np.where(targetIndices[c] == bestTarget1)
-                targetIndices[c, index] = initialTarget1
-                targetDistances[c, index] = np.abs(bench["center"][c] - targetPositions[initialTarget1])
-                (index,) = np.where(targetIndices[nc] == bestTarget2)
-                targetIndices[nc, index] = initialTarget2
-                targetDistances[nc, index] = np.abs(bench["center"][nc] - targetPositions[initialTarget2])
-               
-                # Remove the new assigned targets from the target indices array
-                # to avoid that other cobras can use them
-                targetIndices[np.logical_or(targetIndices == bestTarget1, targetIndices == bestTarget2)] = -1
+                cobraPositions[c] = targetPositions[bestTarget1]
+                cobraPositions[nc] = targetPositions[bestTarget2]
+                freeTargets[bestTarget1] = False
+                freeTargets[bestTarget2] = False
     
     return cobraPositions
 
@@ -619,7 +616,7 @@ def plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTarge
 
 if __name__ == "__main__":
     # Define the target density to use
-    targetDensity = 1.5
+    targetDensity = 2
     
     # Get the cobras central positions for the full PFI
     start = time.time()
@@ -638,7 +635,7 @@ if __name__ == "__main__":
     
     # Get the cobras for which the collision could not solved
     (problematicCobras, nearbyProblematicCobras) = getProblematicCobras(cobraPositions, bench)
-    print("Number of unsolved collisions: " + str(len(problematicCobras)/2))
+    print("Number of unsolved collisions: " + str(len(problematicCobras) / 2))
     print("Total computation time (s): " + str(time.time() - start))
 
     # Plot the cobra-target associations
