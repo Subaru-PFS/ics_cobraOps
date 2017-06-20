@@ -64,7 +64,7 @@ def assignTargets(targetPositions, bench):
     Returns
     -------
     tuple
-        A python tuple with the assigned target indices and the cobra positions.
+        A python tuple with the assigned target indices and the cobra (fiber) positions.
 
     """
     # Get the indices and distances of those targets that can be reached by each cobra
