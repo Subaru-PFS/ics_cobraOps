@@ -424,9 +424,9 @@ def plotBenchGeometry(bench):
     # Plot the cobra patrol areas using ring shapes
     plotUtils.addRings(bench["center"], bench["rMin"], bench["rMax"], facecolors="blue", alpha=0.15)
 
-    # add the stage 1/theta hard stops.
+    # add the stage 1 theta hard stops.
     plotUtils.addLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht0']) )    
-    plotUtils.addLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht1']), facecolors='black')
+    plotUtils.addLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht1']), linestyles='dashed')
 
 if __name__ == "__main__":
     # Get the bench from the calibration file
