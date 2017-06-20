@@ -28,12 +28,12 @@ targetPositions = targetUtils.generateTargets(targetDensity, bench)
 print("Number of simulated targets: " + str(len(targetPositions)))
 
 # Assign the targets to the cobras and get the cobra positions
-(assignedTargets, cobraPositions) = targetUtils.assignTargets(targetPositions, bench)
+(assignedTargets, fiberPositions) = targetUtils.assignTargets(targetPositions, bench)
 
 # Get the cobras for which the collision could not solved
-(problematicCobras, nearbyProblematicCobras) = targetUtils.getProblematicCobras(cobraPositions, bench)
+(problematicCobras, nearbyProblematicCobras) = targetUtils.getProblematicCobras(fiberPositions, bench)
 print("Number of unsolved collisions: " + str(len(problematicCobras)/2))
 
 # Plot the cobra-target associations
-targetUtils.plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTargets, targetPositions, bench)
+targetUtils.plotCobraTargetAssociations(fiberPositions, problematicCobras, assignedTargets, targetPositions, bench)
 plotUtils.pauseExecution()
