@@ -425,9 +425,8 @@ def plotBenchGeometry(bench):
     plotUtils.addRings(bench["center"], bench["rMin"], bench["rMax"], facecolors="blue", alpha=0.15)
 
     # add the stage 1/theta hard stops.
-    plotUtils.addThickLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht0']), np.ones(np.shape(bench['center'])) )
-    
-    plotUtils.addThickLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht1']), np.ones(np.shape(bench['center'])), facecolors='black')
+    plotUtils.addLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht0']) )    
+    plotUtils.addLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht1']), facecolors='black')
 
 if __name__ == "__main__":
     # Get the bench from the calibration file
