@@ -596,10 +596,10 @@ def plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTarge
     colors = np.full((len(cobraCenters), 4), [0.0, 0.0, 1.0, 0.15])
     colors[problematicCobras] = [0.0, 1.0, 0.0, 0.5]
     plotUtils.addRings(cobraCenters, rMin, rMax, facecolors=colors)
- 
+
     # add the stage 1 theta hard stops.
-    plotUtils.addLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht0']), linestyles='dashed')    
-    plotUtils.addLines(bench['center'], bench['center'] + bench['rMax'] * np.exp(1j * bench['tht1']), linestyles='dashdot')
+    plotUtils.addLines(cobraCenters, cobraCenters + rMax * np.exp(1j * bench["tht0"]), linestyles="dashed")    
+    plotUtils.addLines(cobraCenters, cobraCenters + rMax * np.exp(1j * bench["tht1"]), linestyles="dashdot")
 
     # Draw the cobras positions using a different color for those
     # that do not have an assigned target
