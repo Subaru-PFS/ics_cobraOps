@@ -35,7 +35,7 @@ if mod(length(varargin),2) ~= 0
     return;
 end
 for jj=1:2:length(varargin)
-    %% need to put some input parsing code here.
+    %%% input parsing code
     switch varargin{jj}
       case 'alpha'
         alpha = varargin{jj + 1};
@@ -58,6 +58,7 @@ PM.total_primary_collisions = 0;
 PM.total_collisions = 0;
 PM.total_targets    = 0;
 
+%% define bench
 
 if ~exist('bench','var') 
     %% Generate Positioner System
@@ -93,8 +94,10 @@ end
 clear useRealLinks useRealMaps cobraLayout varargin;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%     bench defined      %%%
+%%%    bench defined      %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% define targets
 
 % reassign bench alpha/beta here (if desired)
 if exist('alpha','var')
@@ -129,14 +132,14 @@ switch TGT_GEN_STRATEGY
     PM.R2_percentColl = nan;
   
   case 'patrol'
-    %% Test new set of targets using rules:
+    %%% Test new set of targets using rules:
     numFields = ceil(numtrg / numPos); clear numtrg;
     
     % (R, theta)  coordinate of target
     THT = rand(numPos,numFields)*2*pi;
     RDS = bsxfun(@times, sqrt(bsxfun(@plus, rand(size(THT)), bench.dA)), bench.rRange);
     
-    %% positions in patrol area are RDS .* exp(i*THT)
+    % $$$ positions in patrol area are RDS .* exp(i*THT)
     
     %% Rule 2 No targets closer than 2mm to any line in its target location. 
     
@@ -188,10 +191,10 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%% Decide on which hard stop to use.
-%  There is a ~25 deg overlap in the tht patrol range.  to prevent having to go after targets just
-%  on the wrong side of the HS, set the allowable range from DeltaTheta/2 to MaxThtTravel (~Pi).
-%%
+%%% Decide on which hard stop to use.
+%%%  There is a ~25 deg overlap in the tht patrol range.  to prevent having to go after targets just
+%%%  on the wrong side of the HS, set the allowable range from DeltaTheta/2 to MaxThtTravel (~Pi).
+%%%
 % $$$ targetsTP = XY2TP(bsxfun(@minus, targets, bench.center), bench.L1, bench.L2);
 % $$$ % delta angles out of same (0) and opposite (1) set ups.
 % $$$ dtht0 = mod(targetsTP.tht - bench.tht0, 2*pi);
@@ -214,13 +217,15 @@ numcoll = 0;
 
 % $$$ currentPosition = bench.home0; % for backwards compatibility.
 
+%% loop over fields
+
 for kk = 1:numFields
     toggle.firstRun = true;
     % this tracks the strategy for each positioner
     usingPrimaryStrategy = true(size(bench.center)); 
     loopCounter = 0;
     %% Rule 3 No collisions on perfect move out. 
-    bench.alpha = 0;
+% $$$     bench.alpha = 0;  % this was hard-set for ETS inputs
     while(true)
         loopCounter = loopCounter + 1;
         
@@ -268,7 +273,7 @@ for kk = 1:numFields
                 end
             end
 
-            %% PROBABLY UNNECESSARY TIME SHIFT STUFF
+            %%% PROBABLY UNNECESSARY TIME SHIFT STUFF
 % $$$             [R3.r R3.c] = find(Coll.M); % cobra index of colliders
 % $$$             badpair = find(sum(Coll.detected,2))'; % pair index of colliders
 % $$$             
@@ -324,7 +329,8 @@ for kk = 1:numFields
             last_Traj = this_Traj;
             last_Coll = this_Coll;
             if nCollisions == 0, break; end;
-        end % R3, inner while loop -solve collisions via alternate trajectories.
+        end 
+        %% end of  R3, inner while loop -solve collisions via alternate trajectories.
         %% use last_Traj and last_Coll as the working trajectory.
         Traj = last_Traj;
         Coll = last_Coll;
@@ -333,7 +339,7 @@ for kk = 1:numFields
         clear last_Traj last_Coll this_Traj this_Traj last_nCollisions
         
         minTrajDist = min(Coll.minDist,Coll.minDist');
-        %% plot the trajectory minimum distances.
+        %%% plot the trajectory minimum distances.
 % $$$         if true
 % $$$             figure(1010)
 % $$$             try
@@ -369,15 +375,15 @@ for kk = 1:numFields
 % $$$             caxis([0,10]);
 % $$$             drawnow;
 % $$$         end 
-        %% end of plot min trajectory distances
+        %%% end of plot min trajectory distances
 
         minDist(:,loopCounter) = nonzeros(minTrajDist);
 
         if toggle.showFigures & false
             figure(1011)
-            %% asymmetric distances
+            %%% asymmetric distances
             % histogram(nonzeros(Coll.minDist)*2/bench.minDist,0:.25:10);
-            %% symmetric distances
+            %%% symmetric distances
             histogram(minDist*2/bench.minDist,0:.25:10);
             xlabel('minimal fiber to arm distance [mm]');
             title('distribution of minimum separations over trajectories');
@@ -402,6 +408,7 @@ for kk = 1:numFields
             clear r c keep
         end
 
+        %% branch to exit loop or find new targets 
         if nCollisions == 0 || toggle.SkipTargetReplan
             break;
         else % there are still collisions
@@ -411,7 +418,7 @@ for kk = 1:numFields
                 toggle.firstRun = false; 
                 numcoll = numcoll + nCollisions; 
 
-                %% [2016 07 18:  why do I need to plot these?
+                %# [2016 07 18:  why do I need to plot these?
 % $$$                 if toggle.showMoves
 % $$$                     for jj = 1:length(rows)
 % $$$                         rr = rows(jj);
@@ -438,18 +445,29 @@ for kk = 1:numFields
 % $$$                         end
 % $$$                     end
 % $$$                 end
-            end 
+            end % if toggle.firstRun
             
             % decide on which positioner to retarget, assign new target
 
             replanCobras = [];
+            %% find cobras that need new targets
             for jj = 1:length(rows)
                 rr = rows(jj);
                 cc = cols(jj);
-                disp('Need to fix things here to proceed with target replanning (simFun L449)')
-                keyboard
-                % from each pair, take the target with the longest theta moves
-                if primary.ntht(rr) > primary.ntht(cc)
+% $$$                 disp('Need to fix things here to proceed with target replanning (simFun L457)')
+% $$$                 keyboard
+                %%% from each pair, take the target with the longest theta moves
+                if Traj.useP(rr) % get # tht steps taken by rr
+                    ntht_rr = proto.nthtP(rr);
+                else
+                    ntht_rr = proto.nthtN(rr);
+                end
+                if Traj.useP(cc) % get # tht steps taken by rr
+                    ntht_cc = proto.nthtP(cc);
+                else
+                    ntht_cc = proto.nthtN(cc);
+                end
+                if ntht_rr > ntht_cc
                     replanCobras = [replanCobras; rr];
                 else
                     replanCobras = [replanCobras; cc];
@@ -457,6 +475,7 @@ for kk = 1:numFields
                 replanCobras = unique(replanCobras);
             end
             repeat_counter = 0;
+            %% assign new targets (if possible) to cobras
             while ~isempty(replanCobras)
                 repeat_counter = repeat_counter + 1;
                 fprintf(1,'Field %d InterferenceReplan %02d #Target__Replan%d  #Coll = %2d\n',...
@@ -474,7 +493,8 @@ for kk = 1:numFields
                 end
                 replanCobras = replanCobras(retry);
             end % target replan loop
-        end % target replan if branch
+        end 
+        %% end of branch to exit loop or find new targets
     end % outer while loop: bad targets replaced.  continuing.
 
     %% trajetories that are NOT using the primary strategy are, by
@@ -486,7 +506,8 @@ for kk = 1:numFields
         fprintf(1,'Field %d done in %f seconds...\n', kk,toc);
     end;
     bench.alpha = alpha;
-end % loop over fields.
+end 
+%% end of loop over fields.
 
 PM.R3_percentColl = 100* nCollisions/(numFields * numPos);
 
@@ -501,7 +522,7 @@ caats = find(min(minDist,[],2) < bench.minDist); % index of fibers that have Col
 clate = find(min(minDist(:,5:end),[],2) < bench.minDist); % index of fibers that have Collided LATE
 cstfr = caats(find(minDist(caats,1) > 4)); % indx of fibs that Collide any time but STart FaR
 
-%%
+
 % targetsCenterTP = XY2TP(targets(1,:));
 TP = XY2TP(targets - bench.center, bench.L1, bench.L2);
 % elbowsCenter = targets(1,:) - linkLength * exp(1i* (targetsCenterTP.tht + targetsCenterTP.phi));
