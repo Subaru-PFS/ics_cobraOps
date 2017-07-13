@@ -1,6 +1,9 @@
 function output=generateTrajectory(currentPosition,targetList, geom, trajectory_strategy, verify)
 % generate a trajectory matrix given an assigned target list and
 % center positions
+%
+% example: after running q = simFun(1.5,'full',1,1) try this:
+% generateTrajectory(q.Traj.traj(:,end), q.targets, q.bench, 'earlyLate', 1);
 
 if ~exist('trajectory_strategy','var'), trajectory_strategy = 'lateLate'; end;
 
@@ -10,20 +13,34 @@ stepSize = 100e-3; %radians, for non-motormap simulations
 % intepreted on the positive (or negative) side of the cut,
 % respectively. Make it negative for same same direction moveouts (positive
 % for positive hardstop).
-thteps = geom.thteps; %2e-10; 
+thteps = 1e-12;
 
 nCobras = length(geom.center);
 
 % theta/phi positions of the current and target positions
 strtPos = XY2TP(currentPosition - geom.center, geom.L1, geom.L2);
-Targets = XY2TP(targetList - geom.center, geom.L1, geom.L2);
+Targets = XY2TP(targetList      - geom.center, geom.L1, geom.L2);
 
 % some useful variables on the way to calculating the number of
 % steps required to complete the trajectory.
-deltaTht = ( mod(Targets.tht - geom.tht0 + thteps, 2*pi) - ...
-             mod(strtPos.tht - geom.tht0 + thteps, 2*pi));
+
+%% need to know values for delta theta that do not travese a hard stop.
+% $$$ % short and long are the directed paths from strtPos to Target
+% $$$ deltatht.short = mod(Targets.tht - strtPos.tht + pi, 2*pi) - pi; % [-pi,pi]
+% $$$ deltatht.long  = -(2*pi*sign(deltatht.short) - deltatht.short); % [-2pi,-pi],0,[pi,2pi]
+% $$$ deltatht.from0 = mod(Targets.tht - geom.tht0, 2*pi) - mod(strtPos.tht - geom.tht0, 2*pi);
+% $$$ deltatht.from1 = mod(Targets.tht - geom.tht1, 2*pi) - mod(strtPos.tht - geom.tht1, 2*pi);
+% $$$ % It's tricky business to decide whether the long or the short path is the one that
+% $$$ % doesn't cross a hard stop.  For now, let's assume that the short path is the one that
+% $$$ % doesn't cross.  The only case I can think of right now is if the short path crosses BOTH
+% $$$ % hard stops.  In that case, "from0" and "from1" will both match "long", so we'd have to
+% $$$ % detect that condition.  In simulation, unless alpha is VERY large, that won't happen.
+
+deltaTht = mod(Targets.tht - strtPos.tht + pi, 2*pi) - pi; % the "short" move
 
 deltaPhi = (Targets.phi - strtPos.phi); 
+
+active = abs(deltaTht) > thteps; % logical array, true for cobras that move.
 
 % logical flag for forward trajectories
 thtFWD = deltaTht > 0; 
@@ -45,9 +62,13 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     Map.tht(thtFWD,:) = geom.S1Pm(thtFWD,1:n1bins);
     Map.phi(phiFWD,:) = geom.S2Pm(phiFWD,1:n2bins);
     
+    % tht_stop is the hardstop position for the direction of movement
+    tht_stop         = geom.tht1;
+    tht_stop(thtFWD) = geom.tht0(thtFWD);
+    
     % real number bin indices - reverse movement indices handled by second term
-    strtBin.tht = thtDIR.*((mod(strtPos.tht-geom.tht0 + thteps, 2*pi)-thteps/2)/geom.binWidth - ~thtFWD*n1bins);
-    fnshBin.tht = thtDIR.*((mod(Targets.tht-geom.tht0 + thteps, 2*pi)-thteps/2)/geom.binWidth - ~thtFWD*n1bins);
+    strtBin.tht = thtDIR.*((mod(strtPos.tht-tht_stop + thteps, 2*pi)-thteps/2)/geom.binWidth - ~thtFWD*n1bins);
+    fnshBin.tht = thtDIR.*((mod(Targets.tht-tht_stop + thteps, 2*pi)-thteps/2)/geom.binWidth - ~thtFWD*n1bins);
     try
         strtBin.phi = phiDIR.*((mod(strtPos.phi-geom.phiIn + pi/2, 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
         fnshBin.phi = phiDIR.*((mod(Targets.phi-geom.phiIn + pi/2, 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
@@ -56,34 +77,39 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
         strtBin.phi = phiDIR.*((mod(real(strtPos.phi-geom.phiIn + pi/2), 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
         fnshBin.phi = phiDIR.*((mod(real(Targets.phi-geom.phiIn + pi/2), 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
     end
+
     % calculate number of steps required for each positioner
     for jj = 1:nCobras
-        jjstrt = ceil(strtBin.tht(jj)); jjstrt = min(max(jjstrt,1),n1bins);
-        jjfnsh = ceil(fnshBin.tht(jj)); jjfnsh = min(max(jjfnsh,1),n1bins);
-        % start with total including the partial bins and then trim the ends
-        try
-            nSteps.tht(jj) = sum(Map.tht(jj, jjstrt:jjfnsh)) ...
-                - Map.tht(jj, jjstrt) * mod(strtBin.tht(jj),1) ...
-                - Map.tht(jj, jjfnsh) * mod(-fnshBin.tht(jj),1) ;
-        catch
-            keyboard
+        if active(jj)
+            jjstrt = ceil(strtBin.tht(jj)); jjstrt = min(max(jjstrt,1),n1bins);
+            jjfnsh = ceil(fnshBin.tht(jj)); jjfnsh = min(max(jjfnsh,1),n1bins);
+            % start with total including the partial bins and then trim the ends
+            try
+                nSteps.tht(jj) = sum(Map.tht(jj, jjstrt:jjfnsh)) ...
+                    - Map.tht(jj, jjstrt) * mod(strtBin.tht(jj),1) ...
+                    - Map.tht(jj, jjfnsh) * mod(-fnshBin.tht(jj),1) ;
+            catch
+                keyboard
+            end
+            if nSteps.tht(jj) < 0
+                disp('nsteps.tht < 0 detected');
+            end
+            % ceil because matlab starts at 1, not zero.
+            jjstrt = ceil(strtBin.phi(jj)); jjstrt = min(max(jjstrt,1),n2bins);
+            jjfnsh = ceil(fnshBin.phi(jj)); jjfnsh = min(max(jjfnsh,1),n2bins);
+            % start with total including the partial bins and then trim the ends
+            nSteps.phi(jj) = sum(Map.phi(jj, jjstrt:jjfnsh)) ...
+                - Map.phi(jj, jjstrt) * mod(strtBin.phi(jj),1) ...
+                - Map.phi(jj, jjfnsh) * mod(-fnshBin.phi(jj),1);
+        else
+            nSteps.tht(jj) = 0;
+            nSteps.phi(jj) = 0;
         end
-        if nSteps.tht(jj) < 0
-            disp('nsteps.tht < 0 detected');
-                    end
-        % ceil because matlab starts at 1, not zero.
-        jjstrt = ceil(strtBin.phi(jj)); jjstrt = min(max(jjstrt,1),n2bins);
-        jjfnsh = ceil(fnshBin.phi(jj)); jjfnsh = min(max(jjfnsh,1),n2bins);
-        % start with total including the partial bins and then trim the ends
-        nSteps.phi(jj) = sum(Map.phi(jj, jjstrt:jjfnsh)) ...
-            - Map.phi(jj, jjstrt) * mod(strtBin.phi(jj),1) ...
-            - Map.phi(jj, jjfnsh) * mod(-fnshBin.phi(jj),1);
-        
     end
     nSteps.max = max([nSteps.tht nSteps.phi]);
     nSteps.tht = nSteps.tht(:);
     nSteps.phi = nSteps.phi(:);
-    
+
     %% need to write Tht and Phi
     
     %% fractionalBinError derived in PHM's COO notebook #2, 1-dec-2015
@@ -125,7 +151,11 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     for jj = 1:nCobras
         jjstrt = ceil(strtBin.tht(jj));
         jjfnsh = ceil(fnshBin.tht(jj));
-        frntExtraSteps = noisyMap.tht(jj,jjstrt) * mod(strtBin.tht(jj),1);
+        try
+            frntExtraSteps = noisyMap.tht(jj,jjstrt) * mod(strtBin.tht(jj),1);
+        catch
+            keyboard;
+        end
         trajEndBin = find( (nSteps.tht(jj) + frntExtraSteps) < ...
                            cumsum(noisyMap.tht(jj,jjstrt:end)),1) + jjstrt - 1;
         stepCtr = [0, cumsum(noisyMap.tht(jj, jjstrt:trajEndBin))];
@@ -243,17 +273,21 @@ output.nmax = nSteps.max;
 %% verification plots
 if exist('verify','var')
     
-    disp(['[dphi dtht]: difference between target and final ' ...
-        'trajectory position']);
-    [mod(Tht(:,end) - Targets.tht + pi,2*pi) - pi, Phi(:,end) - Targets.phi]
+% $$$     disp(['[dphi dtht]: difference between target and final ' ...
+% $$$         'trajectory position']);
+% $$$     [mod(Tht(:,end) - Targets.tht + pi,2*pi) - pi, Phi(:,end) - Targets.phi]
     
-    plot(Trajectories.');
+    plot(Trajectories.','b');
     cmplx(@plotcircle,geom.center, geom.L1+geom.L2, 'k:');
     hold on;
-    plot(targetList,'ro','MarkerFace','r');
-    plot(Trajectories(:,end),'kx');
-    plot(geom.L1.*exp(i*geom.tht0) + geom.L2.*exp(i*(geom.tht0+geom.phiIn)) + ...
-        geom.center,'go','MarkerFace','g');
+    pp(2) = plot(currentPosition,'go','MarkerFace','g');
+    pp(3) = plot(Trajectories(:,end),'ro','MarkerFace','r');
+    pp(1) = plot(targetList,'kx');
+    plot([geom.center,  geom.center + (geom.L1+geom.L2).*exp(i*geom.tht0)].','k:');
+    plot([geom.center,  geom.center + (geom.L1+geom.L2).*exp(i*geom.tht1)].','k:');
+% $$$     plot(geom.L1.*exp(i*geom.tht0) + geom.L2.*exp(i*(geom.tht0+geom.phiIn)) + ...
+% $$$         geom.center,'go','MarkerFace','g');
+    legend(pp,'Target','Traj. start','Traj. end');
 end
 
 return
