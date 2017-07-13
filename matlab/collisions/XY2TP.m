@@ -49,7 +49,7 @@ end
 
 IN_PATROL_AREA = dr_outside < 0 & dr_inside > 0;
 tht_in(IN_PATROL_AREA) = real(tht_in(IN_PATROL_AREA));
-tht_in(~IN_PATROL_AREA) = nan;
+tht_in(~IN_PATROL_AREA) = real(tht_in(~IN_PATROL_AREA)); % nan;
 
 tht = mod(T - tht_in.*sign(real(phi)) + pi, 2*pi)-pi;
 
