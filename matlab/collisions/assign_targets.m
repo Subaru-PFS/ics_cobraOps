@@ -30,43 +30,53 @@ end
 
 ntgt = length(tgt);
 
-%% check min/max radius compliance.
-LL = sparse(abs(bsxfun(@minus, tgt, bench.center)) < max(bench.rMax)); ...
-%Who is in patrol area
-XY = LL*0; % initialize XY with zeros
-[cc tt] = find(LL); % ccobras and targets that are nonzero
-for jj = 1:length(cc) % for every cobra check assigment 
-    xy   = tgt(tt(jj)) - bench.center(cc(jj)); % get the local coordinate
-    dst  = abs(xy);
-    if (dst > bench.rMin(cc(jj)) & dst < bench.rMax(cc(jj)))
-        XY(cc(jj),tt(jj)) = xy;
-    end
-end
-clear xy dst dmin dmax cc tt
+% $$$ %% check min/max radius compliance.
+% $$$ LL = sparse(abs(bsxfun(@minus, tgt, bench.center)) < max(bench.rMax)); ...
+% $$$ %Who is in patrol area
+% $$$ XY = LL*0; % initialize XY with zeros
+% $$$ [cc tt] = find(LL); % ccobras and targets that are nonzero
+% $$$ for jj = 1:length(cc) % for every cobra check assigment 
+% $$$     xy   = tgt(tt(jj)) - bench.center(cc(jj)); % get the local coordinate
+% $$$     dst  = abs(xy);
+% $$$     if (dst > bench.rMin(cc(jj)) & dst < bench.rMax(cc(jj)))
+% $$$         XY(cc(jj),tt(jj)) = xy;
+% $$$     end
+% $$$ end
+% $$$ clear xy dst cc tt
 
-LL = XY~=0; % logical array of assignment possibilities
-nvalid = length(find(sum(LL,1)));
+% full calc of distances
+XY   = tgt - bench.center;
+dst  = abs(XY);
+% filter for reachability
+IN_PATROL_REGION = sparse( dst > bench.rMin & dst < bench.rMax );
+
+% sparsify XY (local coordinate position) and dst (local radial position)
+XY  = IN_PATROL_REGION .* XY;
+dst = IN_PATROL_REGION .* dst;
+
+nvalid = length(find(sum(IN_PATROL_REGION,1)));
 % $$$ fprintf(1, 'Found %d valid targets (%5.1f %%)\n', nvalid, 100*nvalid/ntgt);
 
-[srtDIST srtINDX] = sort(abs(XY),2);
-n_cobra_4_tgt = sum(LL,1); % # of cobras for each target
-n_tgt_4_cobra = sum(LL,2);
+[srtDIST srtINDX] = sort(dst,2);
+n_cobra_4_tgt = sum(IN_PATROL_REGION,1); % # of cobras for each target
+n_tgt_4_cobra = sum(IN_PATROL_REGION,2);
 n_tgt_4_cobra_initial = n_tgt_4_cobra; % bookkeeping variable
 max_tgts_per_cobra = max(n_tgt_4_cobra);
-srtTGT_ID = zeros(ncobras,max_tgts_per_cobra+1); % Sorted Target IDs
 
 %% reformat srtINDX so that we only have the relevant target indices for each cobra in distance
 %% order.  To start, each cobra is assigned the nearest target. the targets are NOT uniquely
 %% assigned.
 for jj=1:ncobras
     if n_tgt_4_cobra(jj) > 0
-        srtTGT_ID(jj,1:n_tgt_4_cobra(jj)) = srtINDX(jj, end-n_tgt_4_cobra(jj)+1:end);
         %srtDIST = 0 for all targets out of range, so the relevant targets are at the end of
         %every row of the matrix.  The next line here cycles them to the front of the list, so
         %the nearest neighbors are all in in column 1
         srtDIST(jj,:) = circshift(srtDIST(jj,:), [0 n_tgt_4_cobra(jj)]);
+        srtINDX(jj,:) = circshift(srtINDX(jj,:), [0 n_tgt_4_cobra(jj)]);
     end
 end
+srtINDX = srtINDX .* sign(srtDIST); % zero out the indices of the unreachable targets
+srtTGT_ID = srtINDX(:,1:(max_tgts_per_cobra + 1));
 clear srtINDX
 
 %%% reassign targets to cobras until assignments are unique.  The goal here is to make the first
@@ -155,7 +165,6 @@ tgt_home = bench.home0; % initially, home positions in SS move out. tgt_home can
                         % on unassigned cobras.
 ctr.reassigns=0;
 while (collisions > 0)
-
     %% Find end-point collisions and reassign targets as needed.
     tgtID = srtTGT_ID(:,1); % ncobras X 1 list of target IDs
     isassigned = (tgtID>0); 
