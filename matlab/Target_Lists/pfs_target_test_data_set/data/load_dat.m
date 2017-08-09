@@ -22,6 +22,10 @@ function output=load_dat(filename)
    
    output.ra  = contents{2};
    output.dec = contents{3};
+   output.exp = contents{4};
+   output.pri = contents{5};
+   output.mag = contents{6};
+   output.z   = contents{7};
 
    %% just for checking...
    q = output;
