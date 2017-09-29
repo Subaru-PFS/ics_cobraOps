@@ -1,6 +1,7 @@
 function showMovementAfterSim(simFunOutput, pid)
-    if ~ishold(gcf)
-        figure(1e6+pid)
+% usage: showMovementAfterSim(simFun_output, positioner_ID)
+    if ~ishold(gca)
+        figure(1000+pid)
     end
     showMovementNN(simFunOutput.Traj.traj, simFunOutput.bench, simFunOutput.Coll, pid, simFunOutput.targets);
 end
