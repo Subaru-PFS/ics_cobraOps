@@ -12,9 +12,9 @@ function victim_map(collision_output,title_prefix,title_suffix)
         Coll = collision_output;
     end
     
-    if ~exist('title_prefix','var'), title_suffix = []; end;
+    if ~exist('title_prefix','var'), title_prefix = []; end;
     if ~exist('title_suffix','var'), title_suffix = []; end;
-    
+    figure
     % get number of trajectory steps in simulation
     N_traj_steps = size(Coll.type,2);
 
@@ -38,7 +38,7 @@ function victim_map(collision_output,title_prefix,title_suffix)
 
     % by default, only look at the last 10 steps
     ylim([-10.5 0.5]+N_traj_steps);
-    
+
     % set up the colorbar
     cb = lcolorbar(cb_TickLabels, ...
                    'Location','vertical',...
