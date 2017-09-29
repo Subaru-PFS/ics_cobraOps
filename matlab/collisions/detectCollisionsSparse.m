@@ -31,19 +31,20 @@ function output = detectCollisionsSparse(Trajectory, geom)
   ELB2 = Elbows(col,:);     % [6M x N]
   
   % calculate FIB1 - ARM2 distances
-  [distance distanceType] = pt2linesegment(FIB1, ELB2, FIB2); % [6M x N]
-
-% $$$   tic
-% $$$   detected = (distance < geom.minDist);
-% $$$   type     = distanceType .* detected;
-% $$$   toc
+  dFibElb = abs(FIB1-ELB2);
+  dFibFib = abs(FIB1-FIB2);
+  distance = min(dFibFib,dFibElb);
   
-  detected = sparse(distance < geom.minDist);
-  type     = distanceType .* detected;
+  detCol1 = sparse(dFibElb < geom.minDist);
+  detCol3 = sparse(dFibFib < geom.minDist);
+  
+  detected = detCol1 | detCol3;
+  type     = abs(3*detCol3 - detCol1);
   % type = 1: fiber hits elbow
-  % type = 2: fiber hits arm (between elbow and fib)
+  % type = 2: fiber hits arm (both elbow and fib)
   % type = 3: fiber hits fiber
-
+  
+  % the above detection scheme is .2 s faster in matlab
 
   minDist = accumarray([row col], min(distance,[],2), [nCobra nCobra],[],[],1);
   
