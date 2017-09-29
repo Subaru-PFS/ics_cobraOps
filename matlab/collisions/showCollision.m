@@ -67,9 +67,9 @@ function showCollision(simFunOut, pid1, pid2)
         hold on; axis equal;
         plotcircle(0,0,1,'k:'); % victim elbow
         plot([i0 vperp/vmax]-distance,'r'); % perp velocity
-        plot([i0 vvictim/vmax],'r'); % victim velocity
+        ph(2) = plot([i0 vvictim/vmax],'r'); % victim velocity
         
-        plot(([geom.center(victim) ELBv(2) FIBv(2)]-ELBv(2))/CollAxis,'b'); % victim arms
+        ph(1) = plot(([geom.center(victim) ELBv(2) FIBv(2)]-ELBv(2))/CollAxis,'b'); % victim arms
         cmplx(@plotcircle, (FIBv(2) - ELBv(2)) / CollAxis, 1, 'k:'); % victim fiber
         plot(([geom.center(perp)   ELBp(2) FIBp(2)]-FIBp(2))/CollAxis - distance,'b'); % perp arms
     end
@@ -86,14 +86,15 @@ function showCollision(simFunOut, pid1, pid2)
         hold on; axis equal;
         plotcircle(0,0,1,'k:'); % victim fiber
         plot([i0 vperp/vmax]-distance,'r'); % perp velocity
-        plot([i0 vvictim/vmax],'r'); % victim velocity
+        ph(2) = plot([i0 vvictim/vmax],'r'); % victim velocity
         
-        plot(([geom.center(victim) ELBv(2) FIBv(2)]-FIBv(2))/CollAxis,'b'); % victim arms
+        ph(1) = plot(([geom.center(victim) ELBv(2) FIBv(2)]-FIBv(2))/CollAxis,'b'); % victim arms
         cmplx(@plotcircle, (ELBv(2) - FIBv(2)) / CollAxis, 1, 'k:'); % victim elbow
         plot(([geom.center(perp)   ELBp(2) FIBp(2)]-FIBp(2))/CollAxis - distance,'b'); % perp arms
  
     end
     
+    legend(ph,'cobra arms','velocity vectors');
     title(sprintf('pid %d vs. pid %d',perp,victim));
     hold off;
 
