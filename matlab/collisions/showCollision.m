@@ -62,7 +62,7 @@ function showCollision(simFunOut, pid1, pid2)
         vmax = max(abs([vperp vvictim]));
        
         distance = abs(FIBp(2) - ELBv(2));
-        
+
         plotcircle(-distance,0,1,'k:'); %perp fiber
         hold on; axis equal;
         plotcircle(0,0,1,'k:'); % victim elbow
@@ -75,22 +75,48 @@ function showCollision(simFunOut, pid1, pid2)
     end
     
     if collisionType >= 4 % fiber-fiber collisions
-        CollAxis = exp(i*angle(FIBv(2) - FIBp(2)));
-        vperp    = diff(FIBp)./CollAxis;
-        vvictim  = diff(FIBv)./CollAxis;
-        vmax = max(abs([vperp vvictim]));
-       
-        distance = abs(FIBv(2) - FIBp(2));
+
+        % calculated the interpolated position of impact by linear interpolation
+        distance = abs(FIBv - FIBp); % 1x2 distances
+% $$$         t_impact = (2 - distance(1))/diff(distance);
         
-        plotcircle(-distance,0,1,'k:'); %perp fiber
+        % calculate interpolated position by fitting a quadratic
+        tt = [0 .5 1];
+        zv = FIBv(1) + diff(FIBv) * tt;
+        zp = FIBp(1) + diff(FIBp) * tt;
+        dsquared = abs(zv-zp).^2;
+        t_impact = roots(polyfit(tt,dsquared - 4, 2));
+        t_impact = t_impact(t_impact > 0 & t_impact <= 1);
+
+        % velocities and positions in focal plane coords
+        v_vict   = diff(FIBv);
+        z_vict   = FIBv(1) + t_impact * v_vict;
+        v_perp   = diff(FIBp);
+        z_perp   = FIBp(1) + t_impact * v_perp;
+        vmax     = max(abs([v_perp v_vict]));
+
+        % find the elbow locations in the interpolated position
+        tp_vict  = XY2TP(z_vict - geom.center(victim), geom.L1(victim), geom.L2(victim));
+        elb_vict = geom.center(victim) + geom.L1(victim) * exp(i*tp_vict.tht);
+        tp_perp  = XY2TP(z_perp - geom.center(perp), geom.L1(perp), geom.L2(perp));
+        elb_perp = geom.center(perp) + geom.L1(perp) * exp(i*tp_perp.tht);
+
+        % put velocities in collision axis coordinates
+        CollAxis = exp(i*angle(z_vict - z_perp));
+        v_perp    = v_perp./CollAxis;
+        v_vict    = v_vict./CollAxis;
+
+        % generate the figure
+        plotcircle(-2,0,1,'k:'); % perp fiber
         hold on; axis equal;
-        plotcircle(0,0,1,'k:'); % victim fiber
-        plot([i0 vperp/vmax]-distance,'r'); % perp velocity
-        ph(2) = plot([i0 vvictim/vmax],'r'); % victim velocity
+        plotcircle( 0,0,1,'k:'); % victim fiber
+        plot([i0 v_perp/vmax]-2,'r'); % perp velocity
+        ph(2) = plot([i0 v_vict/vmax] ,'r'); % victim velocity
         
-        ph(1) = plot(([geom.center(victim) ELBv(2) FIBv(2)]-FIBv(2))/CollAxis,'b'); % victim arms
-        cmplx(@plotcircle, (ELBv(2) - FIBv(2)) / CollAxis, 1, 'k:'); % victim elbow
-        plot(([geom.center(perp)   ELBp(2) FIBp(2)]-FIBp(2))/CollAxis - distance,'b'); % perp arms
+        ph(1) = plot(([geom.center(victim) elb_vict z_vict]-z_vict)/CollAxis,'b'); % victim arms
+        plot(([geom.center(perp)   elb_perp z_perp]-z_perp)/CollAxis - 2,'b'); % perp arms
+
+        cmplx(@plotcircle, (elb_vict-z_vict) / CollAxis, 1, 'k:'); % victim elbow
  
     end
     
