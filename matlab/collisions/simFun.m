@@ -41,6 +41,8 @@ for jj=1:2:length(varargin)
         alpha = varargin{jj + 1};
       case 'showMoves'
         toggle.showMoves = varargin{jj + 1};
+      case 'showFigures'
+        toggle.showFigures = logical(varargin{jj + 1});
       case 'SkipTargetReplan'
         toggle.SkipTargetReplan = logical(varargin{jj + 1});
       case 'UseThisBench'
