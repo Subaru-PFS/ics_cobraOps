@@ -1,4 +1,5 @@
 function output = XY2TP(xy, L1, L2, verify)
+% function output = XY2TP(xy, L1, L2, verify)
 % with center at origin, calculates the cobra arm THT, PHI pair
 % from the cartesian coordinate. 
 % 
