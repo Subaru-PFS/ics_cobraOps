@@ -1,6 +1,8 @@
 function showMovementNN(trajectories,geom, coll, pos1, targets)
 % show trajectories for Pos and all neighbors
 
+  StopAtCollision = false;
+
   cobraPos  = [pos1 find(geom.nnMap(pos1,:))];
   localIndx = find(ismember(coll.row, cobraPos) & ismember(coll.col, cobraPos));
   localColl = coll.detected(localIndx, :);
@@ -41,6 +43,11 @@ function showMovementNN(trajectories,geom, coll, pos1, targets)
           cmplx(@plotcircle, xy(rr), geom.rf, 'r');
           cmplx(@plotcircle, xy(cc), geom.rf, 'r');
           cmplx(@plotcircle, elbows(cc), geom.rf, 'r');
+          % execute next 2 lines to stop at collision
+          if StopAtCollision
+              drawnow;
+              break;
+          end
       end
       drawnow;
   end
