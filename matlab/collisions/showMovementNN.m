@@ -9,7 +9,9 @@ function showMovementNN(trajectories,geom, coll, pos1, targets)
   collInTrajStep = sum(localColl);
 
   isMoving = find([true diff(abs(sum(trajectories(cobraPos,:)))) ~= 0]);
-
+  vid = VideoWriter('testvideo.mp4','MPEG-4');
+  open(vid);
+  
   % loop over all trajectory steps where something moves
   for kk = 1:length(isMoving)
       jj = isMoving(kk);
@@ -46,10 +48,14 @@ function showMovementNN(trajectories,geom, coll, pos1, targets)
           % execute next 2 lines to stop at collision
           if StopAtCollision
               drawnow;
+              writeVideo(vid,getframe(gcf));
               break;
           end
       end
       drawnow;
+      writeVideo(vid,getframe(gcf));
   end
   cmplx(@text, geom.center(cobraPos), cellstr(num2str(cobraPos')));
   hold off;
+  
+  close(vid);
