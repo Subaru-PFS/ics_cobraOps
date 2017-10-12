@@ -145,6 +145,9 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
       case 'earlyEarly'
         thtPad = 'post'; nSteps.dtht = zeros(nCobras,1);
         phiPad = 'post'; nSteps.dphi = zeros(nCobras,1);       
+      case 'lateEarly'
+        thtPad = 'pre';  nSteps.dtht = nSteps.max - nSteps.tht;
+        phiPad = 'post'; nSteps.dphi = zeros(nCobras,1);       
     end
     
     
@@ -277,9 +280,14 @@ if exist('verify','var')
 % $$$         'trajectory position']);
 % $$$     [mod(Tht(:,end) - Targets.tht + pi,2*pi) - pi, Phi(:,end) - Targets.phi]
     
+    tp = XY2TP(Trajectories - geom.center, geom.L1, geom.L2);
+    elbow = geom.center + geom.L1.*exp(i*tp.tht);
+
+
     plot(Trajectories.','b');
     cmplx(@plotcircle,geom.center, geom.L1+geom.L2, 'k:');
     hold on;
+    plot(elbow.','b:');
     pp(2) = plot(currentPosition,'go','MarkerFace','g');
     pp(3) = plot(Trajectories(:,end),'ro','MarkerFace','r');
     pp(1) = plot(targetList,'kx');
@@ -287,7 +295,7 @@ if exist('verify','var')
     plot([geom.center,  geom.center + (geom.L1+geom.L2).*exp(i*geom.tht1)].','k:');
 % $$$     plot(geom.L1.*exp(i*geom.tht0) + geom.L2.*exp(i*(geom.tht0+geom.phiIn)) + ...
 % $$$         geom.center,'go','MarkerFace','g');
-    legend(pp,'Target','Traj. start','Traj. end');
+    legend(pp,'Target','Traj. start','Traj. end','Location','best');
 end
 
 return
