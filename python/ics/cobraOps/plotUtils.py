@@ -23,7 +23,7 @@ def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
     yLabel: str
         The label for the y axis.
     size: tuple, optional
-        The figure size. Default is (10, 10).
+        The figure size. Default is (8, 8).
     kwargs: plt.figure properties
         Any additional property that should be passed to the figure.
     

@@ -4,13 +4,10 @@ This file demonstrates how to use the collisions simulation code.
   
 """
 
-import numpy as np
-import time as time
-
-import cobraUtils as cobraUtils
-import targetUtils as targetUtils
-import benchUtils as benchUtils
-import plotUtils as plotUtils
+import ics.cobraOps.cobraUtils as cobraUtils
+import ics.cobraOps.targetUtils as targetUtils
+import ics.cobraOps.benchUtils as benchUtils
+import ics.cobraOps.plotUtils as plotUtils
 
 
 # Define the target density to use

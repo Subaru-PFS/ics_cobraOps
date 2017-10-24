@@ -11,14 +11,11 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import time as time
 
-import cobraUtils as cobraUtils
-import benchUtils as benchUtils
-import targetUtils as targetUtils
-import plotUtils as plotUtils
 
-           
+import ics.cobraOps.targetUtils as targetUtils
+
+        
 THT_EPS = 1e-12
 """This is an epsilon to make sure that values near zero in theta are
 interpreted on the positive (or negative) side of the cut, respectively. 
@@ -126,18 +123,18 @@ def generateTrajectories(finalPositions, bench):
         nStepsPhiN = np.zeros(nCobras)
         
         for i in range(nCobras):
-            nStepsThtP[i] = np.sum(mapThtP[i, startIndThtP[i]:finishIndThtP[i] + 1]) \
-                - mapThtP[i, startIndThtP[i]] * startOverCountThtP[i] \
-                - mapThtP[i, finishIndThtP[i]] * finishOverCountThtP[i]
-            nStepsThtN[i] = np.sum(mapThtN[i, startIndThtN[i]:finishIndThtN[i] + 1]) \
-                - mapThtN[i, startIndThtN[i]] * startOverCountThtN[i] \
-                - mapThtN[i, finishIndThtN[i]] * finishOverCountThtN[i]
-            nStepsPhiP[i] = np.sum(mapPhiP[i, startIndPhiP[i]:finishIndPhiP[i] + 1]) \
-                - mapPhiP[i, startIndPhiP[i]] * startOverCountPhiP[i] \
-                - mapPhiP[i, finishIndPhiP[i]] * finishOverCountPhiP[i]
-            nStepsPhiN[i] = np.sum(mapPhiN[i, startIndPhiN[i]:finishIndPhiN[i] + 1]) \
-                - mapPhiN[i, startIndPhiN[i]] * startOverCountPhiN[i] \
-                - mapPhiN[i, finishIndPhiN[i]] * finishOverCountPhiN[i]
+            nStepsThtP[i] = (np.sum(mapThtP[i, startIndThtP[i]:finishIndThtP[i] + 1]) 
+                             - mapThtP[i, startIndThtP[i]] * startOverCountThtP[i] 
+                             - mapThtP[i, finishIndThtP[i]] * finishOverCountThtP[i])
+            nStepsThtN[i] = (np.sum(mapThtN[i, startIndThtN[i]:finishIndThtN[i] + 1]) 
+                             - mapThtN[i, startIndThtN[i]] * startOverCountThtN[i] 
+                             - mapThtN[i, finishIndThtN[i]] * finishOverCountThtN[i])
+            nStepsPhiP[i] = (np.sum(mapPhiP[i, startIndPhiP[i]:finishIndPhiP[i] + 1]) 
+                             - mapPhiP[i, startIndPhiP[i]] * startOverCountPhiP[i] 
+                             - mapPhiP[i, finishIndPhiP[i]] * finishOverCountPhiP[i])
+            nStepsPhiN[i] = (np.sum(mapPhiN[i, startIndPhiN[i]:finishIndPhiN[i] + 1]) 
+                             - mapPhiN[i, startIndPhiN[i]] * startOverCountPhiN[i] 
+                             - mapPhiN[i, finishIndPhiN[i]] * finishOverCountPhiN[i])
 
         nStepsThtP[nStepsThtP < 0] = 0
         nStepsThtN[nStepsThtN < 0] = 0
@@ -257,6 +254,12 @@ def calculateMapErrorFactor(fractionalBinError, mapShape):
 
 
 if __name__ == "__main__":
+    # Import the necessary modules
+    import time as time
+    import ics.cobraOps.cobraUtils as cobraUtils
+    import ics.cobraOps.benchUtils as benchUtils
+    import ics.cobraOps.plotUtils as plotUtils
+
     # Define the target density to use
     targetDensity = 2
     

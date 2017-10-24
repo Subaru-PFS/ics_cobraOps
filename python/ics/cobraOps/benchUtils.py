@@ -11,9 +11,9 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ElementTree
 
-import plotUtils as plotUtils
+import ics.cobraOps.plotUtils as plotUtils
 
 
 KEEP_OUT_ANGLE = 0.1
@@ -58,7 +58,7 @@ def getBenchCalibrationData(fileName):
     
     Returns
     -------
-    object
+    dict
         The bench calibration data, containing the following elements:
         - mids: The module ids (n).
         - pids: The positioner ids (n).
@@ -80,7 +80,7 @@ def getBenchCalibrationData(fileName):
     
     """
     # Load the bench calibration file
-    calibrationFileRootElement = ET.parse(fileName).getroot()
+    calibrationFileRootElement = ElementTree.parse(fileName).getroot()
         
     # Get all the arm data container elements
     dataContainers = calibrationFileRootElement.findall("ARM_DATA_CONTAINER")
@@ -156,7 +156,7 @@ def getBenchCalibrationData(fileName):
             Joint2Fwd = slowCalTable.find("Joint2_fwd_stepsizes").text.split(",")[2:-1]
             Joint2Rev = slowCalTable.find("Joint2_rev_stepsizes").text.split(",")[2:-1]
 
-            # Calculate the steps required to move that angular step
+            # Calculate the motor steps required to move that angular step
             S1Pm[i] = angularStep[i] / np.array(list(map(float, Joint1Fwd)))
             S1Nm[i] = angularStep[i] / np.array(list(map(float, Joint1Rev)))
             S2Pm[i] = angularStep[i] / np.array(list(map(float, Joint2Fwd)))
@@ -201,8 +201,8 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     Parameters
     ----------
     centers: object
-        A numpy array with the cobras central positions. If none, the cobras
-        positions from a configuration file will be used.
+        A numpy array with the cobras central positions. If None, the cobras
+        positions will be extracted from a calibration file.
     useRealMaps: bool
         If true, the cobra motor maps will be loaded from a calibration file.
         No motor maps will be used otherwise.
@@ -212,7 +212,7 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
 
     Returns
     -------
-    object
+    dict
         The bench geometry object, containing the following elements:
         - center: The cobra central positions in mm or pixel units (n).
         - tht0: The hard stop angle for same sense move-out in radians (n).
@@ -329,9 +329,6 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     # For the realities of the test bench, having phi too far in is inconvenient.  
     # Use a larger value so that the theta arm does not go crazy.
     phiHome += 0.5
-
-    # Read in phiHome from elsewhere
-    # TBD (See MATLAB code)
         
     # Calculate the home positions (0 = same sense, 1 = opposite sense)
     home0 = centers + L1 * np.exp(1j * tht0) + L2 * np.exp(1j * (tht0 + phiHome))
@@ -428,6 +425,7 @@ def plotBenchGeometry(bench):
     plotUtils.addLines(bench["center"], bench["center"] + bench["rMax"] * np.exp(1j * bench["tht0"]), linestyles="dashed")    
     plotUtils.addLines(bench["center"], bench["center"] + bench["rMax"] * np.exp(1j * bench["tht1"]), linestyles="dashdot")
 
+
 if __name__ == "__main__":
     # Get the bench from the calibration file
     bench = defineBenchGeometry(None, 1, 1)
@@ -437,7 +435,7 @@ if __name__ == "__main__":
         print("Bench data: " + key)
         print(bench[key])
     
-    # Plot the bench geomtry
+    # Plot the bench geometry
     plotBenchGeometry(bench)
     plotUtils.pauseExecution()
 
