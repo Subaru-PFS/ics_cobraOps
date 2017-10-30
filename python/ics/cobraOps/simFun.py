@@ -12,10 +12,10 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-import cobraUtils as cobraUtils
-import benchUtils as benchUtils
-import targetUtils as targetUtils
-import plotUtils as plotUtils
+import ics.cobraOps.cobraUtils as cobraUtils
+import ics.cobraOps.benchUtils as benchUtils
+import ics.cobraOps.targetUtils as targetUtils
+import ics.cobraOps.plotUtils as plotUtils
 
 
 def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, varargin=None):
@@ -42,7 +42,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
     
     Returns
     -------
-    Object
+    dict
         The collision simulation results, containing the following elements:
         - targets: Nx1 complex array of target positions.
         - Traj: trajectory structure from realizeTrajectory2.
@@ -106,7 +106,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
     
     if TGT_GEN_STRATEGY == "targetlist":
         numFields = 1
-        targets = numtrg
+        targets = numtrg.copy()
         assignments["tgt"] = targets  # for partial compatibility with 'field' case.
     elif TGT_GEN_STRATEGY == "field":
         # Use numtrg as density
@@ -119,11 +119,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
             targets[i] = cobraPositions
         
         PM["R2_percentColl"] = None
-    elif TGT_GEN_STRATEGY == "patrol":
-        # TODO See MATLAB code
-        raise Exception("Impossible path: TGT_GEN_STRATEGY = 'patrol'")
 
-    
     #------------------------------------------------------------------
     #    Targets defined, no end-point physical interferences (Rule 2)      
     #------------------------------------------------------------------

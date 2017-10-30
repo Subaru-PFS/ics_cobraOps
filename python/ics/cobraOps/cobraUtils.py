@@ -12,8 +12,6 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-import plotUtils as plotUtils
-
 
 COBRAS_SEPARATION = 8.0
 """The separation between two consecutive cobras in mm."""
@@ -87,8 +85,8 @@ def getFirstSectorCenters():
     # Fill the first module
     firstModule = centers[:cobrasPerModule]
     firstModule[:MODULE_FIRST_LINE_LENGTH] = COBRAS_SEPARATION * np.arange(MODULE_FIRST_LINE_LENGTH)
-    firstModule[MODULE_FIRST_LINE_LENGTH:] = COBRAS_SEPARATION * np.arange(MODULE_SECOND_LINE_LENGTH) + \
-                                             COBRAS_SEPARATION * np.exp(1j * np.pi / 3)
+    firstModule[MODULE_FIRST_LINE_LENGTH:] = (COBRAS_SEPARATION * np.arange(MODULE_SECOND_LINE_LENGTH) +
+                                              COBRAS_SEPARATION * np.exp(1j * np.pi / 3))
     firstModule += COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
     
     # Order the first module centers by the x coordinate
@@ -132,6 +130,9 @@ def getPFICenters():
 
 
 if __name__ == "__main__":
+    # Import the necessary modules
+    import ics.cobraOps.plotUtils as plotUtils
+    
     # Get the cobra centers for the full PFI
     centers = getCobrasCenters("full")
     

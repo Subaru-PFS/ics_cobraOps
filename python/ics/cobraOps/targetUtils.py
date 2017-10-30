@@ -11,11 +11,13 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
-import time as time
 
-import cobraUtils as cobraUtils
-import benchUtils as benchUtils
-import plotUtils as plotUtils
+import ics.cobraOps.plotUtils as plotUtils
+
+
+NULL_TARGET_INDEX = -1
+"""Integer value used to indicate that there is no target index associated with
+a given cobra."""
 
 
 def generateTargets(density, bench):
@@ -117,8 +119,8 @@ def getAccesibleTargets(targetPositions, bench):
     
     # Order the targets by their distance to the cobra
     nCobras = len(bench["center"])
-    maxTagetsPerCobra = np.max(nTargetsPerCobra)
-    targetIndices = np.full((nCobras, maxTagetsPerCobra), -1, dtype="int")
+    maxTagetsPerCobra = nTargetsPerCobra.max()
+    targetIndices = np.full((nCobras, maxTagetsPerCobra), NULL_TARGET_INDEX, dtype="int")
     targetDistances = np.zeros((nCobras, maxTagetsPerCobra))
     counter = 0
     
@@ -161,9 +163,8 @@ def assignTargetsByDistance(targetIndices, targetDistances):
 
     """
     # Assign targets to cobras looping from the closest to the more far away ones
-    nCobras = targetIndices.shape[0]
-    maxTargetsPerCobra = targetIndices.shape[1]
-    assignedTargets = np.full(nCobras, -1, dtype="int")       
+    (nCobras, maxTargetsPerCobra) = targetIndices.shape
+    assignedTargets = np.full(nCobras, NULL_TARGET_INDEX, dtype="int")       
     freeCobras = np.full(nCobras, True, dtype="bool")
     freeTargets = np.full(targetIndices.max() + 1, True, dtype="bool")
 
@@ -172,8 +173,8 @@ def assignTargetsByDistance(targetIndices, targetDistances):
         columnTargetIndices = targetIndices[:, i]
         uniqueTargetIndices = np.unique(columnTargetIndices[freeCobras])
 
-        # Remove from the list the -1 value if it's present 
-        uniqueTargetIndices = uniqueTargetIndices[uniqueTargetIndices != -1]
+        # Remove from the list the NULL_TARGET_INDEX value if it's present 
+        uniqueTargetIndices = uniqueTargetIndices[uniqueTargetIndices != NULL_TARGET_INDEX]
         
         # Select free targets only
         uniqueTargetIndices = uniqueTargetIndices[freeTargets[uniqueTargetIndices]]
@@ -190,7 +191,7 @@ def assignTargetsByDistance(targetIndices, targetDistances):
             else:
                 # Select the cobras for which this is the only target
                 accessibleTargets = targetIndices[associatedCobras, i:]
-                targetIsAvailable = np.logical_and(accessibleTargets != -1, freeTargets[accessibleTargets])
+                targetIsAvailable = np.logical_and(accessibleTargets != NULL_TARGET_INDEX, freeTargets[accessibleTargets])
                 nAvailableTargets = np.sum(targetIsAvailable, axis=1)
                 singleTargetCobras = associatedCobras[nAvailableTargets == 1]
                 
@@ -245,7 +246,7 @@ def solveCobraCollisions(assignedTargets, targetIndices, targetPositions, bench)
     # Set the cobra positions to their associated target positions, leaving 
     # unused cobras at their home positions 
     cobraPositions = bench["home0"].copy()
-    usedCobras = assignedTargets >= 0
+    usedCobras = assignedTargets != NULL_TARGET_INDEX
     cobraPositions[usedCobras] = targetPositions[assignedTargets[usedCobras]]  
 
     # Get the indices of the cobras where we have a collision
@@ -259,38 +260,25 @@ def solveCobraCollisions(assignedTargets, targetIndices, targetPositions, bench)
         # We only need to solve the first half of the problematic cases
         if nc > c:
             # Check if one of the colliding cobras is unused
-            if assignedTargets[c] < 0 or assignedTargets[nc] < 0:
+            if assignedTargets[c] == NULL_TARGET_INDEX or assignedTargets[nc] == NULL_TARGET_INDEX:
                 # The unused cobra is the cobra that we are going to move
-                if assignedTargets[c] < 0:
-                    cobraToMove = c
-                else:
-                    cobraToMove = nc
+                cobraToMove = c if (assignedTargets[c] == NULL_TARGET_INDEX) else nc
 
-                # Calculate the initial number of collisions associated with that cobra 
-                collisions = getCollisionsForCobra(cobraToMove, cobraPositions, bench)
-
-                # Rotate the cobra until we find the minimum number of collisions
-                bestPosition = cobraPositions[cobraToMove]
-            
-                for ang in range(5):
-                    # Rotate the cobra 60 degrees around its center
-                    cobraCenter = bench["center"][cobraToMove]
-                    cobraPositions[cobraToMove] = (cobraPositions[cobraToMove] - cobraCenter) * np.exp(1j * np.pi / 3) + cobraCenter
-
-                    # Calculate the number of collisions at the current position 
-                    currentCollisions = getCollisionsForCobra(cobraToMove, cobraPositions, bench)
+                # Rotate the cobra until we find a position with zero collisions
+                cobraCenter = bench["center"][cobraToMove]
+                initialPosition = cobraPositions[cobraToMove]
+                bestPosition = initialPosition
+               
+                for ang in np.linspace(0, 2 * np.pi, 7)[1:-1]:
+                    # Rotate the cobra around its center
+                    cobraPositions[cobraToMove] = (initialPosition - cobraCenter) * np.exp(1j * ang) + cobraCenter
                     
-                    # Check if the number of collisions decreased
-                    if currentCollisions < collisions:
-                        # Save the information from this position
+                    # Exit the loop if we found a cobra position with zero collisions
+                    if getCollisionsForCobra(cobraToMove, cobraPositions, bench) == 0:
                         bestPosition = cobraPositions[cobraToMove]
-                        collisions = currentCollisions
- 
-                    # Exit the loop if the number of collisions is already zero
-                    if collisions == 0:
                         break
 
-                # Use the cobra position where we had less collisions
+                # Use the best cobra position
                 cobraPositions[cobraToMove] = bestPosition
             else:
                 # Calculate the initial number of collisions associated with the two cobras
@@ -304,8 +292,8 @@ def solveCobraCollisions(assignedTargets, targetIndices, targetPositions, bench)
                 freeTargets[initialTarget2] = True
 
                 # Get the targets that can be reached by each cobra
-                targets1 = targetIndices[c][targetIndices[c] >= 0]
-                targets2 = targetIndices[nc][targetIndices[nc] >= 0]
+                targets1 = targetIndices[c][targetIndices[c] != NULL_TARGET_INDEX]
+                targets2 = targetIndices[nc][targetIndices[nc] != NULL_TARGET_INDEX]
                 
                 # Select only the free targets
                 targets1 = targets1[freeTargets[targets1]]
@@ -597,7 +585,7 @@ def plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTarge
     colors[problematicCobras] = [0.0, 1.0, 0.0, 0.5]
     plotUtils.addRings(cobraCenters, rMin, rMax, facecolors=colors)
 
-    # add the stage 1 theta hard stops.
+    # Add the stage 1 theta hard stops
     plotUtils.addLines(cobraCenters, cobraCenters + rMax * np.exp(1j * bench["tht0"]), linestyles="dashed")    
     plotUtils.addLines(cobraCenters, cobraCenters + rMax * np.exp(1j * bench["tht1"]), linestyles="dashdot")
 
@@ -609,16 +597,21 @@ def plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTarge
     link1 = cobraCenters + L1 * np.exp(1j * tht)
     link2 = link1 + L2 * np.exp(1j * (tht + phi))
     colors = np.full((len(cobraPositions), 4), [1.0, 0.0, 0.0, 0.25])
-    colors[assignedTargets >= 0] = [0.0, 0.0, 1.0, 0.5]
+    colors[assignedTargets != NULL_TARGET_INDEX] = [0.0, 0.0, 1.0, 0.5]
     plotUtils.addLines(cobraCenters, link1, edgecolor=colors, linewidths=2)
     plotUtils.addThickLines(link1, link2, 0.5 * bench["minDist"], facecolors=colors)  
 
     # Draw the target positions and highlight those that are assigned to a cobra
     plotUtils.addPoints(targetPositions, s=2, facecolor="0.4")
-    plotUtils.addPoints(targetPositions[assignedTargets[assignedTargets >= 0]], s=2, facecolor="red")
+    plotUtils.addPoints(targetPositions[assignedTargets[assignedTargets != NULL_TARGET_INDEX]], s=2, facecolor="red")
 
 
 if __name__ == "__main__":
+    # Import the necessary modules
+    import time as time
+    import ics.cobraOps.cobraUtils as cobraUtils
+    import ics.cobraOps.benchUtils as benchUtils
+
     # Define the target density to use
     targetDensity = 2
     
@@ -647,4 +640,3 @@ if __name__ == "__main__":
     plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTargets, targetPositions, bench)
     print("Plotting time (s): " + str(time.time() - start))
     plotUtils.pauseExecution()
-
