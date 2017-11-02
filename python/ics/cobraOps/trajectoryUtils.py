@@ -233,6 +233,9 @@ def detectCollisions(elbowTrajectories, fiberTrajectories, bench):
         points in the trajectory where a collision is detected.
 
     """
+    # Extract some useful information from the bench geometry
+    minDist = bench["minDist"]
+
     # Get the bench precalculated nearest neighbors information 
     cobras = bench["NN"]["row"]
     nearbyCobras = bench["NN"]["col"]
@@ -260,7 +263,7 @@ def detectCollisions(elbowTrajectories, fiberTrajectories, bench):
         distances = targetUtils.distanceBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2)
 
         # Get the collisions
-        collisions = distances < (bench["minDist"][cobras] + bench["minDist"][nearbyCobras]) / 2
+        collisions = distances < (minDist[cobras] + minDist[nearbyCobras]) / 2
         
         # Update the cobra collisions and the trajectory collisions arrays
         cobraCollisions[collisions] = True
@@ -457,7 +460,7 @@ if __name__ == "__main__":
     print("Total computation time (s):", time.time() - start)
 
     # Plot the cobra trajectories
-    start = time.time()    
+    start = time.time()
     plotUtils.createNewFigure("Cobra trajectories", "x position", "y position")
 
     patrolAreaColors = np.full((len(cobraCenters), 4), [0.0, 0.0, 1.0, 0.15])

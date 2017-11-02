@@ -21,6 +21,45 @@ NULL_TARGET_INDEX = -1
 a given cobra."""
 
 
+def generateOneTargetPerCobra(bench, maxDistance=np.Inf):
+    """Generates a target per cobra using a uniform radial distribution.
+
+    Parameters
+    ----------
+    bench: object
+        The bench geometry to use.
+    maxDinstance: float, optional
+        The maximum radial distance between the targets and the cobra centers.
+        Default is no limit.
+
+    Returns
+    -------
+    Object
+        Complex numpy array with the targets positions.
+
+    """
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    rMin = bench["rMin"]
+    rMax = bench["rMax"]
+    nCobras = len(cobraCenters)
+    
+    # Calculate the maximum target distance allowed for each cobra
+    rMax = rMax.copy()
+    rMax[rMax > maxDistance] = maxDistance
+    rMax[rMax < rMin] = rMin[rMax < rMin]
+    
+    # Calculate the relative target positions
+    ang = 2 * np.pi * np.random.random(nCobras)
+    radius = np.sqrt((rMax ** 2 - rMin ** 2) * np.random.random(nCobras) + rMin ** 2)
+    targetPositions = radius * np.exp(1j * ang)
+
+    # Move the relative targets positions to the cobra central positions
+    targetPositions += cobraCenters
+
+    return  targetPositions
+
+
 def generateTargets(density, bench):
     """Generates a set of targets uniformly distributed over the bench field of
     view.
@@ -38,10 +77,14 @@ def generateTargets(density, bench):
         Complex numpy array with the targets positions.
 
     """
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    rMax = bench["rMax"]
+
     # Calculate the total number of targets based on the bench properties
-    benchCenter = np.mean(bench["center"])
-    benchRadius = np.max(np.abs(bench["center"] - benchCenter) + bench["rMax"])
-    medianPatrolRadius = np.median(bench["rMax"])
+    benchCenter = np.mean(cobraCenters)
+    benchRadius = np.max(np.abs(cobraCenters - benchCenter) + rMax)
+    medianPatrolRadius = np.median(rMax)
     nTargets = int(np.ceil(density * (benchRadius / medianPatrolRadius) ** 2))
  
     # Calculate the uniformly distributed target positions
@@ -103,18 +146,23 @@ def getAccesibleTargets(targetPositions, bench):
         be reached by the cobra.
 
     """
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    rMin = bench["rMin"]
+    rMax = bench["rMax"]
+
     # Obtain the cobra-target associations: select first by the x axis 
     # distance and then by the y axis distance
-    xDistanceMatrix = np.abs(bench["center"].real[:, np.newaxis] - targetPositions.real)
-    (cobras, targets) = np.where(xDistanceMatrix < bench["rMax"][:, np.newaxis])
-    yDistance = np.abs(bench["center"][cobras].imag - targetPositions[targets].imag)
-    validIndices = yDistance < bench["rMax"][cobras]
+    xDistanceMatrix = np.abs(cobraCenters.real[:, np.newaxis] - targetPositions.real)
+    (cobras, targets) = np.where(xDistanceMatrix < rMax[:, np.newaxis])
+    yDistance = np.abs(cobraCenters[cobras].imag - targetPositions[targets].imag)
+    validIndices = yDistance < rMax[cobras]
     cobras = cobras[validIndices]
     targets = targets[validIndices]
     
     # Select only those targets that can be reached by each cobra
-    distances = np.abs(bench["center"][cobras] - targetPositions[targets])
-    validIndices = np.logical_and(distances > bench["rMin"][cobras], distances < bench["rMax"][cobras])
+    distances = np.abs(cobraCenters[cobras] - targetPositions[targets])
+    validIndices = np.logical_and(distances > rMin[cobras], distances < rMax[cobras])
     cobras = cobras[validIndices]
     targets = targets[validIndices]
     distances = distances[validIndices]
@@ -123,7 +171,7 @@ def getAccesibleTargets(targetPositions, bench):
     nTargetsPerCobra = np.bincount(cobras)
     
     # Order the targets by their distance to the cobra
-    nCobras = len(bench["center"])
+    nCobras = len(cobraCenters)
     maxTagetsPerCobra = nTargetsPerCobra.max()
     targetIndices = np.full((nCobras, maxTagetsPerCobra), NULL_TARGET_INDEX, dtype="int")
     targetDistances = np.zeros((nCobras, maxTagetsPerCobra))
@@ -418,10 +466,13 @@ def getProblematicCobras(fiberPositions, bench):
         and the indices of the nearby cobras with which they collide.
     
     """
-    # Calculate the cobras rotation angles to reach the given positions
+    # Extract some useful information from the bench geometry
     cobraCenters = bench["center"]
     L1 = bench["L1"]
     L2 = bench["L2"]
+    minDist = bench["minDist"]
+
+    # Calculate the cobras rotation angles to reach the given positions
     (tht, phi) = benchUtils.getCobraRotationAngles(fiberPositions - cobraCenters, L1, L2)
     
     # Compute the cobras elbow positions
@@ -444,7 +495,7 @@ def getProblematicCobras(fiberPositions, bench):
     distances = distanceBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2)
 
     # Get the cobra collisions for the current configuration
-    cobraCollisions = distances < (bench["minDist"][cobras] + bench["minDist"][nearbyCobras]) / 2
+    cobraCollisions = distances < (minDist[cobras] + minDist[nearbyCobras]) / 2
 
     # Obtain the indices of the problematic cobras and their associations and
     # don't forget to include the other half of the associations
