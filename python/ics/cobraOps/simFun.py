@@ -80,6 +80,7 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
 
     # Plot the bench geometry if necessary
     if toggle["showFigures"]:
+        plotUtils.createNewFigure("Bench geometry", "x position", "y position")
         benchUtils.plotBenchGeometry(bench)
 
     # Reassign the bench alpha value if requested by the used
@@ -115,8 +116,8 @@ def simFun(numtrg=1, cobraLayout="none", useRealMaps=True, useRealLinks=True, va
         
         for i in range(numFields):
             tgt = targetUtils.generateTargets(numtrg, bench)
-            (assignedTargets, cobraPositions) = targetUtils.assignTargets(tgt, bench)
-            targets[i] = cobraPositions
+            (assignedTargets, fiberPositions) = targetUtils.assignTargets(tgt, bench)
+            targets[i] = fiberPositions
         
         PM["R2_percentColl"] = None
 
@@ -159,5 +160,5 @@ if __name__ == "__main__":
     
     # Print the data in the console
     for key in bench:
-        print("Bench data: " + key)
+        print("Bench data:", key)
         print(bench[key])

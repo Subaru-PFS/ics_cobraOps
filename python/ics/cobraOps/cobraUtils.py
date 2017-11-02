@@ -134,10 +134,9 @@ if __name__ == "__main__":
     import ics.cobraOps.plotUtils as plotUtils
     
     # Get the cobra centers for the full PFI
-    centers = getCobrasCenters("full")
+    cobraCenters = getCobrasCenters("full")
     
     # Plot the centers
     plotUtils.createNewFigure("Cobra centers", "x position", "y position")
-    plotUtils.addPoints(centers, s=2, facecolor="0.4")
+    plotUtils.addPoints(cobraCenters, s=2, facecolor="0.4")
     plotUtils.pauseExecution()
-    

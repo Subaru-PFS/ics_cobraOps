@@ -12,284 +12,471 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-
+import ics.cobraOps.benchUtils as benchUtils
+import ics.cobraOps.plotUtils as plotUtils
 import ics.cobraOps.targetUtils as targetUtils
 
-        
-THT_EPS = 1e-12
-"""This is an epsilon to make sure that values near zero in theta are
-interpreted on the positive (or negative) side of the cut, respectively. 
-Make it negative for same same direction moveouts (positive for 
-positive hardstop)."""
+
+MAX_TRAJECTORY_STEPS = 80
+"""The maximum number of steps that a cobra trajectory is allowed to have."""
 
 
-def generateTrajectories(finalPositions, bench):
-    """Generates the cobra trajectories starting from their home positions.
+def defineThetaMovementDirection(finalPositions, bench):
+    """Defines the cobras theta movement directions starting from the bench
+    home positions.
 
     Parameters
     ----------
     finalPositions: object
-        A complex numpy array with the cobras final positions.
+        A complex numpy array with the cobras fiber final positions.
     bench: object
         The bench geometry to use.
 
     Returns
     -------
-    Object
-        ...
+    tuple
+        A python tuple with the cobras theta movement direction information
+        (True values indicate that the cobras should move in the positive theta
+        direction, while False values indicate that the movement should be in
+        the negative direction), and two arrays with the total number of steps
+        required for the positive and the negative movements.
 
     """
-    # Extract some of the bench geometry information
-    centers = bench["center"]
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
     L1 = bench["L1"]
     L2 = bench["L2"]
     home0 = bench["home0"]
     home1 = bench["home1"]
-    tht0 = bench["tht0"]
-    nCobras = len(centers)
+    binWidth = bench["binWidth"]
 
-    # Get the cobra rotation angles for the initial home positions and the final positions
-    (startThtP, startPhiP) = targetUtils.getCobraRotationAngles(home0 - centers, L1, L2)
-    (startThtN, startPhiN) = targetUtils.getCobraRotationAngles(home1 - centers, L1, L2)
-    (finishTht, finishPhi) = targetUtils.getCobraRotationAngles(finalPositions - centers, L1, L2)
-
-    # Check if the bench geometry contains the cobra motor maps information
-    if bench["S1Pm"] is not None:
-        # Extract the cobra motor maps, reversing the index order for the negative movement maps
-        mapThtP = bench["S1Pm"]
-        mapThtN = np.fliplr(bench["S1Nm"])
-        mapPhiP = bench["S2Pm"]
-        mapPhiN = np.fliplr(bench["S2Nm"])
-
-        # Get the number of motor step bins in each cobra rotation angle
-        nBinsTht = mapThtP.shape[1]
-        nBinsPhi = mapPhiP.shape[1]
-
-        # Get the bin step size in radians
-        binWidth = bench["binWidth"]
-
-        # Check if we are starting from the overlap region for negative movements
-        STARTS_IN_OVERLAP = np.mod(startThtN - tht0, 2 * np.pi) < bench["thtOverlap"] + THT_EPS
-
-        # Calculate the starting bins for the positive and negative movements
-        startBinThtP = (np.mod(startThtP + THT_EPS - tht0, 2 * np.pi) - THT_EPS - bench["mapRangeTht"][0, 0]) / binWidth
-        startBinThtN = (bench["mapRangeTht"][0, 1] - (np.mod(startThtN - tht0, 2 * np.pi) + 2 * np.pi * STARTS_IN_OVERLAP)) / binWidth
-        startBinPhiP = (startPhiP - bench["mapRangePhi"][0, 0]) / binWidth
-        startBinPhiN = (nBinsPhi - 1) - startBinPhiP
-        
-        # Calculate the starting indices
-        startIndThtP = np.floor(startBinThtP).astype(int)
-        startIndThtN = np.floor(startBinThtN).astype(int)
-        startIndPhiP = np.floor(startBinPhiP).astype(int)
-        startIndPhiN = np.floor(startBinPhiN).astype(int)
-        startIndThtP[startIndThtP < 0] = 0
-        startIndThtN[startIndThtN < 0] = 0
-        startIndPhiP[startIndPhiP < 0] = 0
-        startIndPhiN[startIndPhiN < 0] = 0
-
-        #  Check if we are finishing at the overlap region for negative movements
-        FINISHES_IN_OVERLAP = np.mod(finishTht + THT_EPS - tht0, 2 * np.pi) < bench["thtOverlap"]
-            
-        # Calculate the finishing bins for the positive and negative moves
-        finishBinThtP = (np.mod(finishTht + THT_EPS - tht0, 2 * np.pi) - THT_EPS - bench["mapRangeTht"][0, 0]) / binWidth
-        finishBinThtN = (nBinsTht - 1) - (finishBinThtP + 2 * np.pi * FINISHES_IN_OVERLAP / binWidth)
-        finishBinPhiP = (finishPhi - bench["mapRangePhi"][0, 0]) / binWidth
-        finishBinPhiN = (nBinsPhi - 1) - finishBinPhiP
-
-        # Calculate the finishing indices
-        finishIndThtP = np.floor(finishBinThtP).astype(int)
-        finishIndThtN = np.floor(finishBinThtN).astype(int)
-        finishIndPhiP = np.floor(finishBinPhiP).astype(int)
-        finishIndPhiN = np.floor(finishBinPhiN).astype(int)
-        finishIndThtP[finishIndThtP < 0] = 0 
-        finishIndThtN[finishIndThtN < 0] = 0 
-        finishIndPhiP[finishIndPhiP < 0] = 0 
-        finishIndPhiN[finishIndPhiN < 0] = 0 
-
-        # Calculate the residuals at the starting and finishing bin
-        startOverCountThtP = startBinThtP - startIndThtP
-        startOverCountThtN = startBinThtN - startIndThtN
-        startOverCountPhiP = startBinPhiP - startIndPhiP
-        startOverCountPhiN = startBinPhiN - startIndPhiN
-        finishOverCountThtP = finishIndThtP + 1 - finishBinThtP
-        finishOverCountThtN = finishIndThtN + 1 - finishBinThtN
-        finishOverCountPhiP = finishIndPhiP + 1 - finishBinPhiP
-        finishOverCountPhiN = finishIndPhiN + 1 - finishBinPhiN
-
-        # Calculate the number of steps required to reach the finish position
-        nStepsThtP = np.zeros(nCobras)
-        nStepsThtN = np.zeros(nCobras)
-        nStepsPhiP = np.zeros(nCobras)
-        nStepsPhiN = np.zeros(nCobras)
-        
-        for i in range(nCobras):
-            nStepsThtP[i] = (np.sum(mapThtP[i, startIndThtP[i]:finishIndThtP[i] + 1]) 
-                             - mapThtP[i, startIndThtP[i]] * startOverCountThtP[i] 
-                             - mapThtP[i, finishIndThtP[i]] * finishOverCountThtP[i])
-            nStepsThtN[i] = (np.sum(mapThtN[i, startIndThtN[i]:finishIndThtN[i] + 1]) 
-                             - mapThtN[i, startIndThtN[i]] * startOverCountThtN[i] 
-                             - mapThtN[i, finishIndThtN[i]] * finishOverCountThtN[i])
-            nStepsPhiP[i] = (np.sum(mapPhiP[i, startIndPhiP[i]:finishIndPhiP[i] + 1]) 
-                             - mapPhiP[i, startIndPhiP[i]] * startOverCountPhiP[i] 
-                             - mapPhiP[i, finishIndPhiP[i]] * finishOverCountPhiP[i])
-            nStepsPhiN[i] = (np.sum(mapPhiN[i, startIndPhiN[i]:finishIndPhiN[i] + 1]) 
-                             - mapPhiN[i, startIndPhiN[i]] * startOverCountPhiN[i] 
-                             - mapPhiN[i, finishIndPhiN[i]] * finishOverCountPhiN[i])
-
-        nStepsThtP[nStepsThtP < 0] = 0
-        nStepsThtN[nStepsThtN < 0] = 0
-        nStepsPhiP[nStepsPhiP < 0] = 0
-        nStepsPhiN[nStepsPhiN < 0] = 0
-        
-        # Calculate the maximum number of steps for each cobra
-        nStepsMax = np.max(np.vstack((nStepsThtP, nStepsThtN, nStepsPhiP, nStepsPhiN)), axis=0)
+    # Get the cobra rotation angles for the starting home positions and the
+    # final positions
+    (startThtP, startPhiP) = benchUtils.getCobraRotationAngles(home0 - cobraCenters, L1, L2)
+    (startThtN, startPhiN) = benchUtils.getCobraRotationAngles(home1 - cobraCenters, L1, L2)
+    (finalTht, finalPhi) = benchUtils.getCobraRotationAngles(finalPositions - cobraCenters, L1, L2)
     
-        # Add some error to the calibration motor maps
-        fractionalBinError = bench["alpha"] * binWidth ** (bench["beta"] - 1)
-        noisyMapThtP = mapThtP * calculateMapErrorFactor(fractionalBinError, mapThtP.shape)
-        noisyMapThtN = mapThtN * calculateMapErrorFactor(fractionalBinError, mapThtN.shape)
-        noisyMapPhiP = mapPhiP * calculateMapErrorFactor(fractionalBinError, mapPhiP.shape)
-        noisyMapPhiN = mapPhiN * calculateMapErrorFactor(fractionalBinError, mapPhiN.shape)
+    # Calculate the required theta and phi delta offsets to move from the
+    # positive and negative starting positions to the final positions
+    deltaThtP = np.mod(finalTht - startThtP, 2 * np.pi)
+    deltaThtN = -np.mod(startThtN - finalTht, 2 * np.pi)
+    deltaPhiP = finalPhi - startPhiP
+    deltaPhiN = finalPhi - startPhiN
     
-        # Add an sticky bin at the maps end to prevent over-runs
-        noisyMapThtP = np.hstack((noisyMapThtP, 1e9 * np.ones((nCobras, 1))))
-        noisyMapThtN = np.hstack((noisyMapThtN, 1e9 * np.ones((nCobras, 1))))
-        noisyMapPhiP = np.hstack((noisyMapPhiP, 1e9 * np.ones((nCobras, 1))))
-        noisyMapPhiN = np.hstack((noisyMapPhiN, 1e9 * np.ones((nCobras, 1))))
-        
-        # Calculate the cobra trajectories
-        stepsPerTime = 50
-        maxStepsBins = np.ceil(np.max(nStepsMax) / stepsPerTime).astype(int) + 1
-        thtP = np.empty((nCobras, maxStepsBins))
-        thtN = np.empty((nCobras, maxStepsBins))
-        phiP = np.empty((nCobras, maxStepsBins))
-        phiN = np.empty((nCobras, maxStepsBins))
-        trajBinsThtP = np.empty(nCobras, dtype="int")      
-        trajBinsThtN = np.empty(nCobras, dtype="int")      
-        trajBinsPhiP = np.empty(nCobras, dtype="int")      
-        trajBinsPhiN = np.empty(nCobras, dtype="int")      
-        
-        for i in range(10):
-            # THT P (tht moving out)
-            stepOffset = noisyMapThtP[i, startIndThtP[i]] * startOverCountThtP[i]            
-            finishInd = np.where(nStepsThtP[i] < np.cumsum(noisyMapThtP[i, startIndThtP[i]:]) - stepOffset)[0][0] + startIndThtP[i]
-            stepCtr = np.append([0], np.cumsum(noisyMapThtP[i, startIndThtP[i]:finishInd + 1]) - stepOffset)
-            binCtr = np.append([startBinThtP[i]], startIndThtP[i] + np.arange(1, len(stepCtr)))
-            trajSteps = np.append(np.arange(0, nStepsThtP[i], stepsPerTime), [nStepsThtP[i]])
-            thtP[i][0:len(trajSteps)] = tht0[i] + binWidth * np.interp(trajSteps, stepCtr, binCtr)
-            trajBinsThtP[i] = len(trajSteps)
+    # Calculate the number of steps in the positive and the negative directions
+    nStepsP = np.ceil(np.max((np.abs(deltaThtP / binWidth), np.abs(deltaPhiP / binWidth)), axis=0)).astype("int") + 1
+    nStepsN = np.ceil(np.max((np.abs(deltaThtN / binWidth), np.abs(deltaPhiN / binWidth)), axis=0)).astype("int") + 1
 
-            # THT N (opposite sense)
-            stepOffset = noisyMapThtN[i, startIndThtN[i]] * startOverCountThtN[i]            
-            finishInd = np.where(nStepsThtN[i] < np.cumsum(noisyMapThtN[i, startIndThtN[i]:]) - stepOffset)[0][0] + startIndThtN[i]
-            stepCtr = np.append([0], np.cumsum(noisyMapThtN[i, startIndThtN[i]:finishInd + 1]) - stepOffset)
-            binCtr = np.append([startBinThtN[i]], startIndThtN[i] + np.arange(1, len(stepCtr)))
-            trajSteps = np.append(np.arange(0, nStepsThtN[i], stepsPerTime), [nStepsThtN[i]])
-            thtN[i][0:len(trajSteps)] = tht0[i] + bench["mapRangeTht"][0, 1] - binWidth * np.interp(trajSteps, stepCtr, binCtr)
-            trajBinsThtN[i] = len(trajSteps)
-            # print(nStepsThtP[i])
-            # print(nStepsThtN[i])
-            # print(str(tht0[i]) + " --> " + str(finishTht[i]) + " " + str(finishTht[i] % (2 * np.pi)))
-            # print("a " + str(thtP[i, trajBinsThtP[i] - 1]) + " " + str(thtP[i, trajBinsThtP[i] - 1] % (2 * np.pi)))
-            # print("a " + str(thtN[i, trajBinsThtN[i] - 1]) + " " + str(thtN[i, trajBinsThtN[i] - 1] % (2 * np.pi)))
-            # print("b " + str(finishTht[i]) + " " + str(finishTht[i]% (2*np.pi)))
-            
-            # Phi P (tht moving out)
-            """
-            stepOffset = noisyMapThtP[i, startIndThtP[i]] * startOverCountThtP[i]            
-            finishInd = np.where(nStepsThtP[i] < np.cumsum(noisyMapThtP[i, startIndThtP[i]:]) - stepOffset)[0][0] + startIndThtP[i]
-            stepCtr = np.append([0], np.cumsum(noisyMapThtP[i, startIndThtP[i]:finishInd + 1]) - stepOffset)
-            binCtr = np.append([startBinThtP[i]], startIndThtP[i] + np.arange(1, len(stepCtr)))
-            trajSteps = np.append(np.arange(0, nStepsThtP[i], stepsPerTime), [nStepsThtP[i]])
-            thtP[i][0:len(trajSteps)] = startThtP[i] + binWidth * np.interp(trajSteps, stepCtr, binCtr)
-            trajBinsThtP[i] = len(trajSteps)
-            """
+    # Make sure that at least one of the movements requires less steps than the
+    # maximum number of steps allowed
+    if np.any(np.min((nStepsP, nStepsN), axis=0) > MAX_TRAJECTORY_STEPS):
+        raise Exception("MAX_TRAJECTORY_STEPS value should be set to a higher value.")
+
+    # Decide if the cobras should follow a positive theta movement direction:
+    #  - The positive movement should require less steps than the negative
+    #    movement.
+    #  - The cobra fibers should not go too far in phi (it is easier to have
+    #    collisions when moving in the positive direction).
+    positiveMovement = np.logical_and(nStepsP < nStepsN, finalPhi < -0.3 * np.pi)   
+
+    # Select the positive movement if the negative movement would require too
+    # many steps
+    positiveMovement[nStepsN > MAX_TRAJECTORY_STEPS] = True
+ 
+    return (positiveMovement, nStepsP, nStepsN)
 
 
-def calculateMapErrorFactor(fractionalBinError, mapShape):
-    """Calculates the map error factor.
+def calculateTrajectories(finalPositions, positiveMovement, bench):
+    """Calculates the cobra trajectories starting from their home positions.
+    
+    This method assumes perfect cobras (i.e., it doesn't use the motor maps).
 
     Parameters
     ----------
-    fractionalBinError: float
-        The fractional bin error.
-    mapShape: tuple
-        The map shape (nCobras x nBins).
+    finalPositions: object
+        A complex numpy array with the cobras fiber final positions.
+    positiveMovement: object
+        A boolean numpy array with the cobras theta movement direction. True
+        values indicate that the cobras should move in the positive theta
+        direction, while False values indicate that the movement should be in
+        the negative direction.
+    bench: object
+        The bench geometry to use.
 
     Returns
     -------
-    Object
-        Numpy array with the calculated map error factor.
+    tuple
+        A python tuple containing two numpy complex arrays with the cobras
+        elbow and fiber trajectories.
 
     """
-    # Initialize the position and the map factor arrays
-    nBins = mapShape[0] * mapShape[1]
-    x = np.zeros(nBins)
-    factor = np.zeros(nBins)
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    L1 = bench["L1"]
+    L2 = bench["L2"]
+    home0 = bench["home0"]
+    home1 = bench["home1"]
+    binWidth = bench["binWidth"]
+
+    # Set the start positions according to the specified movement direction
+    startPositions = home1.copy()
+    startPositions[positiveMovement] = home0[positiveMovement]
     
-    # Loop until all the bins have reached a position value equal or larger than one
-    toMove = x < 1
-     
-    while np.any(toMove):
-        # Calculate the movement for each bin that we still need to move
-        if fractionalBinError == 0:
-            dx = np.ones(np.sum(toMove))
+    # Get the cobra rotation angles for the starting to the final positions
+    (startTht, startPhi) = benchUtils.getCobraRotationAngles(startPositions - cobraCenters, L1, L2)
+    (finalTht, finalPhi) = benchUtils.getCobraRotationAngles(finalPositions - cobraCenters, L1, L2)
+    
+    # Calculate the required theta and phi delta offsets
+    deltaTht = -np.mod(startTht - finalTht, 2 * np.pi)
+    deltaTht[positiveMovement] = np.mod(finalTht[positiveMovement] - startTht[positiveMovement], 2 * np.pi)
+    deltaPhi = finalPhi - startPhi
+    
+    # Reassign the final theta positions to be sure that they are consistent
+    # with the deltaTht values
+    finalTht = startTht + deltaTht
+    
+    # Calculate the theta and phi bin step widths
+    nCobras = len(cobraCenters)
+    binTht = np.full(nCobras, -binWidth)
+    binTht[deltaTht > 0] = binWidth
+    binPhi = np.full(nCobras, -binWidth)
+    binPhi[deltaPhi > 0] = binWidth
+    
+    # Calculate the maximum number of steps that a trajectory could have
+    maxSteps = int(np.ceil(np.max((deltaTht / binTht, deltaPhi / binPhi))) + 1) 
+        
+    # Calculate theta and phi trajectories
+    trajectoriesTht = np.empty((nCobras, maxSteps))
+    trajectoriesTht[:] = finalTht[:, np.newaxis]
+    trajectoriesPhi = np.empty((nCobras, maxSteps))
+    trajectoriesPhi[:] = finalPhi[:, np.newaxis]
+
+    for c in range(nCobras):
+        # Jump to the next cobra if the two deltas are zero (unassigned cobras)
+        if deltaTht[c] == 0 and deltaPhi[c] == 0:
+            continue
+        
+        # Get the theta and phi moves from the starting position to the final
+        # positions
+        movesTht = np.arange(startTht[c], finalTht[c], binTht[c])
+        movesPhi = np.arange(startPhi[c], finalPhi[c], binPhi[c])
+        nMovesTht = len(movesTht)
+        nMovesPhi = len(movesPhi)
+   
+        # Check if the phi move is going towards the center
+        if binPhi[c] < 0:
+            # Moving towards the center: do the theta and phi movements early,
+            # because the other cobras are still close to the center and that
+            # decreases the collision probability
+            trajectoriesTht[c, :nMovesTht] = movesTht
+            trajectoriesPhi[c, :nMovesPhi] = movesPhi
         else:
-            dx = np.random.normal(loc=1, scale=fractionalBinError, size=np.sum(toMove))
-        
-        # Update the factor array
-        factor[toMove] += np.clip((1.0 - x[toMove]) / dx, 0, 1)
+            # Moving outwards: we should differentiate between positive and
+            # negative theta movements
+            if positiveMovement[c]:
+                # Always make early theta movements, because the other cobras
+                # are still close to the center and that decreases the
+                # collision probability
+                trajectoriesTht[c, :nMovesTht] = movesTht
+            else:
+                # Negative movement: check which angle requires more moves to
+                # complete
+                if nMovesTht > nMovesPhi:
+                    # If we have more moves in theta, do the extra theta moves
+                    # early, because the other cobras are still close to the
+                    # center and that decreases the collision probability
+                    extraMoves = nMovesTht - nMovesPhi
+                    trajectoriesTht[c, :extraMoves] = movesTht[:extraMoves]
 
-        # Update the position array
-        x[toMove] += dx
-        
-        # Recalculate the bins that we need to move in the next loop step
-        toMove = x < 1
+                    # Keep the theta position before phi and theta start to
+                    # move together
+                    trajectoriesTht[c, extraMoves:-nMovesPhi - 1] = movesTht[extraMoves - 1]
+                
+                    # Execute the rest of the theta movement together with the
+                    # phi movement: as late as possible to decrease the
+                    # collision probability
+                    trajectoriesTht[c, -nMovesPhi - 1:-1] = movesTht[-nMovesPhi:]
+                else:
+                    # Move theta as late as possible
+                    trajectoriesTht[c, :-nMovesTht - 1] = startTht[c]
+                    trajectoriesTht[c, -nMovesTht - 1:-1] = movesTht
 
-    # Change the factor array shape to the input map shape
-    factor.shape = mapShape
+            # Do the phi movements as late as possible to decrease the
+            # collision probability
+            trajectoriesPhi[c, :-nMovesPhi - 1] = startPhi[c]
+            trajectoriesPhi[c, -nMovesPhi - 1:-1] = movesPhi
+
+    # Calculate the elbow and fiber trajectories
+    elbowTrajectories = cobraCenters[:, np.newaxis] + L1[:, np.newaxis] * np.exp(1j * trajectoriesTht)
+    fiberTrajectories = elbowTrajectories + L2[:, np.newaxis] * np.exp(1j * (trajectoriesTht + trajectoriesPhi))
+
+    return (elbowTrajectories, fiberTrajectories)
+
+
+def detectCollisions(elbowTrajectories, fiberTrajectories, bench):
+    """Detects collisions in the cobra trajectories.
     
-    return factor
+    Parameters
+    ----------
+    elbowTrajectories: object
+        A complex numpy array with the cobra elbow trajectories.
+    fiberTrajectories: object
+        A complex numpy array with the cobra fiber trajectories.
+    bench: object
+        The bench geometry to use.
 
+    Returns
+    -------
+    tuple
+        A python tuple containing two numpy array with the indices of the
+        cobras involved in a collision and a boolean numpy array indicating the
+        points in the trajectory where a collision is detected.
+
+    """
+    # Get the bench precalculated nearest neighbors information 
+    cobras = bench["NN"]["row"]
+    nearbyCobras = bench["NN"]["col"]
+
+    # We only need to test half of the cobra associations
+    uniqueAssociations = cobras < nearbyCobras
+    cobras = cobras[uniqueAssociations]
+    nearbyCobras = nearbyCobras[uniqueAssociations]
+    
+    # Detect cobra to nearby cobra collisions at the same trajectory time step    
+    (nCobras, nSteps) = elbowTrajectories.shape
+    cobraCollisions = np.full(len(cobras), False)
+    trajectoryCollisions = np.full((nCobras, nSteps), False)
+    
+    for i in range(nSteps): 
+        # Get the cobra elbow and fiber positions at the given time
+        elbowPositions = elbowTrajectories[:, i]
+        fiberPositions = fiberTrajectories[:, i]
+
+        # Calculate the distances between the cobras links and the nearby cobras links
+        startPoints1 = elbowPositions[cobras]
+        endPoints1 = fiberPositions[cobras]
+        startPoints2 = elbowPositions[nearbyCobras]
+        endPoints2 = fiberPositions[nearbyCobras]
+        distances = targetUtils.distanceBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2)
+
+        # Get the collisions
+        collisions = distances < (bench["minDist"][cobras] + bench["minDist"][nearbyCobras]) / 2
+        
+        # Update the cobra collisions and the trajectory collisions arrays
+        cobraCollisions[collisions] = True
+        trajectoryCollisions[cobras[collisions], i] = True
+        trajectoryCollisions[nearbyCobras[collisions], i] = True
+
+    # Obtain the indices of the problematic cobras and their associations and
+    # don't forget to include the other half of the associations
+    problematicCobras = np.concatenate((cobras[cobraCollisions], nearbyCobras[cobraCollisions]))
+    nearbyProblematicCobras = np.concatenate((nearbyCobras[cobraCollisions], cobras[cobraCollisions]))
+   
+    return (problematicCobras, nearbyProblematicCobras, trajectoryCollisions)
+
+
+def getCobrasToSwap(cobras, nearbyCobras, trajectoryCollisions, selectLowerIndices=True):
+    """Returns the indices of the cobras that should be swapped.
+
+    Parameters
+    ----------
+    cobras: object
+        A numpy array with the indices of the cobras involved in a collision.
+    nearbyCobras: object
+        A numpy array with the indices of the secondary cobras involved in a
+        collision.
+    trajectoryCollisions: object
+        A boolean numpy array indicating the points in the cobras trajectories
+        where a collision has been detected.
+    selectLowerIndices: bool, optional
+        If True, the cobra selected to be swapped will be the one with the
+        lower index value. Default is True.
+
+    Returns
+    -------
+    object
+        A numpy array with the indices of the cobras that should be swapped.
+
+    """
+    # Check which cobra collision association corresponds to an end collision
+    endCollisions = np.logical_and(trajectoryCollisions[cobras, -1], trajectoryCollisions[nearbyCobras, -1])
+    
+    # Get the cobra collision association that should be swapped
+    swapMovement = np.logical_and(endCollisions == False, (cobras < nearbyCobras) == selectLowerIndices)
+    
+    return np.unique(cobras[swapMovement])
+
+
+def swapThetaMovementDirection(cobrasToSwap, movementDirection, nStepsP, nStepsN):
+    """Swaps the theta movement direction for the given cobras.
+
+    Parameters
+    ----------
+    cobrasToSwap: object
+        A numpy array with the indices of the cobras to swap.
+    movementDirection: object
+        A boolean numpy array with the current cobras theta movement direction.
+        True values indicate that the cobras should move in the positive theta
+        direction, while False values indicate that the movement should be in
+        the negative direction.
+    nStepsP: object
+        A numpy array with the total number of steps required for the positive
+        movement.
+    nStepsN: object
+        A numpy array with the total number of steps required for the negative
+        movement.
+
+    Returns
+    -------
+    object
+        A boolean numpy array with the update cobras theta movement direction.
+        True values indicate that the cobras should move in the positive theta
+        direction, while False values indicate that the movement should be in
+        the negative direction.
+
+    """
+    # Swap the given cobras movement direction
+    newMovementDirection = movementDirection.copy()
+    newMovementDirection[cobrasToSwap] = np.logical_not(movementDirection[cobrasToSwap])
+    
+    # Make sure that the new selected movement doesn't require too many steps
+    newMovementDirection[nStepsP > MAX_TRAJECTORY_STEPS] = False
+    newMovementDirection[nStepsN > MAX_TRAJECTORY_STEPS] = True
+
+    return newMovementDirection
+
+
+def plotTrajectories(elbowTrajectories, fiberTrajectories, bench, paintFootprints=False, footprintColors=[0.0, 0.0, 1.0, 0.05]):
+    """Plots cobras trajectories.
+
+    Parameters
+    ----------
+    elbowTrajectories: object
+        A complex numpy array with the elbow trajectory positions for each
+        cobra.
+    fiberTrajectories: object
+        A complex numpy array with the fiber trajectory positions for each
+        cobra.
+    bench: object
+        The bench geometry to use.
+    paintFootprints: bool, optional
+        If True, the cobra footprints will be painted. Default is False.
+    footprintColors: object, optional
+        The cobra footprints colors. Default is very light blue.
+    
+    """
+    # Plot the elbow and fiber trajectories as continuous lines
+    plotUtils.addTrajectories(np.vstack((elbowTrajectories, fiberTrajectories)), color="0.4", linewidth=1)
+   
+    # Paint the cobra trajectory footprints if necessary
+    if paintFootprints:
+        # Calculate the line thicknesses
+        (nCobras, nSteps) = elbowTrajectories.shape
+        thiknesses = np.empty((nCobras, nSteps)) 
+        thiknesses[:] = 0.5 * bench["minDist"][:, np.newaxis]
+
+        # Use only those elbow and fiber positions where the cobra is moving
+        isMoving = np.empty((nCobras, nSteps), dtype="bool")
+        isMoving[:, :-1] = (fiberTrajectories[:, 1:] - fiberTrajectories[:, :-1]) != 0
+        isMoving[:, -1] = isMoving[:, -2]
+        elbowPositions = elbowTrajectories[isMoving]
+        fiberPositions = fiberTrajectories[isMoving]
+        thiknesses = thiknesses[isMoving]
+        
+        # Update the colors if necessary
+        if footprintColors.ndim > 2 and footprintColors.shape[:2] == isMoving.shape:
+            # Set the colors for the moving positions
+            footprintColors = footprintColors[isMoving]
+            
+            # Only use positions where the alpha color is not exactly zero
+            visible = footprintColors[:, 3] != 0
+            elbowPositions = elbowPositions[visible]
+            fiberPositions = fiberPositions[visible]
+            footprintColors = footprintColors[visible]
+            thiknesses = thiknesses[visible]
+            
+        # Represent the trajectory footprint as a combination of thick lines
+        plotUtils.addThickLines(fiberPositions, elbowPositions, thiknesses, facecolor=footprintColors)
 
 
 if __name__ == "__main__":
     # Import the necessary modules
     import time as time
     import ics.cobraOps.cobraUtils as cobraUtils
-    import ics.cobraOps.benchUtils as benchUtils
-    import ics.cobraOps.plotUtils as plotUtils
 
     # Define the target density to use
-    targetDensity = 2
-    
+    targetDensity = 2.0
+
     # Get the cobras central positions for the full PFI
     start = time.time()
-    centers = cobraUtils.getPFICenters()
-    print("Number of cobras: " + str(len(centers)))
+    cobraCenters = cobraUtils.getCobrasCenters("full")
+    print("Number of cobras:", len(cobraCenters))
 
     # Define the bench geometry
-    bench = benchUtils.defineBenchGeometry(centers, True, True)
-    
+    bench = benchUtils.defineBenchGeometry(cobraCenters, True, True)
+
     # Create a random sample of targets
     targetPositions = targetUtils.generateTargets(targetDensity, bench)
-    print("Number of simulated targets: " + str(len(targetPositions)))
+    print("Number of simulated targets:", len(targetPositions))
 
-    # Assign the target to the cobras and get the cobra positions
-    (assignedTargets, cobraPositions) = targetUtils.assignTargets(targetPositions, bench)
-    
-    # Get the cobras for which the collision could not solved
-    (problematicCobras, nearbyProblematicCobras) = targetUtils.getProblematicCobras(cobraPositions, bench)
-    print("Number of unsolved collisions: " + str(len(problematicCobras) / 2))
-    print("Total computation time (s): " + str(time.time() - start))
-    
-    # Generate the trajectories
-    generateTrajectories(cobraPositions, bench) 
+    # Assign the targets to the cobras and get the fiber positions
+    (assignedTargets, fiberPositions) = targetUtils.assignTargets(targetPositions, bench)
 
-    # Plot the cobra-target associations
-    start = time.time()
-    targetUtils.plotCobraTargetAssociations(cobraPositions, problematicCobras, assignedTargets, targetPositions, bench)
-    print("Plotting time (s): " + str(time.time() - start))
+    # Calculate the cobra trajectories
+    (positiveMovement, nStepsP, nStepsN) = defineThetaMovementDirection(fiberPositions, bench)
+    (elbowTrajectories, fiberTrajectories) = calculateTrajectories(fiberPositions, positiveMovement, bench)
+
+    # Calculate the cobra trajectory collisions
+    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = detectCollisions(elbowTrajectories, fiberTrajectories, bench)
+    print("Number of cobras affected by a collision (  I):", len(np.unique(problematicCobras)))
+
+    # Swap the theta movement direction for some of the problematic cobras
+    cobrasToSwap = getCobrasToSwap(problematicCobras, nearbyProblematicCobras, trajectoryCollisions, True)
+    positiveMovement = swapThetaMovementDirection(cobrasToSwap, positiveMovement, nStepsP, nStepsN)
+    (elbowTrajectories, fiberTrajectories) = calculateTrajectories(fiberPositions, positiveMovement, bench)
+    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = detectCollisions(elbowTrajectories, fiberTrajectories, bench)
+    print("Number of cobras affected by a collision ( II):", len(np.unique(problematicCobras)))
+
+    # Swap the theta movement direction for some of the problematic cobras
+    cobrasToSwap = getCobrasToSwap(problematicCobras, nearbyProblematicCobras, trajectoryCollisions, False)
+    positiveMovement = swapThetaMovementDirection(cobrasToSwap, positiveMovement, nStepsP, nStepsN)
+    (elbowTrajectories, fiberTrajectories) = calculateTrajectories(fiberPositions, positiveMovement, bench)
+    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = detectCollisions(elbowTrajectories, fiberTrajectories, bench)
+    print("Number of cobras affected by a collision (III):", len(np.unique(problematicCobras)))
+ 
+    # Swap the theta movement direction for some of the problematic cobras
+    cobrasToSwap = getCobrasToSwap(problematicCobras, nearbyProblematicCobras, trajectoryCollisions, True)
+    positiveMovement = swapThetaMovementDirection(cobrasToSwap, positiveMovement, nStepsP, nStepsN)
+    (elbowTrajectories, fiberTrajectories) = calculateTrajectories(fiberPositions, positiveMovement, bench)
+    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = detectCollisions(elbowTrajectories, fiberTrajectories, bench)
+    print("Number of cobras affected by a collision ( IV):", len(np.unique(problematicCobras)))
+
+    # Check how many of the collisions are not end point collisions
+    endCollisions = np.logical_and(trajectoryCollisions[problematicCobras, -1], trajectoryCollisions[nearbyProblematicCobras, -1])
+    print("Number of cobras unaffected by end collisions: ", len(np.unique(problematicCobras)) - len(np.unique(problematicCobras[endCollisions])))
+    print("Total computation time (s):", time.time() - start)
+
+    # Plot the cobra trajectories
+    start = time.time()    
+    plotUtils.createNewFigure("Cobra trajectories", "x position", "y position")
+
+    patrolAreaColors = np.full((len(cobraCenters), 4), [0.0, 0.0, 1.0, 0.15])
+    patrolAreaColors[problematicCobras] = [1.0, 0.0, 0.0, 0.3]
+    patrolAreaColors[problematicCobras[endCollisions]] = [0.0, 1.0, 0.0, 0.5]
+    benchUtils.plotBenchGeometry(bench, patrolAreaColors)
+
+    footprintColors = np.zeros((elbowTrajectories.shape[0], fiberTrajectories.shape[1], 4))
+    footprintColors[problematicCobras, :] = [0.0, 0.0, 1.0, 0.05]
+    plotTrajectories(elbowTrajectories, fiberTrajectories, bench, paintFootprints=True, footprintColors=footprintColors)
+
+    cobraColors = np.full((len(cobraCenters), 4), [0.0, 0.0, 1.0, 0.5])
+    cobraColors[assignedTargets == targetUtils.NULL_TARGET_INDEX] = [1.0, 0.0, 0.0, 0.25]
+    benchUtils.plotCobras(bench, fiberPositions, cobraColors)
+
+    targetColors = np.full((len(targetPositions), 4), [0.4, 0.4, 0.4, 1.0])
+    targetColors[assignedTargets[assignedTargets != targetUtils.NULL_TARGET_INDEX]] = [1.0, 0.0, 0.0, 1.0]
+    targetUtils.plotTargets(targetPositions, targetColors)
+
+    print("Plotting time (s):", time.time() - start)
     plotUtils.pauseExecution()
-
 

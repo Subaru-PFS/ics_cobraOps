@@ -398,32 +398,110 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     return bench
 
 
-def plotBenchGeometry(bench):
+def getCobraRotationAngles(relativePositions, link1, link2, useNegativePhi=True):
+    """Calculates the cobra rotation angles to reach some relative positions. 
+    
+    The code assumes that the cobras can reach the given positions.
+    
+    Parameters
+    ----------
+    relativePositions: object
+        A complex numpy array with the position coordinates relative to the
+        cobras centers.
+    link1: object
+        A numpy array or constant with the links1 lengths.
+    link2: object
+        A numpy array or constant with the links2 lengths.
+    useNegativePhi: bool, optional
+        If True the phi angle values will be negative. If False, the phi 
+        angles will be positive. Default is True.
+
+    Returns
+    -------
+    tuple
+        A python tuple with the cobras rotation angles (tht, phi). 
+    
+    """  
+    # Calculate the cobra angles applying the law of cosines
+    distance = np.abs(relativePositions)
+    distanceSq = distance ** 2
+    link1Sq = link1 ** 2
+    link2Sq = link2 ** 2    
+    phiSign = 1 - 2 * useNegativePhi
+    phi = phiSign * np.arccos((distanceSq - link1Sq - link2Sq) / (2 * link1 * link2))
+    tht = np.angle(relativePositions) - phiSign * np.arccos(-(link2Sq - link1Sq - distanceSq) / (2 * link1 * distance))
+    
+    # Force tht to go from -pi to pi, instead of from 0 to 2pi
+    tht = (tht - np.pi) % (2 * np.pi) - np.pi
+
+    return (tht, phi)
+
+
+def plotBenchGeometry(bench, patrolAreaColors=[0.0, 0.0, 1.0, 0.15], paintHardStops=True):
     """Plots the bench geometry.
 
     Parameters
     ----------
     bench: object
-        The bench object. 
+        The bench object.
+    patrolAreaColors: object, optional
+        The patrol area colors. Default is very light blue.
+    paintHardStops: bool, optional
+        True if the cobra hard stops should be painted. Default is True. 
     
     """
-    # Create the figure
-    plotUtils.createNewFigure("Bench geometry", "x position", "y position")
-
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    rMin = bench["rMin"]
+    rMax = bench["rMax"]
+    tht0 = bench["tht0"]
+    tht1 = bench["tht1"]
+    
     # Set the axes limits
-    benchCenter = np.mean(bench["center"])
-    benchRadius = np.max(np.abs(bench["center"] - benchCenter) + bench["rMax"])
+    benchCenter = np.mean(cobraCenters)
+    benchRadius = np.max(np.abs(cobraCenters - benchCenter) + rMax)
     limRange = 1.05 * benchRadius * np.array([-1, 1]) 
     xLim = benchCenter.real + limRange
     yLim = benchCenter.imag + limRange
     plotUtils.setAxesLimits(xLim, yLim)
     
     # Plot the cobra patrol areas using ring shapes
-    plotUtils.addRings(bench["center"], bench["rMin"], bench["rMax"], facecolors="blue", alpha=0.15)
+    plotUtils.addRings(cobraCenters, rMin, rMax, facecolors=patrolAreaColors)
 
-    # Add the stage 1 theta hard stops.
-    plotUtils.addLines(bench["center"], bench["center"] + bench["rMax"] * np.exp(1j * bench["tht0"]), linestyles="dashed")    
-    plotUtils.addLines(bench["center"], bench["center"] + bench["rMax"] * np.exp(1j * bench["tht1"]), linestyles="dashdot")
+    # Add the stage 1 theta hard stops if requested
+    if paintHardStops:
+        plotUtils.addLines(cobraCenters, cobraCenters + rMax * np.exp(1j * tht0),
+                           linewidths=1, linestyles="dashed", color="0.3")    
+        plotUtils.addLines(cobraCenters, cobraCenters + rMax * np.exp(1j * tht1),
+                           linewidths=1, linestyles="dashdot", color="0.3")
+
+
+def plotCobras(bench, fiberPositions, cobraColors=[0.0, 0.0, 1.0, 0.5]):
+    """Plots the bench cobras at the given positions.
+
+    Parameters
+    ----------
+    bench: object
+        The bench object.
+    fiberPositions: object
+        A complex numpy array with the cobra fiber positions.
+    cobraColors: object, optional
+        The cobra colors. Default is light blue.
+    
+    """
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    L1 = bench["L1"]
+    L2 = bench["L2"]
+    minDist = bench["minDist"]
+    
+    # Calculate the elbow positions
+    (tht, phi) = getCobraRotationAngles(fiberPositions - cobraCenters, L1, L2)
+    elbowPositions = cobraCenters + L1 * np.exp(1j * tht)
+    
+    # Draw the cobras using a combination of thin and thick lines
+    plotUtils.addLines(cobraCenters, elbowPositions, edgecolor=cobraColors, linewidths=2)
+    plotUtils.addThickLines(elbowPositions, fiberPositions, 0.5 * minDist, facecolors=cobraColors)  
 
 
 if __name__ == "__main__":
@@ -432,10 +510,11 @@ if __name__ == "__main__":
         
     # Print the data in the console
     for key in bench:
-        print("Bench data: " + key)
+        print("Bench data:", key)
         print(bench[key])
     
     # Plot the bench geometry
+    plotUtils.createNewFigure("Bench geometry", "x position", "y position")
     plotBenchGeometry(bench)
+    plotCobras(bench, bench["home0"], [1.0, 0.0, 0.0, 0.25])
     plotUtils.pauseExecution()
-

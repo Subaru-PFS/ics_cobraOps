@@ -155,7 +155,7 @@ def addLines(startPoints, endPoints, **kwargs):
     lineList = [[(p1.real, p1.imag), (p2.real, p2.imag)] for p1, p2 in zip(startPoints, endPoints)]
     lineCollection = collections.LineCollection(lineList, **kwargs)
 
-    # Plot the line in the current figure
+    # Plot the lines in the current figure
     plt.gca().add_collection(lineCollection)
 
 
@@ -233,9 +233,28 @@ def getThickLinePath(center, width, thickness, angle):
     return patches.PathPatch(path.Path(vertices, codes))
 
 
+def addTrajectories(trajectories, **kwargs):
+    """Adds a set of trajectories to an already initialized figure.
+
+    Parameters
+    ----------
+    trajectories: object
+        Complex numpy array with trajectories coordinates. Each row represents
+        a different trajectory.
+    kwargs: collections.LineCollection properties
+        Any additional property that should be passed to the line collection.
+    
+    """
+    # Create the trajectory line collection
+    trajectoryLineList = [np.hstack((t.real[:, np.newaxis], t.imag[:, np.newaxis])) for t in trajectories]
+    trajectoryLineCollection = collections.LineCollection(trajectoryLineList, **kwargs)
+
+    # Plot the trajectory lines in the current figure
+    plt.gca().add_collection(trajectoryLineCollection)
+
+
 def pauseExecution():
     """Pauses the general program execution to allow figure inspection.
     
     """
     plt.show()
-
