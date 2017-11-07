@@ -30,11 +30,6 @@ print("Number of simulated targets:", len(targetPositions))
 # Assign the targets to the cobras and get the fiber positions
 (assignedTargets, fiberPositions) = targetUtils.assignTargets(targetPositions, bench)
 
-targetPositions = targetUtils.generateOneTargetPerCobra(bench, 4.)
-(assignedTargets, fiberPositions) = targetUtils.assignTargets(targetPositions, bench)
-#fiberPositions = targetPositions.copy()
-#assignedTargets = np.arange(0,len(cobraCenters))
-
 # Calculate the cobra trajectories
 (positiveMovement, nStepsP, nStepsN) = trajectoryUtils.defineThetaMovementDirection(fiberPositions, bench)
 (elbowTrajectories, fiberTrajectories) = trajectoryUtils.calculateTrajectories(fiberPositions, positiveMovement, bench)

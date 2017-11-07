@@ -504,6 +504,29 @@ def plotCobras(bench, fiberPositions, cobraColors=[0.0, 0.0, 1.0, 0.5]):
     plotUtils.addThickLines(elbowPositions, fiberPositions, 0.5 * minDist, facecolors=cobraColors)  
 
 
+def plotMotorMaps(cobras, bench):
+    """Plots the bench motor maps of a set of cobras.
+
+    Parameters
+    ----------
+    cobras: object
+        A numpy array with the cobra indices.
+    bench: object
+        The bench object.
+    
+    """
+    # Set the x axis angle ranges
+    x1 = np.rad2deg(np.arange(0, 2 * np.pi, bench["binWidth"]))
+    x2 = np.rad2deg(np.arange(0, np.pi, bench["binWidth"]))
+ 
+    # Plot the motor maps of each cobra
+    for c in cobras:
+        plotUtils.addLine(x1, bench["S1Pm"][c, :len(x1)], color=[0,0,0,0.4])
+        plotUtils.addLine(x1, bench["S1Nm"][c, :len(x1)], color=[1,0,0,0.4])
+        plotUtils.addLine(x2, bench["S2Pm"][c, :len(x2)], color=[0,1,0,0.4])
+        plotUtils.addLine(x2, bench["S2Nm"][c, :len(x2)], color=[0,0,1,0.4])
+
+
 if __name__ == "__main__":
     # Get the bench from the calibration file
     bench = defineBenchGeometry(None, 1, 1)
@@ -517,4 +540,9 @@ if __name__ == "__main__":
     plotUtils.createNewFigure("Bench geometry", "x position", "y position")
     plotBenchGeometry(bench)
     plotCobras(bench, bench["home0"], [1.0, 0.0, 0.0, 0.25])
+    
+    # Plot the cobras motor maps
+    plotUtils.createNewFigure("Motor maps", "angle (degrees)", "1/speed (motor steps)", aspectRatio="auto")
+    plotMotorMaps(np.arange(0, len(bench["center"])), bench)
+ 
     plotUtils.pauseExecution()

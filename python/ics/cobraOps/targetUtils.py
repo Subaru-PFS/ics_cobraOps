@@ -21,14 +21,14 @@ NULL_TARGET_INDEX = -1
 a given cobra."""
 
 
-def generateOneTargetPerCobra(bench, maxDistance=np.Inf):
+def generateOneTargetPerCobra(bench, maximumDistance=np.Inf):
     """Generates a target per cobra using a uniform radial distribution.
 
     Parameters
     ----------
     bench: object
         The bench geometry to use.
-    maxDinstance: float, optional
+    maximumDistance: float, optional
         The maximum radial distance between the targets and the cobra centers.
         Default is no limit.
 
@@ -46,7 +46,7 @@ def generateOneTargetPerCobra(bench, maxDistance=np.Inf):
     
     # Calculate the maximum target distance allowed for each cobra
     rMax = rMax.copy()
-    rMax[rMax > maxDistance] = maxDistance
+    rMax[rMax > maximumDistance] = maximumDistance
     rMax[rMax < rMin] = rMin[rMax < rMin]
     
     # Calculate the relative target positions
@@ -98,7 +98,7 @@ def generateTargets(density, bench):
     return targetPositions
 
 
-def assignTargets(targetPositions, bench):
+def assignTargets(targetPositions, bench, maximumDistance=np.Inf):
     """Assigns a set of targets to the cobras in the bench.
 
     Parameters
@@ -107,6 +107,9 @@ def assignTargets(targetPositions, bench):
         A complex numpy array with the targets coordinates.
     bench: object
         The bench geometry to use.
+    maximumDistance: float, optional
+        The maximum radial distance between the targets and the cobra centers.
+        Default is no limit.
     
     Returns
     -------
@@ -117,7 +120,7 @@ def assignTargets(targetPositions, bench):
     """
     # Get the indices and distances of those targets that can be reached by
     # each cobra
-    (targetIndices, targetDistances) = getAccesibleTargets(targetPositions, bench)
+    (targetIndices, targetDistances) = getAccesibleTargets(targetPositions, bench, maximumDistance)
     
     # Assign a single target to each cobra based of the target distances
     assignedTargets = assignTargetsByDistance(targetIndices, targetDistances)
@@ -129,7 +132,7 @@ def assignTargets(targetPositions, bench):
     return (assignedTargets, fiberPositions)
 
 
-def getAccesibleTargets(targetPositions, bench):
+def getAccesibleTargets(targetPositions, bench, maximumDistance=np.Inf):
     """Returns the targets that each cobra can reach ordered by distance.
 
     Parameters
@@ -138,6 +141,9 @@ def getAccesibleTargets(targetPositions, bench):
         A complex numpy array with the targets coordinates.
     bench: object
         The bench geometry to use.
+    maximumDistance: float, optional
+        The maximum radial distance between the targets and the cobra centers.
+        Default is no limit.
     
     Returns
     -------
@@ -150,6 +156,10 @@ def getAccesibleTargets(targetPositions, bench):
     cobraCenters = bench["center"]
     rMin = bench["rMin"]
     rMax = bench["rMax"]
+    
+    # Calculate the maximum target distance allowed for each cobra
+    rMax = rMax.copy()
+    rMax[rMax > maximumDistance] = maximumDistance
 
     # Obtain the cobra-target associations: select first by the x axis 
     # distance and then by the y axis distance
@@ -269,6 +279,55 @@ def assignTargetsByDistance(targetIndices, targetDistances):
             # Assign the target to the selected cobra
             assignedTargets[cobraToUse] = targetIndex
             freeCobras[cobraToUse] = False
+            freeTargets[targetIndex] = False
+
+    return assignedTargets
+
+
+def assignTargetsRandomly(targetIndices, targetDistances):
+    """Assigns a single target to each cobra using no distance criteria.
+
+    Parameters
+    ----------
+    targetIndices: object
+        A numpy array with the indices of the targets that can be reached by
+        a given cobra.
+    targetDistances: object
+        A numpy array with the distances of the targets that can be reached by
+        a given cobra.
+ 
+    Returns
+    -------
+    tuple
+        A numpy array with the indices of the targets assigned to each cobra.
+
+    """
+    # Assign targets to cobras
+    nCobras = len(targetIndices)
+    assignedTargets = np.full(nCobras, NULL_TARGET_INDEX, dtype="int")       
+    freeTargets = np.full(targetIndices.max() + 1, True, dtype="bool")
+
+    for c in range(nCobras):
+        # Get the accessible targets to this cobra
+        accessibleTargets = targetIndices[c]
+        distances = targetDistances[c]
+        
+        # Remove from the list the NULL_TARGET_INDEX value if it's present
+        cond = accessibleTargets != NULL_TARGET_INDEX
+        accessibleTargets = accessibleTargets[cond]
+        distances = distances[cond]
+       
+        # Select free targets only
+        cond = freeTargets[accessibleTargets]
+        accessibleTargets = accessibleTargets[cond]
+        distances = distances[cond]
+        
+        # Select one target randomly
+        if len(accessibleTargets) > 0:
+            targetIndex = accessibleTargets[np.random.randint(len(accessibleTargets))]
+
+            # Assign the target to the selected cobra
+            assignedTargets[c] = targetIndex
             freeTargets[targetIndex] = False
 
     return assignedTargets

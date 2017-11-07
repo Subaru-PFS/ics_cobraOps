@@ -1,7 +1,7 @@
 """
 
 Some utility methods to make plots using matplotlib.
-  
+
 """
 
 import numpy as np
@@ -9,9 +9,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.path as path
 import matplotlib.collections as collections
+import matplotlib.cm as cm
 
 
-def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
+def createNewFigure(title, xLabel, yLabel, size=(8, 8), aspectRatio="equal", **kwargs):
     """Initializes a new matplotlib figure.
     
     Parameters
@@ -24,6 +25,8 @@ def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
         The label for the y axis.
     size: tuple, optional
         The figure size. Default is (8, 8).
+    aspectRatio: str, optional
+        The axes aspect ratio. Default is "equal".
     kwargs: plt.figure properties
         Any additional property that should be passed to the figure.
     
@@ -35,9 +38,9 @@ def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
     plt.ylabel(yLabel)
     plt.show(block=False)
 
-    # Fix the axes aspect ratio
+    # Set the axes aspect ratio
     ax = plt.gca()
-    ax.set_aspect("equal")
+    ax.set_aspect(aspectRatio)
 
 
 def setAxesLimits(xLim, yLim):
@@ -136,6 +139,22 @@ def addRingsSlow(centers, innerRadii, outerRadii, **kwargs):
 
     # Plot the rings in the current figure
     plt.gca().add_collection(ringCollection)
+
+
+def addLine(x, y, **kwargs):
+    """Adds a line to an already initialized figure.
+
+    Parameters
+    ----------
+    x: object
+        Numpy array with the line x points.
+    y: object
+        Numpy array with the line y points. 
+    kwargs: plt.plot properties
+        Any additional property that should be passed to the plot function.
+    
+    """
+    plt.plot(x, y, **kwargs)
 
 
 def addLines(startPoints, endPoints, **kwargs):
@@ -251,6 +270,37 @@ def addTrajectories(trajectories, **kwargs):
 
     # Plot the trajectory lines in the current figure
     plt.gca().add_collection(trajectoryLineCollection)
+
+
+def getColorMap(colorMapName="Vega10"):
+    """Returns the colors that compose a given matplotlib color map.
+
+    Parameters
+    ----------
+    colorMapName: str, optional
+        The matplotlib color map name. Default is Vega10.
+
+    Returns
+    -------
+    object
+        A numpy array with the color map RGB colors. 
+
+    """
+    return np.array(cm.get_cmap(colorMapName).colors)
+
+
+def saveFigure(fileName, **kwargs):
+    """Saves an image of the current figure.
+
+    Parameters
+    ----------
+    fileName: object
+        The image file name path.
+    kwargs: figure.savefig properties
+        Any additional property that should be passed to the savefig method.
+
+    """   
+    plt.gcf().savefig(fileName, **kwargs)
 
 
 def pauseExecution():
