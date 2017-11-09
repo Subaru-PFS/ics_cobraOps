@@ -476,7 +476,7 @@ def plotBenchGeometry(bench, patrolAreaColors=[0.0, 0.0, 1.0, 0.15], paintHardSt
                            linewidths=1, linestyles="dashdot", color="0.3")
 
 
-def plotCobras(bench, fiberPositions, cobraColors=[0.0, 0.0, 1.0, 0.5]):
+def plotCobras(bench, fiberPositions, cobraColors=[0.0, 0.0, 1.0, 0.5], cobraIndices=None):
     """Plots the bench cobras at the given positions.
 
     Parameters
@@ -487,14 +487,28 @@ def plotCobras(bench, fiberPositions, cobraColors=[0.0, 0.0, 1.0, 0.5]):
         A complex numpy array with the cobra fiber positions.
     cobraColors: object, optional
         The cobra colors. Default is light blue.
-    
+    cobraIndices: object, optional
+        The indices of the cobras that should be plot. If None, all cobras will
+        be plotted. Default is None.
+
     """
     # Extract some useful information from the bench geometry
     cobraCenters = bench["center"]
     L1 = bench["L1"]
     L2 = bench["L2"]
     minDist = bench["minDist"]
-    
+
+    # Select only the requested cobras
+    if cobraIndices is not None:
+        cobraCenters = cobraCenters[cobraIndices]
+        L1 = L1[cobraIndices]
+        L2 = L2[cobraIndices]
+        minDist = minDist[cobraIndices]
+        fiberPositions = fiberPositions[cobraIndices]
+        
+        if cobraColors.ndim == 2:
+            cobraColors = cobraColors[cobraIndices]
+
     # Calculate the elbow positions
     (tht, phi) = getCobraRotationAngles(fiberPositions - cobraCenters, L1, L2)
     elbowPositions = cobraCenters + L1 * np.exp(1j * tht)
@@ -504,12 +518,12 @@ def plotCobras(bench, fiberPositions, cobraColors=[0.0, 0.0, 1.0, 0.5]):
     plotUtils.addThickLines(elbowPositions, fiberPositions, 0.5 * minDist, facecolors=cobraColors)  
 
 
-def plotMotorMaps(cobras, bench):
+def plotMotorMaps(cobraIndices, bench):
     """Plots the bench motor maps of a set of cobras.
 
     Parameters
     ----------
-    cobras: object
+    cobraIndices: object
         A numpy array with the cobra indices.
     bench: object
         The bench object.
@@ -520,11 +534,11 @@ def plotMotorMaps(cobras, bench):
     x2 = np.rad2deg(np.arange(0, np.pi, bench["binWidth"]))
  
     # Plot the motor maps of each cobra
-    for c in cobras:
-        plotUtils.addLine(x1, bench["S1Pm"][c, :len(x1)], color=[0,0,0,0.4])
-        plotUtils.addLine(x1, bench["S1Nm"][c, :len(x1)], color=[1,0,0,0.4])
-        plotUtils.addLine(x2, bench["S2Pm"][c, :len(x2)], color=[0,1,0,0.4])
-        plotUtils.addLine(x2, bench["S2Nm"][c, :len(x2)], color=[0,0,1,0.4])
+    for c in cobraIndices:
+        plotUtils.addLine(x1, bench["S1Pm"][c, :len(x1)], color=[0, 0, 0, 0.4])
+        plotUtils.addLine(x1, bench["S1Nm"][c, :len(x1)], color=[1, 0, 0, 0.4])
+        plotUtils.addLine(x2, bench["S2Pm"][c, :len(x2)], color=[0, 1, 0, 0.4])
+        plotUtils.addLine(x2, bench["S2Nm"][c, :len(x2)], color=[0, 0, 1, 0.4])
 
 
 if __name__ == "__main__":

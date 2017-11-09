@@ -402,6 +402,154 @@ def plotTrajectories(elbowTrajectories, fiberTrajectories, bench, paintFootprint
         plotUtils.addThickLines(fiberPositions, elbowPositions, thiknesses, facecolor=footprintColors)
 
 
+def animateCobraTrajecty(centralCobraIndex, elbowTrajectories, fiberTrajectories, bench, cobraColors=[0.0, 0.0, 1.0, 0.5], fileName=False):
+    """Animates the trajectory of a given cobra.
+
+    Parameters
+    ----------
+    centraCobraIndex: int
+        The index of the cobra that should be animated.
+    elbowTrajectories: object
+        A complex numpy array with the elbow trajectory positions for each
+        cobra.
+    fiberTrajectories: object
+        A complex numpy array with the fiber trajectory positions for each
+        cobra.
+    bench: object
+        The bench geometry to use.
+    cobraColors: object, optional
+        The cobra footprints colors. Default is very light blue.
+    fileName: object, optional
+        The video file name path. If it is set to None, no video will be saved.
+        Default is None.
+    
+    """
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    rMax = bench["rMax"]
+    minDist = bench["minDist"]
+
+    # Get the bench precalculated nearest neighbors information 
+    cobras = bench["NN"]["row"]
+    nearbyCobras = bench["NN"]["col"]
+
+    # Get the indices of the cobras that are near the central cobra
+    nearCentralCobra = nearbyCobras[cobras == centralCobraIndex]
+ 
+    # Set the figure axes limits using the distance from those cobras
+    radius = np.max(np.abs(cobraCenters[nearCentralCobra] - cobraCenters[centralCobraIndex]) + rMax[nearCentralCobra])
+    limRange = radius * np.array([-1, 1]) 
+    xLim = cobraCenters[centralCobraIndex].real + limRange
+    yLim = cobraCenters[centralCobraIndex].imag + limRange
+    plotUtils.setAxesLimits(xLim, yLim)
+
+    # Check which cobras should be animated: only those that fall inside the figure
+    toAnimate = np.full(len(cobraCenters), False)
+    toAnimate[centralCobraIndex] = True
+    toAnimate[nearCentralCobra] = True
+    toAnimate[nearbyCobras[np.in1d(cobras, nearCentralCobra)]] = True   
+    
+    # Plot the cobras that should not be animated at their final position
+    benchUtils.plotCobras(bench, fiberTrajectories[:, -1], cobraColors=cobraColors, cobraIndices=np.logical_not(toAnimate))
+
+    # Limit the relevant arrays to those cobras
+    cobraCenters = cobraCenters[toAnimate]
+    elbowTrajectories = elbowTrajectories[toAnimate]
+    fiberTrajectories = fiberTrajectories[toAnimate]
+    minDist = minDist[toAnimate]
+
+    if cobraColors.ndim == 2:
+        cobraColors = cobraColors[toAnimate]
+
+    # Define the update function
+    lineCollection = None
+    thickLineCollection = None
+    trajectoryCollection = None
+    
+    def update(frame):
+        # The function should be able to modify these variables
+        nonlocal lineCollection
+        nonlocal thickLineCollection
+        nonlocal trajectoryCollection
+                
+        # Remove the cobras line collections painted in the previous step
+        if lineCollection is not None:
+            plotUtils.plt.gca().collections.remove(lineCollection)
+            plotUtils.plt.gca().collections.remove(thickLineCollection)
+            plotUtils.plt.gca().collections.remove(trajectoryCollection)
+        
+        # Paint the cobras that should be animated
+        lineCollection = plotUtils.addLines(cobraCenters, elbowTrajectories[:, frame], edgecolor=cobraColors, linewidths=2)
+        thickLineCollection = plotUtils.addThickLines(elbowTrajectories[:, frame], fiberTrajectories[:, frame], 0.5 * minDist, facecolors=cobraColors)  
+    
+        # Plot also their line trajectories
+        trajectoryCollection = plotUtils.addTrajectories(np.vstack((elbowTrajectories[:, :frame + 1], fiberTrajectories[:, :frame + 1])), color="0.4", linewidth=1)
+
+        # Log some animation information
+        animationPercentage = int(100 * (frame + 1) / elbowTrajectories.shape[1])
+        
+        if animationPercentage % 20 == 0:
+            print("Trajectory percentage: {}%".format(animationPercentage))
+
+    # Add the animation to the current figure
+    plotUtils.addAnimation(update, elbowTrajectories.shape[1], fileName=fileName)
+
+
+def animateTrajectories(elbowTrajectories, fiberTrajectories, bench, cobraColors=[0.0, 0.0, 1.0, 0.5]):
+    """Animates the cobra trajectories.
+
+    Parameters
+    ----------
+    elbowTrajectories: object
+        A complex numpy array with the elbow trajectory positions for each
+        cobra.
+    fiberTrajectories: object
+        A complex numpy array with the fiber trajectory positions for each
+        cobra.
+    bench: object
+        The bench geometry to use.
+    cobraColors: object, optional
+        The cobra footprints colors. Default is very light blue.
+    
+    """
+    # Extract some useful information from the bench geometry
+    cobraCenters = bench["center"]
+    minDist = bench["minDist"]
+
+    # Define the update function
+    lineCollection = None
+    thickLineCollection = None
+    trajectoryCollection = None
+    
+    def update(frame):
+        # The function should be able to modify these variables
+        nonlocal lineCollection
+        nonlocal thickLineCollection
+        nonlocal trajectoryCollection
+        
+        # Remove the cobras line collections painted in the previous step
+        if lineCollection is not None:
+            plotUtils.plt.gca().collections.remove(lineCollection)
+            plotUtils.plt.gca().collections.remove(thickLineCollection)
+            plotUtils.plt.gca().collections.remove(trajectoryCollection)
+        
+        # Paint the cobras that should be animated
+        lineCollection = plotUtils.addLines(cobraCenters, elbowTrajectories[:, frame], edgecolor=cobraColors, linewidths=2)
+        thickLineCollection = plotUtils.addThickLines(elbowTrajectories[:, frame], fiberTrajectories[:, frame], 0.5 * minDist, facecolors=cobraColors)  
+    
+        # Plot also their line trajectories
+        trajectoryCollection = plotUtils.addTrajectories(np.vstack((elbowTrajectories[:, :frame + 1], fiberTrajectories[:, :frame + 1])), color="0.4", linewidth=1)
+
+        # Log some animation information
+        animationPercentage = int(100 * (frame + 1) / elbowTrajectories.shape[1])
+        
+        if animationPercentage % 20 == 0:
+            print("Trajectory percentage: {}%".format(animationPercentage))
+
+    # Add the animation to the current figure
+    plotUtils.addAnimation(update, elbowTrajectories.shape[1], fileName=None)
+
+
 if __name__ == "__main__":
     # Import the necessary modules
     import time as time
