@@ -151,16 +151,16 @@ def getBenchCalibrationData(fileName):
             mapRangePhi[i] = np.deg2rad([0, nSteps * angularStep[i]]) - np.pi
 
             # Get the cobra motors speeds in degrees per step
-            Joint1Fwd = slowCalTable.find("Joint1_fwd_stepsizes").text.split(",")[2:-1]
-            Joint1Rev = slowCalTable.find("Joint1_rev_stepsizes").text.split(",")[2:-1]
-            Joint2Fwd = slowCalTable.find("Joint2_fwd_stepsizes").text.split(",")[2:-1]
-            Joint2Rev = slowCalTable.find("Joint2_rev_stepsizes").text.split(",")[2:-1]
+            joint1Fwd = slowCalTable.find("Joint1_fwd_stepsizes").text.split(",")[2:-1]
+            joint1Rev = slowCalTable.find("Joint1_rev_stepsizes").text.split(",")[2:-1]
+            joint2Fwd = slowCalTable.find("Joint2_fwd_stepsizes").text.split(",")[2:-1]
+            joint2Rev = slowCalTable.find("Joint2_rev_stepsizes").text.split(",")[2:-1]
 
             # Calculate the motor steps required to move that angular step
-            S1Pm[i] = angularStep[i] / np.array(list(map(float, Joint1Fwd)))
-            S1Nm[i] = angularStep[i] / np.array(list(map(float, Joint1Rev)))
-            S2Pm[i] = angularStep[i] / np.array(list(map(float, Joint2Fwd)))
-            S2Nm[i] = angularStep[i] / np.array(list(map(float, Joint2Rev)))
+            S1Pm[i] = angularStep[i] / np.array(list(map(float, joint1Fwd)))
+            S1Nm[i] = angularStep[i] / np.array(list(map(float, joint1Rev)))
+            S2Pm[i] = angularStep[i] / np.array(list(map(float, joint2Fwd)))
+            S2Nm[i] = angularStep[i] / np.array(list(map(float, joint2Rev)))
 
     # HACK SOLUTION TO BAD PHI HOMES [2016-07-15] 
     phiIn = np.maximum(-np.pi, phiIn)
@@ -340,12 +340,16 @@ def defineBenchGeometry(centers, useRealMaps, useRealLinks):
     # Calculate the cobras distance matrix
     distanceMatrix = np.abs(centers[:, np.newaxis] - centers)
     
-    # Obtain the nearest neighbors map 
-    distCenters = COBRAS_SEPARATION * np.median(L1 + L2) / (2 * LINK_LENGTH)
-    nnMap = np.logical_and(distanceMatrix > 1e-9, distanceMatrix < 1.5 * distCenters)
+    # Mask the diagonal because it contains same cobra distances
+    distanceMatrix[np.identity(len(centers), dtype="bool")] = np.Inf
+    
+    # Calculate the median minimum distance between cobras
+    medianMinDistance = np.median(np.min(distanceMatrix, axis=1))
+        
+    # Obtain the nearest neighbors indices 
+    (row, col) = np.where(distanceMatrix < 1.5 * medianMinDistance)
 
     # Save the nearest neighbors results on a more useful structure  
-    (row, col) = np.where(nnMap)
     NN = {}
     NN["row"] = row
     NN["col"] = col

@@ -55,7 +55,7 @@ for i in range(len(maxDistanceArray)):
 
     # Get the indices and distances of the targets that can be reached by each
     # cobra, making sure that their distance is smaller than maxDistance
-    (targetIndices, targetDistances) = targetUtils.getAccesibleTargets(targetPositions, bench, maxDistanceArray[i])
+    (targetIndices, targetDistances) = targetUtils.getAccessibleTargets(targetPositions, bench, maxDistanceArray[i])
 
     # Assign targets to cobras and set the fiber positions
     if solveCollisions:

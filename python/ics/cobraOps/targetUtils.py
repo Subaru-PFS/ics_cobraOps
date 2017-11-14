@@ -120,7 +120,7 @@ def assignTargets(targetPositions, bench, maximumDistance=np.Inf):
     """
     # Get the indices and distances of those targets that can be reached by
     # each cobra
-    (targetIndices, targetDistances) = getAccesibleTargets(targetPositions, bench, maximumDistance)
+    (targetIndices, targetDistances) = getAccessibleTargets(targetPositions, bench, maximumDistance)
     
     # Assign a single target to each cobra based of the target distances
     assignedTargets = assignTargetsByDistance(targetIndices, targetDistances)
@@ -132,7 +132,7 @@ def assignTargets(targetPositions, bench, maximumDistance=np.Inf):
     return (assignedTargets, fiberPositions)
 
 
-def getAccesibleTargets(targetPositions, bench, maximumDistance=np.Inf):
+def getAccessibleTargets(targetPositions, bench, maximumDistance=np.Inf):
     """Returns the targets that each cobra can reach ordered by distance.
 
     Parameters
