@@ -7,11 +7,14 @@ Calculates some cobra collision statistics.
 import os
 import numpy as np
 
-import ics.cobraOps.benchUtils as benchUtils
-import ics.cobraOps.cobraUtils as cobraUtils
 import ics.cobraOps.plotUtils as plotUtils
 import ics.cobraOps.targetUtils as targetUtils
-import ics.cobraOps.trajectoryUtils as trajectoryUtils
+
+from ics.cobraOps.Bench import Bench
+from ics.cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
+from ics.cobraOps.CollisionSimulator import CollisionSimulator
+from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
+from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 
 
 # Decide if the code should try to solve cobra collisions assigning new targets
@@ -40,70 +43,32 @@ unassignedCobrasArray = np.zeros(len(maxDistanceArray))
 collisionsArray = np.zeros(len(maxDistanceArray))
 endCollisionsArray = np.zeros(len(maxDistanceArray))
 
-# Get the cobras central positions for the full PFI
-cobraCenters = cobraUtils.getCobrasCenters("full")
+# Load the cobras calibration product
+calibrationProduct = CobrasCalibrationProduct("updatedMotorMapsFromThisRun2.xml")
 
 # Calculate the collisions for each maxDist-density combination
 for i in range(len(maxDistanceArray)):
     print("TargetDensity", targetDensityArray[i], "MaxDistance", maxDistanceArray[i])
     
-    # Define the bench geometry
-    bench = benchUtils.defineBenchGeometry(cobraCenters, True, True)
-
+    # Create the bench instance
+    bench = Bench(layout="full", calibrationProduct=calibrationProduct)
+    
     # Create a random sample of targets
-    targetPositions = targetUtils.generateTargets(targetDensityArray[i], bench)
-
-    # Get the indices and distances of the targets that can be reached by each
-    # cobra, making sure that their distance is smaller than maxDistance
-    (targetIndices, targetDistances) = targetUtils.getAccessibleTargets(targetPositions, bench, maxDistanceArray[i])
-
-    # Assign targets to cobras and set the fiber positions
-    if solveCollisions:
-        # Assign a single target to each cobra based on their separation
-        assignedTargets = targetUtils.assignTargetsByDistance(targetIndices, targetDistances)
-        
-        # Solve possible cobra collision reassigning some of the cobras and
-        # set the cobra fiber position
-        fiberPositions = targetUtils.solveCobraCollisions(assignedTargets, targetIndices, targetPositions, bench)
-    else:
-        # Assign a single target to each cobra randomly       
-        assignedTargets = targetUtils.assignTargetsRandomly(targetIndices, targetDistances)
-        
-        # Set the cobra fiber positions
-        cobrasWithTarget = assignedTargets != targetUtils.NULL_TARGET_INDEX
-        fiberPositions = bench["home0"].copy()
-        fiberPositions[cobrasWithTarget] = targetPositions[assignedTargets[cobrasWithTarget]]  
-
-    # Calculate the cobra trajectories
-    (positiveMovement, nStepsP, nStepsN) = trajectoryUtils.defineThetaMovementDirection(fiberPositions, bench)
-    (elbowTrajectories, fiberTrajectories) = trajectoryUtils.calculateTrajectories(fiberPositions, positiveMovement, bench)
-
-    # Calculate the cobra trajectory collisions
-    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = trajectoryUtils.detectCollisions(elbowTrajectories, fiberTrajectories, bench)
-
-    # Swap the theta movement direction for some of the problematic cobras
-    cobrasToSwap = trajectoryUtils.getCobrasToSwap(problematicCobras, nearbyProblematicCobras, trajectoryCollisions, True)
-    positiveMovement = trajectoryUtils.swapThetaMovementDirection(cobrasToSwap, positiveMovement, nStepsP, nStepsN)
-    (elbowTrajectories, fiberTrajectories) = trajectoryUtils.calculateTrajectories(fiberPositions, positiveMovement, bench)
-    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = trajectoryUtils.detectCollisions(elbowTrajectories, fiberTrajectories, bench)
-
-    # Swap the theta movement direction for some of the problematic cobras
-    cobrasToSwap = trajectoryUtils.getCobrasToSwap(problematicCobras, nearbyProblematicCobras, trajectoryCollisions, False)
-    positiveMovement = trajectoryUtils.swapThetaMovementDirection(cobrasToSwap, positiveMovement, nStepsP, nStepsN)
-    (elbowTrajectories, fiberTrajectories) = trajectoryUtils.calculateTrajectories(fiberPositions, positiveMovement, bench)
-    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = trajectoryUtils.detectCollisions(elbowTrajectories, fiberTrajectories, bench)
-
-    # Swap the theta movement direction for some of the problematic cobras
-    cobrasToSwap = trajectoryUtils.getCobrasToSwap(problematicCobras, nearbyProblematicCobras, trajectoryCollisions, True)
-    positiveMovement = trajectoryUtils.swapThetaMovementDirection(cobrasToSwap, positiveMovement, nStepsP, nStepsN)
-    (elbowTrajectories, fiberTrajectories) = trajectoryUtils.calculateTrajectories(fiberPositions, positiveMovement, bench)
-    (problematicCobras, nearbyProblematicCobras, trajectoryCollisions) = trajectoryUtils.detectCollisions(elbowTrajectories, fiberTrajectories, bench)
+    targets = targetUtils.generateTargets(targetDensityArray[i], bench)
+    
+    # Select the targets
+    selector = DistanceTargetSelector(bench, targets)
+    selector.run(maximumDistance=maxDistanceArray[i], solveCollisions=solveCollisions)
+    selectedTargets = selector.getSelectedTargets()
+    
+    # Simulate an observation
+    simulator = CollisionSimulator(bench, selectedTargets)
+    simulator.run()
     
     # Fill the statistics arrays
-    unassignedCobrasArray[i] = np.sum(assignedTargets == targetUtils.NULL_TARGET_INDEX)
-    collisionsArray[i] = len(np.unique(problematicCobras))
-    endCollisions = np.logical_and(trajectoryCollisions[problematicCobras, -1], trajectoryCollisions[nearbyProblematicCobras, -1])
-    endCollisionsArray[i] = len(np.unique(problematicCobras[endCollisions]))
+    unassignedCobrasArray[i] = np.sum(simulator.assignedCobras == False)
+    collisionsArray[i] = np.sum(simulator.collisionDetected)
+    endCollisionsArray[i] = np.sum(simulator.endPointCollisionDetected)
 
 
 # Plot the collision probabilities
@@ -115,17 +80,17 @@ for i, targetDensity in enumerate(targetDensitySteps):
 
 plotUtils.createNewFigure("Cobra unassignment probability", "Target distance", "Probability", size=(6, 6), aspectRatio="auto")
 plotUtils.setAxesLimits([2.4, 5.1], [-0.01, 0.61])
-plotUtils.plt.scatter(maxDistanceArray, unassignedCobrasArray / len(cobraCenters), facecolor=colors, s=8)
+plotUtils.plt.scatter(maxDistanceArray, unassignedCobrasArray / bench.cobras.nCobras, facecolor=colors, s=8)
 plotUtils.saveFigure(os.path.join(outputDir, "unassignmentProbability" + suffix + ".png"))
 
 plotUtils.createNewFigure("Cobra collision probability", "Target distance", "Probability", size=(6, 6), aspectRatio="auto")
 plotUtils.setAxesLimits([2.4, 5.1], [-0.01, 0.16])
-plotUtils.plt.scatter(maxDistanceArray, collisionsArray / len(cobraCenters), facecolor=colors, s=8)
+plotUtils.plt.scatter(maxDistanceArray, collisionsArray / bench.cobras.nCobras, facecolor=colors, s=8)
 plotUtils.saveFigure(os.path.join(outputDir, "collisionProbability" + suffix + ".png"))
 
 plotUtils.createNewFigure("Cobra trajectory collision probability", "Target distance", "Probability", size=(6, 6), aspectRatio="auto")
 plotUtils.setAxesLimits([2.4, 5.1], [-0.01, 0.16])
-plotUtils.plt.scatter(maxDistanceArray, (collisionsArray - endCollisionsArray) / len(cobraCenters), facecolor=colors, s=8)
+plotUtils.plt.scatter(maxDistanceArray, (collisionsArray - endCollisionsArray) / bench.cobras.nCobras, facecolor=colors, s=8)
 plotUtils.saveFigure(os.path.join(outputDir, "trajCollisionProbability" + suffix + ".png"))
 
 plotUtils.pauseExecution()
