@@ -21,7 +21,6 @@ from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 targetDensity = 1.5
 
 # Load the cobras calibration product
-start = time.time()
 calibrationProduct = CobrasCalibrationProduct("updatedMotorMapsFromThisRun2.xml")
 
 # Create the bench instance
@@ -38,42 +37,21 @@ selector.run()
 selectedTargets = selector.getSelectedTargets()
 
 # Simulate an observation
+start = time.time()
 simulator = CollisionSimulator(bench, selectedTargets)
 simulator.run()
-print("Number of cobras involved in collisions:", np.sum(simulator.collisionDetected))
-print("Number of cobras unaffected by end collisions: ", np.sum(simulator.collisionDetected) - np.sum(simulator.endPointCollisionDetected))
-print("Total computation time (s):", time.time() - start)
+print("Number of cobras involved in collisions:", simulator.nCollisions)
+print("Number of cobras unaffected by end collisions: ", simulator.nCollisions - simulator.nEndPointCollisions)
+print("Total simulation time (s):", time.time() - start)
 
 # Plot the simulation results
-start = time.time()
-plotUtils.createNewFigure("Collision simulation results", "x position (mm)", "y position (mm)")
+simulator.plotResults(extraTargets=targets, paintFootprints=False)
 
-# Set the axes limits
-limRange = 1.05 * bench.radius * np.array([-1, 1])
-xLim = bench.center.real + limRange
-yLim = bench.center.imag + limRange
-plotUtils.setAxesLimits(xLim, yLim)
+# Animate one of the trajectory collisions
+(problematicCobras,) = np.where(np.logical_and(simulator.collisions, simulator.endPointCollisions == False))
 
-# Draw the cobra patrol areas
-patrolAreaColors = np.full((bench.cobras.nCobras, 4), [0.0, 0.0, 1.0, 0.15])
-patrolAreaColors[simulator.collisionDetected] = [1.0, 0.0, 0.0, 0.3]
-patrolAreaColors[simulator.endPointCollisionDetected] = [0.0, 1.0, 0.0, 0.5]
-bench.cobras.addPatrolAreasToFigure(colors=patrolAreaColors)
+if len(problematicCobras):
+    simulator.animateCobraTrajectory(problematicCobras[0], extraTargets=targets)
 
-# Draw the cobra links at the final fiber positions
-linkColors = np.full((bench.cobras.nCobras, 4), [0.0, 0.0, 1.0, 0.5])
-linkColors[simulator.assignedCobras == False] = [1.0, 0.0, 0.0, 0.25]
-bench.cobras.addLinksToFigure(simulator.finalFiberPositions, colors=linkColors)
-
-# Draw the cobra trajectories and the trajectory footprints of those that have
-# a collision
-footprintColors = np.zeros((bench.cobras.nCobras, simulator.trajectories.nSteps, 4))
-footprintColors[simulator.collisionDetected, :] = [0.0, 0.0, 1.0, 0.05]
-simulator.trajectories.addToFigure(paintFootprints=True, footprintColors=footprintColors)
-
-# Draw all the targets
-targets.addToFigure(colors=np.array([0.4, 0.4, 0.4, 1.0]))
-selectedTargets.addToFigure(colors=np.array([1.0, 0.0, 0.0, 1.0]))
-
-print("Plotting time (s):", time.time() - start)
+# Pause the execution to have time to inspect the figures
 plotUtils.pauseExecution()

@@ -12,10 +12,11 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
+import ics.cobraOps.plotUtils as plotUtils
+
 from ics.cobraOps.TrajectoryGroup import TrajectoryGroup
 from ics.cobraOps.cobraConstants import (TRAJECTORY_BIN_WIDTH,
-                                         TRAJECTORY_MAX_STEPS,
-                                         NULL_TARGET_ID)
+                                         TRAJECTORY_MAX_STEPS)
 
 
 class CollisionSimulator():
@@ -45,19 +46,22 @@ class CollisionSimulator():
         self.bench = bench
         self.targets = targets
         
-        # Define some internal arrays that will filled by the run method
-        self.assignedCobras = None
+        # Check which cobras are assigned to a target
+        self.assignedCobras = self.targets.notNull.copy()
+        
+        # Define some internal variables that will filled by the run method
         self.finalFiberPositions = None
-        self.nStepsP = None
-        self.nStepsN = None
-        self.positiveThtMovement = None
-        self.positivePhiMovement = None
+        self.posSteps = None
+        self.negSteps = None
+        self.movementDirections = None
         self.movementStrategies = None
         self.trajectories = None
-        self.trajectoryCollisions = None
         self.associationCollisions = None
-        self.collisionDetected = None
-        self.endPointCollisionDetected = None
+        self.associationEndPointCollisions = None
+        self.collisions = None
+        self.endPointCollisions = None
+        self.nCollisions = None
+        self.nEndPointCollisions = None
     
     
     def run(self, solveCollisions=True):
@@ -67,8 +71,8 @@ class CollisionSimulator():
         ----------
         solveCollisions: bool, optional
             If True, the simulator will try to solve trajectory collisions,
-            changing the theta movement direction of the affected cobras.
-            Default is True.
+            changing the movement directions and strategies of the affected
+            cobras. Default is True.
         
         """
         # Calculate the final fiber positions
@@ -84,33 +88,222 @@ class CollisionSimulator():
         self.calculateTrajectories()
         
         # Detect cobra collisions during the trajectory
-        self.detectCollisions()
+        self.detectTrajectoryCollisions()
         
         # Solve trajectory collisions if requested
         if solveCollisions:
-            self.solveTrajectoryCollisions(selectLowerIndices=True)
-            self.solveTrajectoryCollisions(selectLowerIndices=False)
-            self.solveTrajectoryCollisions(selectLowerIndices=True)
+            self.solveTrajectoryCollisions(True)
+            self.solveTrajectoryCollisions(False)
+            self.solveTrajectoryCollisions(True)
     
     
-    def solveTrajectoryCollisions(self, selectLowerIndices=True):
+    def calculateFinalFiberPositions(self):
+        """Calculates the cobras final fiber positions.
+        
+        """
+        # Set the final fiber positions to their associated target positions,
+        # leaving unassigned cobras at their home positive positions
+        self.finalFiberPositions = self.bench.cobras.home0.copy()
+        self.finalFiberPositions[self.assignedCobras] = self.targets.positions[self.assignedCobras]
+        
+        # Optimize the unassigned cobra positions to minimize their possible
+        # collisions with other cobras
+        self.optimizeUnassignedCobraPositions()
+    
+    
+    def optimizeUnassignedCobraPositions(self):
+        """Finds the unassigned cobras final fiber positions that minimize
+        their collisions with other cobras.
+        
+        """
+        # Calculate the cobras elbow positions at their current final fiber
+        # positions
+        elbowPositions = self.bench.cobras.calculateElbowPositions(self.finalFiberPositions)
+        
+        # Get the unassigned cobra indices
+        (unassigendCobraIndices,) = np.where(self.assignedCobras == False)
+        
+        # Find the optimal position for each unassigned cobra
+        for c in unassigendCobraIndices:
+            # Get the cobra nearest neighbors
+            cobraNeighbors = self.bench.getCobraNeighbors(c)
+            
+            # Select only those that are assigned to a target
+            cobraNeighbors = cobraNeighbors[self.assignedCobras[cobraNeighbors]]
+            
+            # Jump to the next cobra if all the neighbors are unassigned
+            if len(cobraNeighbors) == 0:
+                continue
+            
+            # Calculate all the possible cobra elbow rotations
+            rotationAngles = np.arange(0, 2 * np.pi, 0.1 * np.pi)
+            center = self.bench.cobras.centers[c]
+            rotatedElbowPositions = (elbowPositions[c] - center) * np.exp(1j * rotationAngles) + center
+            
+            # Obtain the angle that maximizes the closer distance to a neighbor
+            distances = np.abs(self.finalFiberPositions[cobraNeighbors] - rotatedElbowPositions[:, np.newaxis])
+            minDistances = np.min(distances, axis=1)
+            optimalAngle = rotationAngles[np.argmax(minDistances)]
+            
+            # Update the cobra final fiber position
+            self.finalFiberPositions[c] = (self.finalFiberPositions[c] - center) * np.exp(1j * optimalAngle) + center
+    
+    
+    def defineMovementDirections(self):
+        """Defines the theta and phi movement directions that the cobras should
+        follow.
+        
+        The movement directions are encoded in a boolean array with 2 rows and
+        as many columns as cobras in the array:
+            - The first row indicates the theta movement direction: positive
+            for True values, and negative for False values.
+            - The second row indicates the phi movement direction: positive
+            for True values, and negative for False values.
+        
+        """
+        # Get the cobra rotation angles for the starting positive and negative
+        # home positions and the final fiber positions
+        (posStartTht, posStartPhi) = self.bench.cobras.calculateRotationAngles(self.bench.cobras.home0)
+        (negStartTht, negStartPhi) = self.bench.cobras.calculateRotationAngles(self.bench.cobras.home1)
+        (finalTht, finalPhi) = self.bench.cobras.calculateRotationAngles(self.finalFiberPositions)
+        
+        # Calculate the required theta and phi delta offsets to move from the
+        # positive and negative starting positions to the final positions
+        posDeltaTht = np.mod(finalTht - posStartTht, 2 * np.pi)
+        negDeltaTht = -np.mod(negStartTht - finalTht, 2 * np.pi)
+        posDeltaPhi = finalPhi - posStartPhi
+        negDeltaPhi = finalPhi - negStartPhi
+        
+        # Calculate the number of steps required to reach the final positions
+        # from the positive and the negative starting positions
+        self.posSteps = np.ceil(np.max((np.abs(posDeltaTht), np.abs(posDeltaPhi)), axis=0) / TRAJECTORY_BIN_WIDTH).astype("int") + 1
+        self.negSteps = np.ceil(np.max((np.abs(negDeltaTht), np.abs(negDeltaPhi)), axis=0) / TRAJECTORY_BIN_WIDTH).astype("int") + 1
+        
+        # Make sure that at least one of the movements requires less steps than
+        # the maximum number of steps allowed
+        if np.any(np.min((self.posSteps, self.negSteps), axis=0) > TRAJECTORY_MAX_STEPS):
+            raise Exception("TRAJECTORY_MAX_STEPS value should be set to a higher value.")
+        
+        # Decide if the cobras should follow a positive theta movement
+        # direction:
+        #    - The positive movement should require less steps than the
+        #    negative movement.
+        #    - The cobra fibers should not go too far in phi, because it is
+        #    easier to have collisions when moving in the positive direction.
+        posThtMovement = np.logical_and(self.posSteps < self.negSteps, finalPhi < -0.3 * np.pi)
+        
+        # Select the positive theta movement if the negative movement would
+        # require too many steps
+        posThtMovement[self.negSteps > TRAJECTORY_MAX_STEPS] = True
+        
+        # Calculate the phi movement direction
+        posPhiMovement = negDeltaPhi > 0
+        posPhiMovement[posThtMovement] = posDeltaPhi[posThtMovement] > 0
+        
+        # Save the results in a single array
+        self.movementDirections = np.vstack((posThtMovement, posPhiMovement))
+    
+    
+    def defineMovementStrategies(self):
+        """Defines the theta and phi movement strategies that the cobras should
+        follow.
+        
+        There are only three strategies that really make sense:
+            - Early theta and early phi movements, when phi is moving towards
+            the cobra center.
+            - Early theta and late phi movements, when the theta movement is in
+            the positive direction.
+            - Late theta and late phi movements, when the theta movement is in
+            the negative direction.
+        
+        The movement strategies are encoded in a boolean array with 2 rows and
+        as many columns as cobras in the array:
+            - The first row indicates the theta movement strategy: "early" for
+            True values, and "late" for False values.
+            - The second row indicates the phi movement strategy: "early" for
+            True values, and "late" for False values.
+        
+        """
+        # By default always do late theta and late phi movements
+        thtEarly = np.full(self.bench.cobras.nCobras, False)
+        phiEarly = thtEarly.copy()
+        
+        # Do early theta movements when moving in the theta positive direction
+        thtEarly[self.movementDirections[0]] = True
+        
+        # If the cobra is moving towards the center, do the theta and phi
+        # movements as early as possible
+        towardsTheCenter = np.logical_not(self.movementDirections[1])
+        thtEarly[towardsTheCenter] = True
+        phiEarly[towardsTheCenter] = True
+        
+        # Do early movements for unassigned cobras
+        thtEarly[self.assignedCobras == False] = True
+        phiEarly[self.assignedCobras == False] = True
+        
+        # Save the results in a single array
+        self.movementStrategies = np.vstack((thtEarly, phiEarly))
+    
+    
+    def calculateTrajectories(self):
+        """Calculates the cobra trajectories.
+        
+        """
+        self.trajectories = TrajectoryGroup(self.bench, self.finalFiberPositions, self.movementDirections, self.movementStrategies)
+    
+    
+    def detectTrajectoryCollisions(self):
+        """Detects collisions in the cobra trajectories.
+        
+        """
+        # Detect trajectory collisions between cobra associations
+        trajectoryCollisions = self.trajectories.calculateCobraAssociationCollisions()
+        
+        # Check which are the cobra associations affected by collisions
+        self.associationCollisions = np.any(trajectoryCollisions, axis=1)
+        self.associationEndPointCollisions = trajectoryCollisions[:, -1]
+        
+        # Check which cobras are involved in collisions
+        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationCollisions])
+        self.collisions = np.full(self.bench.cobras.nCobras, False)
+        self.collisions[collidingCobras] = True
+        self.nCollisions = np.sum(self.collisions)
+        
+        # Check which cobras are involved in end point collisions
+        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationEndPointCollisions])
+        self.endPointCollisions = np.full(self.bench.cobras.nCobras, False)
+        self.endPointCollisions[collidingCobras] = True
+        self.nEndPointCollisions = np.sum(self.endPointCollisions)
+    
+    
+    def solveTrajectoryCollisions(self, selectLowerIndices):
         """Solves trajectory collisions changing the cobras theta movement
         directions.
         
         Parameters
         ----------
-        selectLowerIndices: bool, optional
-            If True, the cobras selected to be changed will be the ones with
-            the lower index values. Default is True.
+        selectLowerIndices: bool
+            If True, the cobras selected to be changed in the association will
+            be the ones with the lower indices values.
         
         """
-        # Get the cobras whose theta movement direction should be swapped
-        cobrasToSwap = self.getCobrasToSwap(selectLowerIndices=selectLowerIndices)
+        # Get the indices of the cobras involved in a mid point trajectory
+        # collision
+        associationMidPointCollisions = np.logical_and(self.associationCollisions, self.associationEndPointCollisions == False)
+        collidingAssociations = self.bench.nearestNeighbors[:, associationMidPointCollisions]
+        
+        # Select the indices of the cobras whose movement should be changed
+        cobraIndices = np.unique(collidingAssociations[0] if selectLowerIndices else collidingAssociations[1])
         
         # Make sure that there is at least one cobra to change
-        if len(cobrasToSwap) > 0:
-            # Swapp the cobras theta movement direction
-            self.swapThetaMovementDirection(cobrasToSwap)
+        if len(cobraIndices) > 0:
+            # Change the cobras theta movement directions
+            self.movementDirections[0, cobraIndices] = np.logical_not(self.movementDirections[0, cobraIndices])
+            
+            # Make sure that the new movement directions don't require too many
+            # steps
+            self.movementDirections[0, self.posSteps > TRAJECTORY_MAX_STEPS] = False
+            self.movementDirections[0, self.negSteps > TRAJECTORY_MAX_STEPS] = True
             
             # Define the theta and phi movement strategies
             self.defineMovementStrategies()
@@ -118,173 +311,155 @@ class CollisionSimulator():
             # Calculate the cobra trajectories
             self.calculateTrajectories()
             
-            # Detect cobra collisions during the trajectory
-            self.detectCollisions()
+            # Recalculate the cobra collisions during the trajectory
+            self.recalculateTrajectoryCollisions(cobraIndices)
     
     
-    def calculateFinalFiberPositions(self):
-        """Calculates the cobras final fiber positions.
+    def recalculateTrajectoryCollisions(self, cobraIndices):
+        """Recalculates the trajectory collision information for the given
+        cobras.
+        
+        Parameters
+        ----------
+        cobraIndices: object
+            A numpy array with the indices of the cobras whose movement has
+            changed.
         
         """
-        # Check which cobras are assigned to a target
-        self.assignedCobras = self.targets.notNull.copy()
+        # Get the cobra associations for the given cobras
+        cobraAssociations = np.in1d(self.bench.nearestNeighbors[0], cobraIndices)
+        cobraAssociations = np.logical_or(cobraAssociations, np.in1d(self.bench.nearestNeighbors[1], cobraIndices))
         
-        # Set the final fiber positions to their associated target positions,
-        # leaving unassigned cobras at their home positive positions
-        self.finalFiberPositions = self.bench.cobras.home0.copy()
-        self.finalFiberPositions[self.assignedCobras] = self.targets.positions[self.assignedCobras]
-    
-    
-    def defineMovementDirections(self):
-        """Defines the cobras theta and phi movement directions.
+        # Detect trajectory collisions between these cobra associations
+        trajectoryCollisions = self.trajectories.calculateCobraAssociationCollisions(cobraAssociations)
         
-        """
-        # Get the cobra rotation angles for the starting home positions and the
-        # final fiber positions
-        (startThtP, startPhiP) = self.bench.cobras.calculateRotationAngles(self.bench.cobras.home0)
-        (startThtN, startPhiN) = self.bench.cobras.calculateRotationAngles(self.bench.cobras.home1)
-        (finalTht, finalPhi) = self.bench.cobras.calculateRotationAngles(self.finalFiberPositions)
-        
-        # Calculate the required theta and phi delta offsets to move from the
-        # positive and negative starting positions to the final positions
-        deltaThtP = np.mod(finalTht - startThtP, 2 * np.pi)
-        deltaThtN = -np.mod(startThtN - finalTht, 2 * np.pi)
-        deltaPhiP = finalPhi - startPhiP
-        deltaPhiN = finalPhi - startPhiN
-        
-        # Calculate the number of steps in the positive and the negative
-        # directions
-        self.nStepsP = np.ceil(np.max((np.abs(deltaThtP), np.abs(deltaPhiP)), axis=0) / TRAJECTORY_BIN_WIDTH).astype("int") + 1
-        self.nStepsN = np.ceil(np.max((np.abs(deltaThtN), np.abs(deltaPhiN)), axis=0) / TRAJECTORY_BIN_WIDTH).astype("int") + 1
-        
-        # Make sure that at least one of the movements requires less steps than
-        # the maximum number of steps allowed
-        if np.any(np.min((self.nStepsP, self.nStepsN), axis=0) > TRAJECTORY_MAX_STEPS):
-            raise Exception("TRAJECTORY_MAX_STEPS value should be set to a higher value.")
-        
-        # Decide if the cobras should follow a positive theta movement
-        # direction:
-        #
-        #  - The positive movement should require less steps than the negative
-        #    movement.
-        #  - The cobra fibers should not go too far in phi (it is easier to
-        #    have collisions when moving in the positive direction).
-        self.positiveThtMovement = np.logical_and(self.nStepsP < self.nStepsN, finalPhi < -0.3 * np.pi)
-        
-        # Select the positive movement if the negative movement would require
-        # too many steps
-        self.positiveThtMovement[self.nStepsN > TRAJECTORY_MAX_STEPS] = True
-        
-        # Calculate the phi movement direction
-        self.positivePhiMovement = deltaPhiN > 0
-        self.positivePhiMovement[self.positiveThtMovement] = deltaPhiP[self.positiveThtMovement] > 0
-    
-    
-    def defineMovementStrategies(self):
-        """Defines the movement strategies that the cobras should follow.
-        
-        There are only three options that really make sense:
-        
-            - Early theta and early phi movements
-            - Early theta and late phi movements
-            - Late theta and late phi movements
-        
-        """
-        # By default always do late-late movements
-        thtEarly = np.full(self.bench.cobras.nCobras, False)
-        phiEarly = thtEarly.copy()
-        
-        # Do early theta movements when moving in the theta positive direction
-        thtEarly[self.positiveThtMovement] = True
-        
-        # If the cobra is moving towards the center, do the theta and phi
-        # movements as early as possible
-        thtEarly[self.positivePhiMovement == False] = True
-        phiEarly[self.positivePhiMovement == False] = True
-        
-        # Save the results in a single array
-        self.movementStrategies = np.vstack((thtEarly, phiEarly))
-    
-    
-    def calculateTrajectories(self):
-        """Obtains the cobra trajectories.
-        
-        """
-        self.trajectories = TrajectoryGroup(self.bench, self.finalFiberPositions, self.positiveThtMovement, self.movementStrategies)
-    
-    
-    def detectCollisions(self):
-        """Detects collisions in the cobra trajectories.
-        
-        """
-        # Detect cobra to nearby cobra collisions at the same trajectory step
-        fiberPositions = self.trajectories.fiberPositions
-        self.trajectoryCollisions = np.full(fiberPositions.shape, False)
-        self.associationCollisions = np.full(self.bench.nearestNeighbors.shape[1], False)
-        
-        for i in range(self.trajectories.nSteps):
-            # Calculate the nearest neighbors cobra association collisions
-            collisions = self.bench.calculateNearestNeighborsCollisions(fiberPositions[:, i])
-            
-            # Get the indices of the cobras involved in the collisions
-            problematicCobras = self.bench.nearestNeighbors[0, collisions]
-            nearbyProblematicCobras = self.bench.nearestNeighbors[1, collisions]
-            
-            # Update the collisions arrays
-            self.trajectoryCollisions[problematicCobras, i] = True
-            self.trajectoryCollisions[nearbyProblematicCobras, i] = True
-            self.associationCollisions[collisions] = True
+        # Update the cobra associations affected by collisions
+        self.associationCollisions[cobraAssociations] = np.any(trajectoryCollisions, axis=1)
+        self.associationEndPointCollisions[cobraAssociations] = trajectoryCollisions[:, -1]
         
         # Check which cobras are involved in collisions
-        self.collisionDetected = np.any(self.trajectoryCollisions, axis=1)
-        self.endPointCollisionDetected = self.trajectoryCollisions[:, -1]
+        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationCollisions])
+        self.collisions[:] = False
+        self.collisions[collidingCobras] = True
+        self.nCollisions = np.sum(self.collisions)
+        
+        # Check which cobras are involved in end point collisions
+        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationEndPointCollisions])
+        self.endPointCollisions[:] = False
+        self.endPointCollisions[collidingCobras] = True
+        self.nEndPointCollisions = np.sum(self.endPointCollisions)
     
     
-    def getCobrasToSwap(self, selectLowerIndices=True):
-        """Returns the indices of the cobras that should be swapped.
+    def plotResults(self, extraTargets=None, paintFootprints=False):
+        """Plots the collision simulator results in a new figure.
         
         Parameters
         ----------
-        selectLowerIndices: bool, optional
-            If True, the cobras selected to be swapped will be the ones with
-            the lower index values. Default is True.
-        
-        Returns
-        -------
-        object
-            A numpy array with the indices of the cobras that should be swapped.
+        extraTargets: object, optional
+            Extra targets that should also be plotted in the figure, in
+            addition to the targets that were used in the simulation. Default
+            is None.
+        paintFootprints: bool, optional
+            If True, the cobra trajectory footprints will be painted. Default
+            is False.
         
         """
-        # Get the indices of the cobra associations where we have a collision
-        # at some point in the trajectory
-        problematicCobras = self.bench.nearestNeighbors[0, self.associationCollisions]
-        nearbyProblematicCobras = self.bench.nearestNeighbors[1, self.associationCollisions]
+        # Create a new figure
+        plotUtils.createNewFigure("Collision simulation results", "x position (mm)", "y position (mm)")
         
-        # Check which cobra collision association corresponds to an end collision
-        endCollisions = np.logical_and(self.trajectoryCollisions[problematicCobras, -1], self.trajectoryCollisions[nearbyProblematicCobras, -1])
+        # Set the axes limits
+        limRange = 1.05 * self.bench.radius * np.array([-1, 1])
+        xLim = self.bench.center.real + limRange
+        yLim = self.bench.center.imag + limRange
+        plotUtils.setAxesLimits(xLim, yLim)
         
-        # Get the cobra association with a collision that is not an end collision
-        problematicCobras = problematicCobras[endCollisions == False]
-        nearbyProblematicCobras = nearbyProblematicCobras[endCollisions == False]
+        # Draw the cobra patrol areas
+        patrolAreaColors = np.full((self.bench.cobras.nCobras, 4), [0.0, 0.0, 1.0, 0.15])
+        patrolAreaColors[self.collisions] = [1.0, 0.0, 0.0, 0.3]
+        patrolAreaColors[self.endPointCollisions] = [0.0, 1.0, 0.0, 0.5]
+        self.bench.cobras.addPatrolAreasToFigure(colors=patrolAreaColors)
         
-        # Get the indices of the cobras that should be swapped
-        cobrasToSwap = problematicCobras if selectLowerIndices else nearbyProblematicCobras
+        # Draw the cobra links at the final fiber positions
+        linkColors = np.full(patrolAreaColors.shape, [0.0, 0.0, 1.0, 0.5])
+        linkColors[self.assignedCobras == False] = [1.0, 0.0, 0.0, 0.25]
+        self.bench.cobras.addLinksToFigure(self.finalFiberPositions, colors=linkColors)
         
-        return np.unique(cobrasToSwap)
+        # Draw the cobra trajectories and the trajectory footprints of those
+        # that have a collision
+        footprintColors = np.zeros((self.bench.cobras.nCobras, self.trajectories.nSteps, 4))
+        footprintColors[self.collisions, :] = [0.0, 0.0, 1.0, 0.05]
+        self.trajectories.addToFigure(paintFootprints=paintFootprints, footprintColors=footprintColors)
+        
+        # Draw the targets assigned to the cobras
+        self.targets.addToFigure(colors=np.array([1.0, 0.0, 0.0, 1.0]))
+        
+        # Draw the extra targets if necessary
+        if extraTargets is not None:
+            # Draw only those targets that are not part of the simulation
+            unusedTargets = np.logical_not(np.in1d(extraTargets.ids, self.targets.ids))
+            extraTargets.addToFigure(indices=unusedTargets)
     
     
-    def swapThetaMovementDirection(self, cobrasToSwap):
-        """Swaps the theta movement direction for the given cobras.
+    def animateCobraTrajectory(self, cobraIndex, extraTargets=None, fileName=None):
+        """Animates the trajectory of a given cobra and its nearest neighbors.
         
         Parameters
         ----------
-        cobrasToSwap: object
-            A numpy array with the indices of the cobras to swap.
+        cobraIndex: int
+            The index of the cobra to animate.
+        extraTargets: object, optional
+            Extra targets that should also be plotted in the figure, in
+            addition to the targets that were used in the simulation. Default
+            is None.
+        fileName: object, optional
+            The file name path where a video of the animation should be saved.
+            If it is set to None, no video will be saved. Default is None.
         
         """
-        # Swap the given cobras movement direction
-        self.positiveThtMovement[cobrasToSwap] = np.logical_not(self.positiveThtMovement[cobrasToSwap])
-    
-        # Make sure that the new selected movement doesn't require too many steps
-        self.positiveThtMovement[self.nStepsP > TRAJECTORY_MAX_STEPS] = False
-        self.positiveThtMovement[self.nStepsN > TRAJECTORY_MAX_STEPS] = True
+        # Extract some useful information
+        nCobras = self.bench.cobras.nCobras
+        cobraCenters = self.bench.cobras.centers
+        rMax = self.bench.cobras.rMax
+        
+        # Create a new figure
+        plotUtils.createNewFigure("Trajectory animation for cobra " + str(cobraIndex), "x position (mm)", "y position (mm)")
+        
+        # Get the cobra neighbors
+        cobraNeighbors = self.bench.getCobraNeighbors(cobraIndex)
+        
+        # Set the axes limits
+        distances = np.abs(cobraCenters[cobraNeighbors] - cobraCenters[cobraIndex])
+        limRange = 1.05 * np.max(distances + rMax[cobraNeighbors]) * np.array([-1, 1])
+        xLim = cobraCenters[cobraIndex].real + limRange
+        yLim = cobraCenters[cobraIndex].imag + limRange
+        plotUtils.setAxesLimits(xLim, yLim)
+        
+        # Draw the cobra patrol areas
+        patrolAreaColors = np.full((nCobras, 4), [0.0, 0.0, 1.0, 0.15])
+        patrolAreaColors[self.collisions] = [1.0, 0.0, 0.0, 0.3]
+        patrolAreaColors[self.endPointCollisions] = [0.0, 1.0, 0.0, 0.5]
+        self.bench.cobras.addPatrolAreasToFigure(colors=patrolAreaColors)
+        
+        # Select which cobras should be animated: only those that fall inside
+        # the displayed area
+        toAnimate = np.full(nCobras, False)
+        toAnimate[cobraIndex] = True
+        toAnimate[cobraNeighbors] = True
+        toAnimate[self.bench.getCobrasNeighbors(cobraNeighbors)] = True
+        
+        # Draw the cobras that should not be animated at their final positions
+        linkColors = np.full((nCobras, 4), [0.0, 0.0, 1.0, 0.5])
+        linkColors[self.assignedCobras == False] = [1.0, 0.0, 0.0, 0.25]
+        self.bench.cobras.addLinksToFigure(self.finalFiberPositions, colors=linkColors, indices=np.logical_not(toAnimate))
+        
+        # Draw the targets assigned to the cobras
+        self.targets.addToFigure(colors=np.array([1.0, 0.0, 0.0, 1.0]))
+        
+        # Draw the extra targets if necessary
+        if extraTargets is not None:
+            # Draw only those targets that are not part of the simulation
+            unusedTargets = np.logical_not(np.in1d(extraTargets.ids, self.targets.ids))
+            extraTargets.addToFigure(indices=unusedTargets)
+        
+        # Add the animation
+        self.trajectories.addAnimationToFigure(linkColors=linkColors, indices=toAnimate, fileName=fileName)

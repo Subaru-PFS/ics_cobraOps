@@ -85,8 +85,8 @@ class TargetGroup(AttributePrinter):
         return TargetGroup(selectedPositions, selectedIds)
     
     
-    def addToFigure(self, colors=[0.4, 0.4, 0.4, 1.0], indices=None):
-        """Draws the targets on top off an existing figure.
+    def addToFigure(self, colors=np.array([0.4, 0.4, 0.4, 1.0]), indices=None):
+        """Draws the targets on top of an existing figure.
         
         Parameters
         ----------

@@ -123,6 +123,28 @@ class Bench:
         return np.concatenate((firstNeighborGroup, secondNeighborGroup))
     
     
+    def getCobrasNeighbors(self, cobraIndices):
+        """Returns the indices of the cobras that are neighbors to the given
+        cobras.
+        
+        Parameters
+        ----------
+        cobraIndices: object
+            A numpy array with the cobra indices.
+        
+        Returns
+        -------
+        object
+            A numpy array with the cobras neighbor indices.
+        
+        """
+        # Get the two neighbor association possibilities
+        firstNeighborGroup = self.nearestNeighbors[1][np.in1d(self.nearestNeighbors[0], cobraIndices)]
+        secondNeighborGroup = self.nearestNeighbors[0][np.in1d(self.nearestNeighbors[1], cobraIndices)]
+        
+        return np.unique(np.concatenate((firstNeighborGroup, secondNeighborGroup)))
+    
+    
     def getCollisionsForCobra(self, cobraIndex, fiberPositions):
         """Calculates the total number of collisions for a given cobra.
         
@@ -161,7 +183,7 @@ class Bench:
         return np.sum(collisions)
     
     
-    def calculateNearestNeighborsCollisions(self, fiberPositions):
+    def calculateNearestNeighborsCollisions(self, fiberPositions, nearestNeighborsIndices=None):
         """Calculates which nearest neighbors cobra associations are involved
         in a collision.
         
@@ -184,6 +206,11 @@ class Bench:
         # Get the nearest neighbors cobra associations
         cobrasIndices = self.nearestNeighbors[0]
         nearbyCobrasIndices = self.nearestNeighbors[1]
+        
+        # Select only those associations that should be used
+        if nearestNeighborsIndices is not None:
+            cobrasIndices = cobrasIndices[nearestNeighborsIndices]
+            nearbyCobrasIndices = nearbyCobrasIndices[nearestNeighborsIndices]
         
         # Calculate the distances between the cobras links and the nearby
         # cobras links

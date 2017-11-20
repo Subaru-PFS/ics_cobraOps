@@ -298,8 +298,8 @@ class CobraGroup(AttributePrinter):
                 self.S2Nm = calibrationProduct.S2Nm[indices[4]]
     
     
-    def addPatrolAreasToFigure(self, colors=[0.0, 0.0, 1.0, 0.15], indices=None, paintHardStops=True):
-        """Draws the cobras patrol areas on top off an existing figure.
+    def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]), indices=None, paintHardStops=True):
+        """Draws the cobras patrol areas on top of an existing figure.
         
         Parameters
         ----------
@@ -339,8 +339,8 @@ class CobraGroup(AttributePrinter):
             plotUtils.addLines(centers, centers + rMax * np.exp(1j * tht1), linewidths=1, linestyles="dashdot", color="0.3")
     
     
-    def addLinksToFigure(self, fiberPositions, colors=[0.0, 0.0, 1.0, 0.5], indices=None):
-        """Draws the cobras links on top off an existing figure.
+    def addLinksToFigure(self, fiberPositions, colors=np.array([0.0, 0.0, 1.0, 0.5]), indices=None):
+        """Draws the cobras links on top of an existing figure.
         
         Parameters
         ----------
@@ -375,7 +375,7 @@ class CobraGroup(AttributePrinter):
     
     
     def addMotorMapsToFigure(self, indices=None):
-        """Draws the cobras motor maps on top off an existing figure.
+        """Draws the cobras motor maps on top of an existing figure.
         
         Parameters
         ----------

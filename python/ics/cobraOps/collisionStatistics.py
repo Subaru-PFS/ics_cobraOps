@@ -67,8 +67,8 @@ for i in range(len(maxDistanceArray)):
     
     # Fill the statistics arrays
     unassignedCobrasArray[i] = np.sum(simulator.assignedCobras == False)
-    collisionsArray[i] = np.sum(simulator.collisionDetected)
-    endCollisionsArray[i] = np.sum(simulator.endPointCollisionDetected)
+    collisionsArray[i] = simulator.nCollisions
+    endCollisionsArray[i] = simulator.nEndPointCollisions
 
 
 # Plot the collision probabilities
