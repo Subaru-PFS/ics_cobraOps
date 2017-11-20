@@ -195,7 +195,7 @@ class TrajectoryGroup(AttributePrinter):
         
         """
         # Extract some useful information
-        cobraAssociations = self.bench.nearestNeighbors
+        cobraAssociations = self.bench.cobraAssociations
         linkRadius = self.bench.cobras.linkRadius
         
         # Select a subset of the cobra associations if necessary

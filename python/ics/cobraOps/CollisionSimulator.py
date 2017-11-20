@@ -95,6 +95,7 @@ class CollisionSimulator():
             self.solveTrajectoryCollisions(True)
             self.solveTrajectoryCollisions(False)
             self.solveTrajectoryCollisions(True)
+            self.solveTrajectoryCollisions(False)
     
     
     def calculateFinalFiberPositions(self):
@@ -264,13 +265,13 @@ class CollisionSimulator():
         self.associationEndPointCollisions = trajectoryCollisions[:, -1]
         
         # Check which cobras are involved in collisions
-        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationCollisions])
+        collidingCobras = np.unique(self.bench.cobraAssociations[:, self.associationCollisions])
         self.collisions = np.full(self.bench.cobras.nCobras, False)
         self.collisions[collidingCobras] = True
         self.nCollisions = np.sum(self.collisions)
         
         # Check which cobras are involved in end point collisions
-        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationEndPointCollisions])
+        collidingCobras = np.unique(self.bench.cobraAssociations[:, self.associationEndPointCollisions])
         self.endPointCollisions = np.full(self.bench.cobras.nCobras, False)
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = np.sum(self.endPointCollisions)
@@ -290,7 +291,7 @@ class CollisionSimulator():
         # Get the indices of the cobras involved in a mid point trajectory
         # collision
         associationMidPointCollisions = np.logical_and(self.associationCollisions, self.associationEndPointCollisions == False)
-        collidingAssociations = self.bench.nearestNeighbors[:, associationMidPointCollisions]
+        collidingAssociations = self.bench.cobraAssociations[:, associationMidPointCollisions]
         
         # Select the indices of the cobras whose movement should be changed
         cobraIndices = np.unique(collidingAssociations[0] if selectLowerIndices else collidingAssociations[1])
@@ -327,24 +328,24 @@ class CollisionSimulator():
         
         """
         # Get the cobra associations for the given cobras
-        cobraAssociations = np.in1d(self.bench.nearestNeighbors[0], cobraIndices)
-        cobraAssociations = np.logical_or(cobraAssociations, np.in1d(self.bench.nearestNeighbors[1], cobraIndices))
+        cobraAssociationIndices = np.in1d(self.bench.cobraAssociations[0], cobraIndices)
+        cobraAssociationIndices = np.logical_or(cobraAssociationIndices, np.in1d(self.bench.cobraAssociations[1], cobraIndices))
         
         # Detect trajectory collisions between these cobra associations
-        trajectoryCollisions = self.trajectories.calculateCobraAssociationCollisions(cobraAssociations)
+        trajectoryCollisions = self.trajectories.calculateCobraAssociationCollisions(cobraAssociationIndices)
         
         # Update the cobra associations affected by collisions
-        self.associationCollisions[cobraAssociations] = np.any(trajectoryCollisions, axis=1)
-        self.associationEndPointCollisions[cobraAssociations] = trajectoryCollisions[:, -1]
+        self.associationCollisions[cobraAssociationIndices] = np.any(trajectoryCollisions, axis=1)
+        self.associationEndPointCollisions[cobraAssociationIndices] = trajectoryCollisions[:, -1]
         
         # Check which cobras are involved in collisions
-        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationCollisions])
+        collidingCobras = np.unique(self.bench.cobraAssociations[:, self.associationCollisions])
         self.collisions[:] = False
         self.collisions[collidingCobras] = True
         self.nCollisions = np.sum(self.collisions)
         
         # Check which cobras are involved in end point collisions
-        collidingCobras = np.unique(self.bench.nearestNeighbors[:, self.associationEndPointCollisions])
+        collidingCobras = np.unique(self.bench.cobraAssociations[:, self.associationEndPointCollisions])
         self.endPointCollisions[:] = False
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = np.sum(self.endPointCollisions)
