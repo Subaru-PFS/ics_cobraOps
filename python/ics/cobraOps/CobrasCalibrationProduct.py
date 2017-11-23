@@ -67,9 +67,7 @@ class CobrasCalibrationProduct(AttributePrinter):
             self.motorMapSteps = int(slowCalTable.find("Joint1_fwd_stepsizes").text.split(",")[0])
             
             # Create the cobra motor map arrays
-            self.angularStep = np.empty(self.nCobras)
-            self.mapRangeTht = np.empty((self.nCobras, 2))
-            self.mapRangePhi = np.empty((self.nCobras, 2))
+            self.angularSteps = np.empty(self.nCobras)
             self.S1Pm = np.empty((self.nCobras, self.motorMapSteps))
             self.S1Nm = np.empty((self.nCobras, self.motorMapSteps))
             self.S2Pm = np.empty((self.nCobras, self.motorMapSteps))
@@ -103,11 +101,7 @@ class CobrasCalibrationProduct(AttributePrinter):
                 # Get the angular step used in the measurements
                 slowCalTable = dataContainers[i].find("SLOW_CALIBRATION_TABLE")
                 angularPositions = slowCalTable.find("Joint1_fwd_regions").text.split(",")[2:-1]
-                self.angularStep[i] = float(angularPositions[1]) - float(angularPositions[0])
-                
-                # Calculate the map theta and phi ranges
-                self.mapRangeTht[i] = np.deg2rad([0, self.motorMapSteps * self.angularStep[i]])
-                self.mapRangePhi[i] = np.deg2rad([0, self.motorMapSteps * self.angularStep[i]]) - np.pi
+                angularStep = float(angularPositions[1]) - float(angularPositions[0])
                 
                 # Get the cobra motors speeds in degrees per step
                 joint1Fwd = slowCalTable.find("Joint1_fwd_stepsizes").text.split(",")[2:-1]
@@ -116,10 +110,13 @@ class CobrasCalibrationProduct(AttributePrinter):
                 joint2Rev = slowCalTable.find("Joint2_rev_stepsizes").text.split(",")[2:-1]
                 
                 # Calculate the motor steps required to move that angular step
-                self.S1Pm[i] = self.angularStep[i] / np.array(list(map(float, joint1Fwd)))
-                self.S1Nm[i] = self.angularStep[i] / np.array(list(map(float, joint1Rev)))
-                self.S2Pm[i] = self.angularStep[i] / np.array(list(map(float, joint2Fwd)))
-                self.S2Nm[i] = self.angularStep[i] / np.array(list(map(float, joint2Rev)))
+                self.S1Pm[i] = angularStep / np.array(list(map(float, joint1Fwd)))
+                self.S1Nm[i] = angularStep / np.array(list(map(float, joint1Rev)))
+                self.S2Pm[i] = angularStep / np.array(list(map(float, joint2Fwd)))
+                self.S2Nm[i] = angularStep / np.array(list(map(float, joint2Rev)))
+                
+                # Save the angular step in radians
+                self.angularSteps[i] = np.deg2rad(angularStep)
         
         # HACK SOLUTION TO BAD PHI HOMES
         self.phiIn = np.maximum(-np.pi, self.phiIn)

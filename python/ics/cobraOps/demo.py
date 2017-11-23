@@ -28,7 +28,7 @@ bench = Bench(layout="full", calibrationProduct=calibrationProduct)
 print("Number of cobras:", bench.cobras.nCobras)
 
 # Generate the targets
-targets = targetUtils.generateTargets(targetDensity, bench)
+targets = targetUtils.generateRandomTargets(targetDensity, bench)
 print("Number of simulated targets:", targets.nTargets)
 
 # Select the targets
@@ -50,7 +50,7 @@ simulator.plotResults(extraTargets=targets, paintFootprints=False)
 # Animate one of the trajectory collisions
 (problematicCobras,) = np.where(np.logical_and(simulator.collisions, simulator.endPointCollisions == False))
 
-if len(problematicCobras):
+if len(problematicCobras) > 0:
     simulator.animateCobraTrajectory(problematicCobras[0], extraTargets=targets)
 
 # Pause the execution to have time to inspect the figures

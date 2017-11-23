@@ -15,8 +15,8 @@ import numpy as np
 import ics.cobraOps.plotUtils as plotUtils
 
 from ics.cobraOps.TrajectoryGroup import TrajectoryGroup
-from ics.cobraOps.cobraConstants import (TRAJECTORY_BIN_WIDTH,
-                                         TRAJECTORY_MAX_STEPS)
+from ics.cobraOps.cobraConstants import (TRAJECTORY_STEPS,
+                                         TRAJECTORY_STEP_WIDTH)
 
 
 class CollisionSimulator():
@@ -169,21 +169,26 @@ class CollisionSimulator():
         (finalTht, finalPhi) = self.bench.cobras.calculateRotationAngles(self.finalFiberPositions)
         
         # Calculate the required theta and phi delta offsets to move from the
-        # positive and negative starting positions to the final positions
+        # positive and negative home positions to the final positions
         posDeltaTht = np.mod(finalTht - posStartTht, 2 * np.pi)
         negDeltaTht = -np.mod(negStartTht - finalTht, 2 * np.pi)
         posDeltaPhi = finalPhi - posStartPhi
         negDeltaPhi = finalPhi - negStartPhi
         
+        # Calculate the total number of motor steps required to reach the final
+        # positions from the positive and the negative home positions
+        (posThtMotorSteps, posPhiMotorSteps) = self.bench.cobras.motorMaps.calculateSteps(posDeltaTht, posStartPhi, posDeltaPhi)
+        (negThtMotorSetps, negPhiMotorSteps) = self.bench.cobras.motorMaps.calculateSteps(negDeltaTht, negStartPhi, negDeltaPhi)       
+        
         # Calculate the number of steps required to reach the final positions
         # from the positive and the negative starting positions
-        self.posSteps = np.ceil(np.max((np.abs(posDeltaTht), np.abs(posDeltaPhi)), axis=0) / TRAJECTORY_BIN_WIDTH).astype("int") + 1
-        self.negSteps = np.ceil(np.max((np.abs(negDeltaTht), np.abs(negDeltaPhi)), axis=0) / TRAJECTORY_BIN_WIDTH).astype("int") + 1
+        self.posSteps = np.ceil(np.max((posThtMotorSteps, posPhiMotorSteps), axis=0) / TRAJECTORY_STEP_WIDTH).astype("int") + 1
+        self.negSteps = np.ceil(np.max((negThtMotorSetps, negPhiMotorSteps), axis=0) / TRAJECTORY_STEP_WIDTH).astype("int") + 1
         
         # Make sure that at least one of the movements requires less steps than
         # the maximum number of steps allowed
-        if np.any(np.min((self.posSteps, self.negSteps), axis=0) > TRAJECTORY_MAX_STEPS):
-            raise Exception("TRAJECTORY_MAX_STEPS value should be set to a higher value.")
+        if np.any(np.min((self.posSteps, self.negSteps), axis=0) > TRAJECTORY_STEPS):
+            raise Exception("TRAJECTORY_STEPS value should be set to a higher value.")
         
         # Decide if the cobras should follow a positive theta movement
         # direction:
@@ -195,7 +200,7 @@ class CollisionSimulator():
         
         # Select the positive theta movement if the negative movement would
         # require too many steps
-        posThtMovement[self.negSteps > TRAJECTORY_MAX_STEPS] = True
+        posThtMovement[self.negSteps > TRAJECTORY_STEPS] = True
         
         # Calculate the phi movement direction
         posPhiMovement = negDeltaPhi > 0
@@ -303,8 +308,8 @@ class CollisionSimulator():
             
             # Make sure that the new movement directions don't require too many
             # steps
-            self.movementDirections[0, self.posSteps > TRAJECTORY_MAX_STEPS] = False
-            self.movementDirections[0, self.negSteps > TRAJECTORY_MAX_STEPS] = True
+            self.movementDirections[0, self.posSteps > TRAJECTORY_STEPS] = False
+            self.movementDirections[0, self.negSteps > TRAJECTORY_STEPS] = True
             
             # Define the theta and phi movement strategies
             self.defineMovementStrategies()
@@ -452,6 +457,10 @@ class CollisionSimulator():
         linkColors = np.full((nCobras, 4), [0.0, 0.0, 1.0, 0.5])
         linkColors[self.assignedCobras == False] = [1.0, 0.0, 0.0, 0.25]
         self.bench.cobras.addLinksToFigure(self.finalFiberPositions, colors=linkColors, indices=np.logical_not(toAnimate))
+        
+        # Draw every point in the elbow and fiber trajectories
+        plotUtils.addPoints(self.trajectories.elbowPositions.ravel(), s=2, facecolor=[1.0, 1.0, 1.0, 1.0])
+        plotUtils.addPoints(self.trajectories.fiberPositions.ravel(), s=2, facecolor=[1.0, 1.0, 1.0, 1.0])
         
         # Draw the targets assigned to the cobras
         self.targets.addToFigure(colors=np.array([1.0, 0.0, 0.0, 1.0]))

@@ -54,7 +54,7 @@ for i in range(len(maxDistanceArray)):
     bench = Bench(layout="full", calibrationProduct=calibrationProduct)
     
     # Create a random sample of targets
-    targets = targetUtils.generateTargets(targetDensityArray[i], bench)
+    targets = targetUtils.generateRandomTargets(targetDensityArray[i], bench)
     
     # Select the targets
     selector = DistanceTargetSelector(bench, targets)

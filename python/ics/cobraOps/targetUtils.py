@@ -51,7 +51,7 @@ def generateOneTargetPerCobra(bench, maximumDistance=np.Inf):
     return  TargetGroup(targetPositions)
 
 
-def generateTargets(density, bench):
+def generateRandomTargets(density, bench):
     """Generates a set of targets uniformly distributed over the bench field of
     view.
     

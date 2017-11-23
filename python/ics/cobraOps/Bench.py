@@ -183,13 +183,17 @@ class Bench:
         return np.sum(collisions)
     
     
-    def calculateCobraAssociationCollisions(self, fiberPositions, nearestNeighborsIndices=None):
+    def calculateCobraAssociationCollisions(self, fiberPositions, associationIndices=None):
         """Calculates which cobra associations are involved in a collision.
         
         Parameters
         ----------
         fiberPositions: object
             A complex numpy array with the cobras fiber positions.
+        associationIndices: object, optional
+            A numpy array with the cobra association indices to use. If it is
+            set to None, all the cobra associations will be used. Default is
+            None.
         
         Returns
         -------
@@ -198,29 +202,26 @@ class Bench:
             involved in a collision at the given fiber positions.
         
         """
+        # Extract some useful information
+        cobraAssociations = self.cobraAssociations
+        linkRadius = self.cobras.linkRadius
+        
+        # Select a subset of the cobra associations if necessary
+        if associationIndices is not None:
+            cobraAssociations = cobraAssociations[:, associationIndices]
+        
         # Calculate the cobras elbow positions
         elbowPositions = self.cobras.calculateElbowPositions(fiberPositions)
         
-        # Get the cobra associations
-        cobrasIndices = self.cobraAssociations[0]
-        nearbyCobrasIndices = self.cobraAssociations[1]
-        
-        # Select only those associations that should be used
-        if nearestNeighborsIndices is not None:
-            cobrasIndices = cobrasIndices[nearestNeighborsIndices]
-            nearbyCobrasIndices = nearbyCobrasIndices[nearestNeighborsIndices]
-        
-        # Calculate the distances between the cobras links and the nearby
-        # cobras links
-        startPoints1 = fiberPositions[cobrasIndices]
-        endPoints1 = elbowPositions[cobrasIndices]
-        startPoints2 = fiberPositions[nearbyCobrasIndices]
-        endPoints2 = elbowPositions[nearbyCobrasIndices]
+        # Calculate the distances between the cobras links
+        startPoints1 = fiberPositions[cobraAssociations[0]]
+        endPoints1 = elbowPositions[cobraAssociations[0]]
+        startPoints2 = fiberPositions[cobraAssociations[1]]
+        endPoints2 = elbowPositions[cobraAssociations[1]]
         distances = Bench.distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2)
         
-        # Return the cobra associations collisions for the current
-        # configuration
-        return distances < (self.cobras.linkRadius[cobrasIndices] + self.cobras.linkRadius[nearbyCobrasIndices])
+        # Return the cobra associations collisions
+        return distances < (linkRadius[cobraAssociations[0]] + linkRadius[cobraAssociations[1]])
     
     
     def getProblematicCobraAssociations(self, fiberPositions):
@@ -235,9 +236,9 @@ class Bench:
         Returns
         -------
         object
-            An integer numpy array with the indices of the cobra associations
-            involved in a collision. Each column in the array contains a
-            different cobra association.
+            An integer numpy array with the indices of the cobras involved in a
+            collision. Each column in the array contains a different cobra
+            association.
         
         """
         # Calculate the cobra association collisions

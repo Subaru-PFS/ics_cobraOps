@@ -15,8 +15,8 @@ import numpy as np
 import ics.cobraOps.plotUtils as plotUtils
 
 from ics.cobraOps.AttributePrinter import AttributePrinter
-from ics.cobraOps.cobraConstants import (TRAJECTORY_BIN_WIDTH,
-                                         TRAJECTORY_MAX_STEPS)
+from ics.cobraOps.cobraConstants import (TRAJECTORY_STEPS,
+                                         TRAJECTORY_STEP_WIDTH)
 
 
 class TrajectoryGroup(AttributePrinter):
@@ -60,7 +60,7 @@ class TrajectoryGroup(AttributePrinter):
         self.movementStrategies = movementStrategies.copy()
         
         # Fix the number of trajectory steps to the maximum allowed
-        self.nSteps = TRAJECTORY_MAX_STEPS
+        self.nSteps = TRAJECTORY_STEPS
         
         # Calculate the trajectory stating fiber positions
         self.calculateStartingFiberPositions()
@@ -79,10 +79,7 @@ class TrajectoryGroup(AttributePrinter):
     
     
     def calculateCobraTrajectories(self):
-        """Calculates the cobra trajectories.
-        
-        This method assumes perfect cobras (i.e., it doesn't use the motor
-        maps).
+        """Calculates the cobra trajectories using the cobras motor maps.
         
         """
         # Extract some useful information
@@ -90,7 +87,9 @@ class TrajectoryGroup(AttributePrinter):
         cobraCenters = self.bench.cobras.centers
         L1 = self.bench.cobras.L1
         L2 = self.bench.cobras.L2
+        motorMaps = self.bench.cobras.motorMaps
         posThtMovement = self.movementDirections[0]
+        posPhiMovement = self.movementDirections[1]
         thtEarly = self.movementStrategies[0]
         phiEarly = self.movementStrategies[1]
         
@@ -108,10 +107,6 @@ class TrajectoryGroup(AttributePrinter):
         # consistent with the deltaTht values
         finalTht = startTht + deltaTht
         
-        # Calculate the theta and phi bin step widths
-        binTht = np.sign(deltaTht) * TRAJECTORY_BIN_WIDTH
-        binPhi = np.sign(deltaPhi) * TRAJECTORY_BIN_WIDTH
-        
         # Calculate theta and phi angle values along the trajectories
         tht = np.empty((nCobras, self.nSteps))
         phi = np.empty((nCobras, self.nSteps))
@@ -123,53 +118,67 @@ class TrajectoryGroup(AttributePrinter):
             if deltaTht[c] == 0 and deltaPhi[c] == 0:
                 continue
             
-            # Get the theta and phi moves from the starting to the final
-            # position
-            movesTht = np.arange(startTht[c], finalTht[c], binTht[c]) if deltaTht[c] != 0 else np.array([])
-            movesPhi = np.arange(startPhi[c], finalPhi[c], binPhi[c]) if deltaPhi[c] != 0 else np.array([])
-            nMovesTht = len(movesTht)
-            nMovesPhi = len(movesPhi)
+            # Get the appropriate theta and phi motor maps
+            thtSteps = motorMaps.posThtSteps[c] if posThtMovement[c] else motorMaps.negThtSteps[c]
+            phiSteps = motorMaps.posPhiSteps[c] if posPhiMovement[c] else motorMaps.negPhiSteps[c]
+            thtOffsets = motorMaps.thtOffsets[c]
+            phiOffsets = motorMaps.phiOffsets[c]
+            
+            # Get the theta moves from the starting to the final position
+            stepLimits = np.interp([0, np.abs(deltaTht[c])], thtOffsets, thtSteps)
+            stepMoves = np.concatenate((np.arange(stepLimits[0], stepLimits[1], TRAJECTORY_STEP_WIDTH), [stepLimits[1]]))
+            thtMoves = startTht[c] + np.sign(deltaTht[c]) * np.interp(stepMoves, thtSteps, thtOffsets)
+            
+            # Get the phi moves from the starting to the final position
+            initOffset = np.pi + startPhi[c] if posPhiMovement[c] else np.abs(startPhi[c])
+            stepLimits = np.interp([initOffset, initOffset + np.abs(deltaPhi[c])], phiOffsets, phiSteps)
+            stepMoves = np.concatenate((np.arange(stepLimits[0], stepLimits[1], TRAJECTORY_STEP_WIDTH), [stepLimits[1]]))
+            phiMoves = np.interp(stepMoves, phiSteps, phiOffsets)
+            phiMoves = phiMoves - np.pi if posPhiMovement[c] else -phiMoves
             
             # Fill the rotation angles according to the movement strategies
+            nThtMoves = len(thtMoves)
+            nPhiMoves = len(phiMoves)
+            
             if thtEarly[c]:
                 if phiEarly[c]:
                     # Early-early movement
-                    tht[c, :nMovesTht] = movesTht
-                    phi[c, :nMovesPhi] = movesPhi
+                    tht[c, :nThtMoves] = thtMoves
+                    phi[c, :nPhiMoves] = phiMoves
                 else:
                     # Early-late movement
-                    tht[c, :nMovesTht] = movesTht
-                    phi[c, :-nMovesPhi - 1] = startPhi[c]
-                    phi[c, -nMovesPhi - 1:-1] = movesPhi
+                    tht[c, :nThtMoves] = thtMoves
+                    phi[c, :-nPhiMoves] = startPhi[c]
+                    phi[c, -nPhiMoves:] = phiMoves
             else:
                 if phiEarly[c]:
                     # Late-early movement. This should never happen!!
-                    tht[c, :-nMovesTht - 1] = startTht[c]
-                    tht[c, -nMovesTht - 1:-1] = movesTht
-                    phi[c, :nMovesPhi] = movesPhi
+                    tht[c, :-nThtMoves] = startTht[c]
+                    tht[c, -nThtMoves:] = thtMoves
+                    phi[c, :nPhiMoves] = phiMoves
                 else:
                     # Late-late movement
-                    if nMovesTht > nMovesPhi:
+                    if nThtMoves > nPhiMoves:
                         # If we have more theta moves, do the extra moves
                         # early, because the other cobras are still close to
                         # the center and the collision probability is smaller
-                        extraMoves = nMovesTht - nMovesPhi
-                        tht[c, :extraMoves] = movesTht[:extraMoves]
+                        extraMoves = nThtMoves - nPhiMoves
+                        tht[c, :extraMoves] = thtMoves[:extraMoves]
                         
                         # Keep the theta position before phi and theta start to
                         # move together
-                        tht[c, extraMoves:-nMovesPhi - 1] = movesTht[extraMoves - 1]
+                        tht[c, extraMoves:-nPhiMoves] = thtMoves[extraMoves - 1]
                         
                         # Execute the rest of the theta movement together with
                         # the phi movement
-                        tht[c, -nMovesPhi - 1:-1] = movesTht[extraMoves:]
-                        phi[c, :-nMovesPhi - 1] = startPhi[c]
-                        phi[c, -nMovesPhi - 1:-1] = movesPhi
+                        tht[c, -nPhiMoves:] = thtMoves[extraMoves:]
+                        phi[c, :-nPhiMoves] = startPhi[c]
+                        phi[c, -nPhiMoves:] = phiMoves
                     else:
-                        tht[c, :-nMovesTht - 1] = startTht[c]
-                        tht[c, -nMovesTht - 1:-1] = movesTht
-                        phi[c, :-nMovesPhi - 1] = startPhi[c]
-                        phi[c, -nMovesPhi - 1:-1] = movesPhi
+                        tht[c, :-nThtMoves] = startTht[c]
+                        tht[c, -nThtMoves:] = thtMoves
+                        phi[c, :-nPhiMoves] = startPhi[c]
+                        phi[c, -nPhiMoves:] = phiMoves
         
         # Calculate the elbow and fiber positions along the trajectory
         self.elbowPositions = cobraCenters[:, np.newaxis] + L1[:, np.newaxis] * np.exp(1j * tht)

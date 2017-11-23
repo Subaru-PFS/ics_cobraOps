@@ -15,6 +15,7 @@ import numpy as np
 import ics.cobraOps.plotUtils as plotUtils
 
 from ics.cobraOps.AttributePrinter import AttributePrinter
+from ics.cobraOps.MotorMapGroup import MotorMapGroup
 from ics.cobraOps.cobraConstants import (COBRA_LINK_LENGTH,
                                          COBRA_LINK_RADIUS,
                                          PHI_SAFETY_ANGLE,
@@ -61,12 +62,8 @@ class CobraGroup(AttributePrinter):
         # Set the default link radius
         self.linkRadius = np.full(self.nCobras, COBRA_LINK_RADIUS)
         
-        # Leave the motor maps empty
-        self.angularStep = None
-        self.S1Pm = None
-        self.S1Nm = None
-        self.S2Pm = None
-        self.S2Nm = None
+        # Set the default motor maps
+        self.motorMaps = MotorMapGroup(self.nCobras)
         
         # Calculate the patrol areas minimum and maximum radii
         self.calculatePatrolAreaRadii()
@@ -203,7 +200,7 @@ class CobraGroup(AttributePrinter):
         Returns
         -------
         tuple
-            A python tuple with the cobras rotation angles (tht, phi).
+            A python tuple with the cobras rotation angles (theta, phi).
         
         """
         # Extract some useful information
@@ -228,7 +225,7 @@ class CobraGroup(AttributePrinter):
         phi = phiSign * np.arccos((distanceSq - L1Sq - L2Sq) / (2 * L1 * L2))
         tht = np.angle(relativePositions) - phiSign * np.arccos(-(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
         
-        # Force tht to go from -pi to pi, instead of from 0 to 2pi
+        # Force tht to go from -pi to pi
         tht = (tht - np.pi) % (2 * np.pi) - np.pi
         
         return (tht, phi)
@@ -262,8 +259,8 @@ class CobraGroup(AttributePrinter):
                 indices = np.random.randint(calibrationProduct.nCobras, size=(4, self.nCobras))
                 
                 # Assign random link properties to each cobra
-                self.phiIn = calibrationProduct.phiIn[indices[0]] 
-                self.phiOut = calibrationProduct.phiOut[indices[1]] 
+                self.phiIn = calibrationProduct.phiIn[indices[0]]
+                self.phiOut = calibrationProduct.phiOut[indices[1]]
                 self.L1 = calibrationProduct.L1[indices[2]]
                 self.L2 = calibrationProduct.L2[indices[3]]
             
@@ -279,23 +276,7 @@ class CobraGroup(AttributePrinter):
         
         # Check if we should use the calibration product motor maps
         if useRealMaps:
-            if calibrationProduct.nCobras == self.nCobras:
-                # Use directly the calibration product arrays
-                self.angularStep = calibrationProduct.angularStep.copy()
-                self.S1Pm = calibrationProduct.S1Pm.copy()
-                self.S2Pm = calibrationProduct.S2Pm.copy()
-                self.S1Nm = calibrationProduct.S1Nm.copy()
-                self.S2Nm = calibrationProduct.S2Nm.copy()
-            else:
-                # Randomize the calibration cobra indices
-                indices = np.random.randint(calibrationProduct.nCobras, size=(5, self.nCobras))
-                
-                # Assign a random motor map to each cobra
-                self.angularStep = calibrationProduct.angularStep[indices[0]]
-                self.S1Pm = calibrationProduct.S1Pm[indices[1]]
-                self.S2Pm = calibrationProduct.S2Pm[indices[2]]
-                self.S1Nm = calibrationProduct.S1Nm[indices[3]]
-                self.S2Nm = calibrationProduct.S2Nm[indices[4]]
+            self.motorMaps.useCalibrationProduct(calibrationProduct)
     
     
     def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]), indices=None, paintHardStops=True):
@@ -333,7 +314,7 @@ class CobraGroup(AttributePrinter):
         # Draw the cobra patrol areas using ring shapes
         plotUtils.addRings(centers, rMin, rMax, facecolors=colors)
         
-        # Add the stage 1 theta hard stops if necessary
+        # Add the theta hard stops if necessary
         if paintHardStops:
             plotUtils.addLines(centers, centers + rMax * np.exp(1j * tht0), linewidths=1, linestyles="dashed", color="0.3")
             plotUtils.addLines(centers, centers + rMax * np.exp(1j * tht1), linewidths=1, linestyles="dashdot", color="0.3")
@@ -372,34 +353,3 @@ class CobraGroup(AttributePrinter):
         # Draw the cobras using a combination of thin and thick lines
         plotUtils.addLines(centers, elbowPositions, edgecolor=colors, linewidths=2)
         plotUtils.addThickLines(elbowPositions, fiberPositions, linkRadius, facecolors=colors)
-    
-    
-    def addMotorMapsToFigure(self, indices=None):
-        """Draws the cobras motor maps on top of an existing figure.
-        
-        Parameters
-        ----------
-        indices: object, optional
-            A numpy array with the cobra indices to use. If it is set to None,
-            all the cobras will be used. Default is None.
-        
-        """
-        # Return if the motors maps are not defined
-        if self.S1Pm is None:
-            return
-        
-        # Use all the cobras if the indices parameter was not provided
-        if indices is None:
-            indices = np.arange(self.nCobras)
-        
-        # Loop over all the cobra indices
-        for c in indices:
-            # Draw the theta motor maps
-            angles = np.arange(0, 360, self.angularStep[c])
-            plotUtils.addLine(angles, self.S1Pm[c, :len(angles)], color=[0, 0, 0, 0.4])
-            plotUtils.addLine(angles, self.S1Nm[c, :len(angles)], color=[1, 0, 0, 0.4])
-            
-            # Draw the phi motor maps
-            angles = np.arange(0, 180, self.angularStep[c])
-            plotUtils.addLine(angles, self.S2Pm[c, :len(angles)], color=[0, 1, 0, 0.4])
-            plotUtils.addLine(angles, self.S2Nm[c, :len(angles)], color=[0, 0, 1, 0.4])
