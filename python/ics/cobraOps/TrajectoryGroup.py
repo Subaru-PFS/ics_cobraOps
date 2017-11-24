@@ -15,8 +15,6 @@ import numpy as np
 import ics.cobraOps.plotUtils as plotUtils
 
 from ics.cobraOps.AttributePrinter import AttributePrinter
-from ics.cobraOps.cobraConstants import (TRAJECTORY_STEPS,
-                                         TRAJECTORY_STEP_WIDTH)
 
 
 class TrajectoryGroup(AttributePrinter):
@@ -26,11 +24,15 @@ class TrajectoryGroup(AttributePrinter):
     
     """
     
-    def __init__(self, bench, finalFiberPositions, movementDirections, movementStrategies):
+    def __init__(self, nSteps, stepWidth, bench, finalFiberPositions, movementDirections, movementStrategies):
         """Constructs a new trajectory group instance.
         
         Parameters
         ----------
+        nSteps: int
+            The total number of steps in the trajectory.
+        stepWidth: int
+            The trajectory step width in units of motor steps.
         bench: object
             The PFI bench instance.
         finalFiberPositions: object
@@ -53,14 +55,15 @@ class TrajectoryGroup(AttributePrinter):
             The trajectory group instance.
         
         """
+        # Save the number of steps in the trajectory and their width
+        self.nSteps = nSteps
+        self.stepWidth = stepWidth
+        
         # Save the bench instance, the final positions and the movement arrays
         self.bench = bench
         self.finalFiberPositions = finalFiberPositions.copy()
         self.movementDirections = movementDirections.copy()
         self.movementStrategies = movementStrategies.copy()
-        
-        # Fix the number of trajectory steps to the maximum allowed
-        self.nSteps = TRAJECTORY_STEPS
         
         # Calculate the trajectory stating fiber positions
         self.calculateStartingFiberPositions()
@@ -126,13 +129,13 @@ class TrajectoryGroup(AttributePrinter):
             
             # Get the theta moves from the starting to the final position
             stepLimits = np.interp([0, np.abs(deltaTht[c])], thtOffsets, thtSteps)
-            stepMoves = np.concatenate((np.arange(stepLimits[0], stepLimits[1], TRAJECTORY_STEP_WIDTH), [stepLimits[1]]))
+            stepMoves = np.concatenate((np.arange(stepLimits[0], stepLimits[1], self.stepWidth), [stepLimits[1]]))
             thtMoves = startTht[c] + np.sign(deltaTht[c]) * np.interp(stepMoves, thtSteps, thtOffsets)
             
             # Get the phi moves from the starting to the final position
             initOffset = np.pi + startPhi[c] if posPhiMovement[c] else np.abs(startPhi[c])
             stepLimits = np.interp([initOffset, initOffset + np.abs(deltaPhi[c])], phiOffsets, phiSteps)
-            stepMoves = np.concatenate((np.arange(stepLimits[0], stepLimits[1], TRAJECTORY_STEP_WIDTH), [stepLimits[1]]))
+            stepMoves = np.concatenate((np.arange(stepLimits[0], stepLimits[1], self.stepWidth), [stepLimits[1]]))
             phiMoves = np.interp(stepMoves, phiSteps, phiOffsets)
             phiMoves = phiMoves - np.pi if posPhiMovement[c] else -phiMoves
             

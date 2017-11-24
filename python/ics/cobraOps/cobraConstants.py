@@ -55,9 +55,3 @@ NULL_TARGET_POSITION = 0j
 
 NULL_TARGET_ID = "NULL"
 """Unicode value used to indicate the id of a null target."""
-
-TRAJECTORY_STEPS = 110
-"""The total number of time steps in a cobra trajectory."""
-
-TRAJECTORY_STEP_WIDTH = 50
-"""The trajectory step width in units of motor steps."""

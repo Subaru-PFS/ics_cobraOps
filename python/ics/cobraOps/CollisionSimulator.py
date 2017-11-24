@@ -15,8 +15,6 @@ import numpy as np
 import ics.cobraOps.plotUtils as plotUtils
 
 from ics.cobraOps.TrajectoryGroup import TrajectoryGroup
-from ics.cobraOps.cobraConstants import (TRAJECTORY_STEPS,
-                                         TRAJECTORY_STEP_WIDTH)
 
 
 class CollisionSimulator():
@@ -26,7 +24,7 @@ class CollisionSimulator():
     
     """
     
-    def __init__(self, bench, targets):
+    def __init__(self, bench, targets, trajectorySteps=110, trajectoryStepWidth=50):
         """Constructs a new collision simulator instance.
         
         Parameters
@@ -35,6 +33,11 @@ class CollisionSimulator():
             The PFI bench instance.
         targets: object
             The target group instance.
+        nSteps: int, optional
+            The total number of steps in the cobra trajectories. Default is
+            110.
+        stepWidth: int, optional
+            The trajectory step width in units of motor steps. Default is 50.
         
         Returns
         -------
@@ -45,6 +48,10 @@ class CollisionSimulator():
         # Save the bench and target group instances
         self.bench = bench
         self.targets = targets
+        
+        # Save the trajectory parameters
+        self.trajectorySteps = trajectorySteps
+        self.trajectoryStepWidth = trajectoryStepWidth
         
         # Check which cobras are assigned to a target
         self.assignedCobras = self.targets.notNull.copy()
@@ -180,15 +187,17 @@ class CollisionSimulator():
         (posThtMotorSteps, posPhiMotorSteps) = self.bench.cobras.motorMaps.calculateSteps(posDeltaTht, posStartPhi, posDeltaPhi)
         (negThtMotorSetps, negPhiMotorSteps) = self.bench.cobras.motorMaps.calculateSteps(negDeltaTht, negStartPhi, negDeltaPhi)       
         
-        # Calculate the number of steps required to reach the final positions
-        # from the positive and the negative starting positions
-        self.posSteps = np.ceil(np.max((posThtMotorSteps, posPhiMotorSteps), axis=0) / TRAJECTORY_STEP_WIDTH).astype("int") + 1
-        self.negSteps = np.ceil(np.max((negThtMotorSetps, negPhiMotorSteps), axis=0) / TRAJECTORY_STEP_WIDTH).astype("int") + 1
+        # Calculate the number of trajectory steps required to reach the final
+        # positions from the positive and the negative starting positions
+        self.posSteps = np.ceil(np.max((posThtMotorSteps, posPhiMotorSteps), axis=0) / self.trajectoryStepWidth).astype("int") + 1
+        self.negSteps = np.ceil(np.max((negThtMotorSetps, negPhiMotorSteps), axis=0) / self.trajectoryStepWidth).astype("int") + 1
         
         # Make sure that at least one of the movements requires less steps than
         # the maximum number of steps allowed
-        if np.any(np.min((self.posSteps, self.negSteps), axis=0) > TRAJECTORY_STEPS):
-            raise Exception("TRAJECTORY_STEPS value should be set to a higher value.")
+        if np.any(np.min((self.posSteps, self.negSteps), axis=0) > self.trajectorySteps):
+            raise Exception("Some cobras cannot reach their assigned targets "
+                            "because the trajectorySteps parameter value is "
+                            "too low. Please set it to a higher value.")
         
         # Decide if the cobras should follow a positive theta movement
         # direction:
@@ -200,7 +209,7 @@ class CollisionSimulator():
         
         # Select the positive theta movement if the negative movement would
         # require too many steps
-        posThtMovement[self.negSteps > TRAJECTORY_STEPS] = True
+        posThtMovement[self.negSteps > self.trajectorySteps] = True
         
         # Calculate the phi movement direction
         posPhiMovement = negDeltaPhi > 0
@@ -255,7 +264,12 @@ class CollisionSimulator():
         """Calculates the cobra trajectories.
         
         """
-        self.trajectories = TrajectoryGroup(self.bench, self.finalFiberPositions, self.movementDirections, self.movementStrategies)
+        self.trajectories = TrajectoryGroup(nSteps=self.trajectorySteps,
+                                            stepWidth=self.trajectoryStepWidth,
+                                            bench=self.bench,
+                                            finalFiberPositions=self.finalFiberPositions,
+                                            movementDirections=self.movementDirections,
+                                            movementStrategies=self.movementStrategies)
     
     
     def detectTrajectoryCollisions(self):
@@ -308,8 +322,8 @@ class CollisionSimulator():
             
             # Make sure that the new movement directions don't require too many
             # steps
-            self.movementDirections[0, self.posSteps > TRAJECTORY_STEPS] = False
-            self.movementDirections[0, self.negSteps > TRAJECTORY_STEPS] = True
+            self.movementDirections[0, self.posSteps > self.trajectories.nSteps] = False
+            self.movementDirections[0, self.negSteps > self.trajectories.nSteps] = True
             
             # Define the theta and phi movement strategies
             self.defineMovementStrategies()
