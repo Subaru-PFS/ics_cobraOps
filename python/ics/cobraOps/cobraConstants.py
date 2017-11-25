@@ -38,8 +38,11 @@ MOTOR_MAP_ANGULAR_STEP = 0.06283
 """The default angular step in radians used to measure the cobra motor maps
 (~3.6 deg)."""
 
-MOTOR_STEPS_PER_ANGULAR_STEP = 50.0
-"""The default number of motor steps needed to cover a motor angular step."""
+MOTOR1_STEP_SIZE = 0.06
+"""The default stage 1 motor step size in degrees."""
+
+MOTOR2_STEP_SIZE = 0.12
+"""The default stage 2 motor step size in degrees."""
 
 MOTOR_NOISE_ALPHA = 0.07
 """The default cobras motor noise normalization factor."""

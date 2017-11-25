@@ -16,7 +16,8 @@ import ics.cobraOps.plotUtils as plotUtils
 
 from ics.cobraOps.cobraConstants import (HOMES_THETA_DISTANCE,
                                          MOTOR_MAP_ANGULAR_STEP,
-                                         MOTOR_STEPS_PER_ANGULAR_STEP)
+                                         MOTOR1_STEP_SIZE,
+                                         MOTOR2_STEP_SIZE)
 
 
 class MotorMapGroup():
@@ -50,10 +51,10 @@ class MotorMapGroup():
         # Set the default step maps
         nTht = np.int(np.ceil(HOMES_THETA_DISTANCE / MOTOR_MAP_ANGULAR_STEP))
         nPhi = np.int(np.ceil(np.pi / MOTOR_MAP_ANGULAR_STEP))
-        self.S1Pm = np.full((self.nMaps, nTht), MOTOR_STEPS_PER_ANGULAR_STEP)
-        self.S1Nm = np.full((self.nMaps, nTht), MOTOR_STEPS_PER_ANGULAR_STEP)
-        self.S2Pm = np.full((self.nMaps, nPhi), MOTOR_STEPS_PER_ANGULAR_STEP)
-        self.S2Nm = np.full((self.nMaps, nPhi), MOTOR_STEPS_PER_ANGULAR_STEP)
+        self.S1Pm = np.full((self.nMaps, nTht), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR1_STEP_SIZE)
+        self.S1Nm = np.full((self.nMaps, nTht), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR1_STEP_SIZE)
+        self.S2Pm = np.full((self.nMaps, nPhi), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR2_STEP_SIZE)
+        self.S2Nm = np.full((self.nMaps, nPhi), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR2_STEP_SIZE)
         
         # Set the theta and phi offset arrays
         self.thtOffsets = np.arange(nTht + 1) * self.angularSteps[:, np.newaxis]
