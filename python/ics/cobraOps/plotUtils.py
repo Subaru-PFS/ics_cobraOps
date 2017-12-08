@@ -1,17 +1,19 @@
 """
 
 Some utility methods to make plots using matplotlib.
-  
+
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import matplotlib.cm as cm
+import matplotlib.collections as collections
 import matplotlib.patches as patches
 import matplotlib.path as path
-import matplotlib.collections as collections
+import matplotlib.pyplot as plt
 
 
-def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
+def createNewFigure(title, xLabel, yLabel, size=(8, 8), aspectRatio="equal", **kwargs):
     """Initializes a new matplotlib figure.
     
     Parameters
@@ -24,6 +26,8 @@ def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
         The label for the y axis.
     size: tuple, optional
         The figure size. Default is (8, 8).
+    aspectRatio: str, optional
+        The axes aspect ratio. Default is "equal".
     kwargs: plt.figure properties
         Any additional property that should be passed to the figure.
     
@@ -35,9 +39,9 @@ def createNewFigure(title, xLabel, yLabel, size=(8, 8), **kwargs):
     plt.ylabel(yLabel)
     plt.show(block=False)
 
-    # Fix the axes aspect ratio
+    # Set the axes aspect ratio
     ax = plt.gca()
-    ax.set_aspect("equal")
+    ax.set_aspect(aspectRatio)
 
 
 def setAxesLimits(xLim, yLim):
@@ -49,7 +53,7 @@ def setAxesLimits(xLim, yLim):
         A numpy array with the x axis limits.
     yLim: object
         A numpy array with the y axis limits.
-    
+
     """
     ax = plt.gca()
     ax.set_xlim(xLim)
@@ -65,9 +69,16 @@ def addPoints(points, **kwargs):
         Complex numpy array with the points coordinates.
     kwargs: plt.scatter properties
         Any additional property that should be passed to the scatter function.
-    
+
+    Returns
+    -------
+    object
+        The points path collection. 
+
     """
-    plt.scatter(points.real, points.imag, **kwargs)
+    pointsCollection = plt.scatter(points.real, points.imag, **kwargs)
+
+    return pointsCollection
 
 
 def addCircles(centers, radii, **kwargs):
@@ -82,6 +93,11 @@ def addCircles(centers, radii, **kwargs):
     kwargs: collections.EllipseCollection properties
         Any additional property that should be passed to the ellipse collection.
          
+    Returns
+    -------
+    object
+        The circles ellipse collection. 
+
     """
     # Create the ellipse collection
     diameters = 2 * radii
@@ -93,6 +109,8 @@ def addCircles(centers, radii, **kwargs):
  
     # Plot the ellipses in the current figure
     plt.gca().add_collection(ellipseCollection)
+
+    return ellipseCollection
 
 
 def addRings(centers, innerRadii, outerRadii, **kwargs):
@@ -108,11 +126,18 @@ def addRings(centers, innerRadii, outerRadii, **kwargs):
         Numpy array with the ring outer radii. 
     kwargs: collections.EllipseCollection properties
         Any additional property that should be passed to the ellipse collection.
-         
+
+    Returns
+    -------
+    tuple
+        A python tuple with the rings inner and outer ellipse collections. 
+
     """
     # Create the rings using 2 sets of circles
-    addCircles(centers, outerRadii, **kwargs)
-    addCircles(centers, innerRadii, facecolors="white")
+    outerEllipseCollection = addCircles(centers, outerRadii, **kwargs)
+    innerEllipseCollection = addCircles(centers, innerRadii, facecolors="white")
+
+    return (outerEllipseCollection, innerEllipseCollection)
 
 
 def addRingsSlow(centers, innerRadii, outerRadii, **kwargs):
@@ -128,7 +153,12 @@ def addRingsSlow(centers, innerRadii, outerRadii, **kwargs):
         Numpy array with the ring outer radii. 
     kwargs: collections.PatchCollection properties
         Any additional property that should be passed to the patch collection.
-         
+
+    Returns
+    -------
+    object
+        The circles patch collection. 
+
     """
     # Create the ring collection
     ringList = [patches.Wedge((c.real, c.imag), r1, 0, 360, r1 - r2) for c, r1, r2 in zip(centers, outerRadii, innerRadii)]
@@ -136,6 +166,31 @@ def addRingsSlow(centers, innerRadii, outerRadii, **kwargs):
 
     # Plot the rings in the current figure
     plt.gca().add_collection(ringCollection)
+
+    return ringCollection
+
+
+def addLine(x, y, **kwargs):
+    """Adds a line to an already initialized figure.
+
+    Parameters
+    ----------
+    x: object
+        Numpy array with the line x points.
+    y: object
+        Numpy array with the line y points. 
+    kwargs: plt.plot properties
+        Any additional property that should be passed to the plot function.
+    
+    Returns
+    -------
+    object
+        The line path collection.
+
+    """
+    lineCollection = plt.plot(x, y, **kwargs)
+
+    return lineCollection
 
 
 def addLines(startPoints, endPoints, **kwargs):
@@ -149,14 +204,21 @@ def addLines(startPoints, endPoints, **kwargs):
         Complex numpy array with the lines end coordinates. 
     kwargs: collections.LineCollection properties
         Any additional property that should be passed to the line collection.
-    
+
+    Returns
+    -------
+    object
+        The lines line collection.
+
     """
     # Create the line collection
     lineList = [[(p1.real, p1.imag), (p2.real, p2.imag)] for p1, p2 in zip(startPoints, endPoints)]
     lineCollection = collections.LineCollection(lineList, **kwargs)
 
-    # Plot the line in the current figure
+    # Plot the lines in the current figure
     plt.gca().add_collection(lineCollection)
+
+    return lineCollection
 
 
 def addThickLines(startPoints, endPoints, thicknesses, **kwargs):
@@ -172,6 +234,11 @@ def addThickLines(startPoints, endPoints, thicknesses, **kwargs):
         Numpy array with the lines thicknesses.
     kwargs: collections.LineCollection properties
         Any additional property that should be passed to the line collection.
+
+    Returns
+    -------
+    object
+        The thick lines patch collection.
          
     """
     # Create the thick line collection
@@ -184,6 +251,8 @@ def addThickLines(startPoints, endPoints, thicknesses, **kwargs):
 
     # Plot the thick lines in the current figure
     plt.gca().add_collection(thickLineCollection)
+
+    return thickLineCollection
 
 
 def getThickLinePath(center, width, thickness, angle):
@@ -199,6 +268,11 @@ def getThickLinePath(center, width, thickness, angle):
         The line thickness. The line height will be twice the thickness.
     angle: float
         The line rotation angle.
+
+    Returns
+    -------
+    object
+        The thick line path patch.
          
     """
     # Create a circle path with the appropriate radius centered at the origin
@@ -233,9 +307,101 @@ def getThickLinePath(center, width, thickness, angle):
     return patches.PathPatch(path.Path(vertices, codes))
 
 
+def addTrajectories(trajectories, **kwargs):
+    """Adds a set of trajectories to an already initialized figure.
+
+    Parameters
+    ----------
+    trajectories: object
+        Complex numpy array with trajectories coordinates. Each row represents
+        a different trajectory.
+    kwargs: collections.LineCollection properties
+        Any additional property that should be passed to the line collection.
+
+    Returns
+    -------
+    object
+        The trajectories line collection.
+
+    """
+    # Create the trajectory line collection
+    trajectoryLineList = [np.hstack((t.real[:, np.newaxis], t.imag[:, np.newaxis])) for t in trajectories]
+    trajectoryLineCollection = collections.LineCollection(trajectoryLineList, **kwargs)
+
+    # Plot the trajectory lines in the current figure
+    plt.gca().add_collection(trajectoryLineCollection)
+
+    return trajectoryLineCollection
+
+
+def getColorMap(colorMapName="Vega10"):
+    """Returns the colors that compose a given matplotlib color map.
+
+    Parameters
+    ----------
+    colorMapName: str, optional
+        The matplotlib color map name. Default is Vega10.
+
+    Returns
+    -------
+    object
+        A numpy array with the color map RGB colors. 
+
+    """
+    return np.array(cm.get_cmap(colorMapName).colors)
+
+
+def addAnimation(updateFunction, frames, fileName=None, **kwargs):
+    """Adds an animation to the current figure.
+
+    Parameters
+    ----------
+    updateFunction: function
+        The function that should be run in every animation step.
+    frames: object
+        An iterable whose steps will be passed to the update function.
+    fileName: object, optional
+        The video file name path. If it is set to None, no video will be saved.
+        Default is None.
+    kwargs: animation.save properties
+        Any additional property that should be passed to the animation save
+        method.
+
+    Returns
+    -------
+    object
+        The animation object. 
+
+    """   
+    # Create the animation
+    anim = animation.FuncAnimation(plt.gcf(), updateFunction, frames, repeat=False)
+    
+    # Save a video of the animation if necessary
+    if fileName is not None:
+        anim.save(fileName, **kwargs)
+
+    # Start the animation
+    anim._start()
+
+    return anim
+
+
+def saveFigure(fileName, **kwargs):
+    """Saves an image of the current figure.
+
+    Parameters
+    ----------
+    fileName: object
+        The image file name path.
+    kwargs: figure.savefig properties
+        Any additional property that should be passed to the savefig method.
+
+    """   
+    plt.gcf().savefig(fileName, **kwargs)
+
+
 def pauseExecution():
     """Pauses the general program execution to allow figure inspection.
     
     """
     plt.show()
-
