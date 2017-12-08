@@ -49,10 +49,14 @@ if useRealMaps | useRealLinks
     phiOut = [];
     L1 = [];
     L2 = [];
-    S1Nm = [];
+    S1Nm = []; % slow maps
     S2Pm = [];
     S1Pm = [];
     S2Nm = [];
+    F1Nm = []; % fast maps
+    F2Pm = [];
+    F1Pm = [];
+    F2Nm = [];
     for ii = 1:length(CobraConfig.ARM_DATA.ARM_DATA_CONTAINER)
         dc = CobraConfig.ARM_DATA.ARM_DATA_CONTAINER{ii};
         pids = [pids; str2num(dc.DATA_HEADER.Positioner_Id.Text)];
@@ -89,6 +93,23 @@ if useRealMaps | useRealLinks
             values = str2num(dc.SLOW_CALIBRATION_TABLE.Joint2_rev_stepsizes.Text);
             values = 1./values * 3.6;
             S2Nm = [S2Nm; values(3:end)];
+        end
+        if isfield(dc.FAST_CALIBRATION_TABLE, 'Joint1_fwd_stepsizes')
+            % regions are expected to be standard bin width of 3.6deg
+            % phi out of HS in positive direction
+            % tht out of HS in negative direction
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint1_fwd_stepsizes.Text);
+            values = 1./values * 3.6;
+            F1Pm = [F1Pm; values(3:end)];
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint2_fwd_stepsizes.Text);
+            values = 1./values * 3.6;
+            F2Pm = [F2Pm; values(3:end)];
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint1_rev_stepsizes.Text);
+            values = 1./values * 3.6;
+            F1Nm = [F1Nm; values(3:end)];
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint2_rev_stepsizes.Text);
+            values = 1./values * 3.6;
+            F2Nm = [F2Nm; values(3:end)];
         end
     end
     % calculated map ranges (not physical range of motion).  other
