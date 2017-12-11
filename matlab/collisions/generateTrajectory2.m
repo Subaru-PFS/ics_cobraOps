@@ -5,7 +5,7 @@ function output=generateTrajectory2(targetList, geom, verify)
 
 if ~exist('trajectory_strategy','var'), trajectory_strategy = 'lateLate'; end;
 
-stepSize = 100e-3; %radians, for non-motormap simulations
+stepSize = 1e-3; %radians, for non-motormap simulations
 
 % this is an epsilon to make sure that values near zero in theta are
 % intepreted on the positive (or negative) side of the cut,
@@ -44,7 +44,7 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     
     n1bins = size(geom.S1Pm,2);
     n2bins = size(geom.S2Pm,2);
-
+    keyboard;
     %% start bins for P and N moves, unflipped maps.
     strtBin.thtP = (mod(startP.tht - geom.tht0 + thteps, 2*pi) - thteps - geom.map_range.tht(1))/geom.binWidth;
     strtBin.thtN = (geom.map_range.tht(2) - (mod(startN.tht - geom.tht0, 2*pi) + ADD2Pi))/geom.binWidth;
@@ -229,55 +229,7 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     %%%
 
     tBins.max = max([tBins.thtP tBins.thtN tBins.phi]);
-    
-else % if there is no motor map...
-    %%%UNDER CONSTRUCTION%%%
-    
-    %%%%%  PHI REVERSE MOVES NOT IMPLEMENTED YET
-    maxDeltaAngle = max(max(abs(deltaTht)), max(abs(deltaPhi)));
-    nSteps.max = ceil(maxDeltaAngle/stepSize);
-    nSteps.tht = ceil(deltaTht(:)/stepSize);
-    nSteps.phi = ceil(deltaPhi(:)/stepSize);
-    
-    %% prototype for trajectories
-    protoTraj = (0:nSteps.max) * stepSize;
-    %  protoTraj = 0:stepSize:maxDeltaAngle;
-    dmaxDeltaAngle = protoTraj(end) - maxDeltaAngle;
-    
-    
-    %% define trajectories in theta/phi space
-    %% early tht move defined here
-    Tht = bsxfun(@min, protoTraj, abs(deltaTht));
-    Tht = bsxfun(@times, Tht, thtDIR);
-    Tht = bsxfun(@plus , Tht, strtPos.tht);
-    %% late phi move
-    Phi = bsxfun(@plus, protoTraj - maxDeltaAngle - dmaxDeltaAngle, abs(deltaPhi));
-    Phi = max(Phi,0);
-    Phi = bsxfun(@times, Phi, phiDIR);
-    Phi = bsxfun(@plus,  Phi, strtPos.phi);
-                                      
-    switch trajectory_strategy                                      
-        case 'earlyLate'
-          nSteps.dtht = zeros(1,nCobras);       
-          nSteps.dphi = nSteps.max - nSteps.phi;
-        case 'lateLate'
-            % all movements end at on final step
-            Tht = bsxfun(@plus, protoTraj - maxDeltaAngle - dmaxDeltaAngle, abs(deltaTht));
-            Tht = max(Tht,0);
-            Tht = bsxfun(@times, Tht, thtDIR);
-            Tht = bsxfun(@plus, Tht, geom.tht0);
-            nSteps.dtht = nSteps.max - nSteps.tht;
-            nSteps.dphi = nSteps.max - nSteps.phi;
-        case 'earlyEarly' % no good!  don't use.  only here for historical reasons
-            % phi moves right away
-            Phi = bsxfun(@min, protoTraj, abs(deltaPhi));
-            Phi = bsxfun(@times, Phi, phiDIR);
-            Phi = bsxfun(@plus, Phi, strtPos.phi);
-            nSteps.dtht = zeros(nCobras,1);       
-            nSteps.dphi = zeros(nCobras,1);
-    end
-    %%% END OF CONSTRUCTION ZONE
-end
+end % there is always a motor map now    
 
 output = packstruct(ThtP, ThtN, Phi);
 output.nthtP = nSteps.thtP;
