@@ -133,6 +133,9 @@ if useRealMaps | useRealLinks
     % phiOut
     % S[12][FR]m
     configData = packstruct(L1,L2,phiIn,phiOut,S1Nm,S1Pm,S2Pm,S2Nm,distCobras, pids, mids);
+else
+    map_range.tht = [0 , 112 * 3.6 * pi / 180];
+    map_range.phi = [0 , 112 * 3.6 * pi / 180] - pi;
 end
 
 if ~isempty(centers)
@@ -158,7 +161,10 @@ if ~isempty(centers)
         S2Pm   = configData.S2Pm(mapAssignment(:,3),:);
         S2Nm   = configData.S2Nm(mapAssignment(:,4),:);
     else
-        S1Pm = []; S2Pm = []; S1Nm = []; S2Nm = [];
+        S1Pm = ONE*ones(1,112)*50;
+        S2Pm = ONE*ones(1,112)*50;
+        S1Nm = ONE*ones(1,112)*50;
+        S2Nm = ONE*ones(1,112)*50;
     end
     if useRealLinks
         %take L1,L2, phiIn/Out from CobraConfig.
