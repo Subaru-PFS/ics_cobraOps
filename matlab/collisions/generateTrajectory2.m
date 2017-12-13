@@ -5,8 +5,6 @@ function output=generateTrajectory2(targetList, geom, verify)
 
 if ~exist('trajectory_strategy','var'), trajectory_strategy = 'lateLate'; end;
 
-stepSize = 1e-3; %radians, for non-motormap simulations
-
 % this is an epsilon to make sure that values near zero in theta are
 % intepreted on the positive (or negative) side of the cut,
 % respectively. Make it negative for same same direction moveouts (positive
@@ -44,7 +42,7 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     
     n1bins = size(geom.S1Pm,2);
     n2bins = size(geom.S2Pm,2);
-    keyboard;
+
     %% start bins for P and N moves, unflipped maps.
     strtBin.thtP = (mod(startP.tht - geom.tht0 + thteps, 2*pi) - thteps - geom.map_range.tht(1))/geom.binWidth;
     strtBin.thtN = (geom.map_range.tht(2) - (mod(startN.tht - geom.tht0, 2*pi) + ADD2Pi))/geom.binWidth;
