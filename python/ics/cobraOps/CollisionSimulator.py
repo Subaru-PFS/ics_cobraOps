@@ -16,6 +16,7 @@ import ics.cobraOps.plotUtils as plotUtils
 
 from ics.cobraOps.TrajectoryGroup import TrajectoryGroup
 
+#from IPython.core.debugger import Tracer
 
 class CollisionSimulator():
     """
