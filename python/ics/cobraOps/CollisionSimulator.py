@@ -278,7 +278,7 @@ class CollisionSimulator():
         
         """
         # Detect trajectory collisions between cobra associations
-        trajectoryCollisions = self.trajectories.calculateCobraAssociationCollisions()
+        trajectoryCollisions, self.distances = self.trajectories.calculateCobraAssociationCollisions()
         
         # Check which are the cobra associations affected by collisions
         self.associationCollisions = np.any(trajectoryCollisions, axis=1)
@@ -352,7 +352,7 @@ class CollisionSimulator():
         cobraAssociationIndices = np.logical_or(cobraAssociationIndices, np.in1d(self.bench.cobraAssociations[1], cobraIndices))
         
         # Detect trajectory collisions between these cobra associations
-        trajectoryCollisions = self.trajectories.calculateCobraAssociationCollisions(cobraAssociationIndices)
+        trajectoryCollisions, self.distances = self.trajectories.calculateCobraAssociationCollisions(cobraAssociationIndices)
         
         # Update the cobra associations affected by collisions
         self.associationCollisions[cobraAssociationIndices] = np.any(trajectoryCollisions, axis=1)
@@ -370,6 +370,7 @@ class CollisionSimulator():
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = np.sum(self.endPointCollisions)
     
+		
     
     def plotResults(self, extraTargets=None, paintFootprints=False):
         """Plots the collision simulator results in a new figure.
