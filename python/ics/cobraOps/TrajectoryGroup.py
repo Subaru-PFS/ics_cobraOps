@@ -226,7 +226,7 @@ class TrajectoryGroup(AttributePrinter):
         distances = distances.reshape((len(cobraAssociations[0]), self.nSteps))
         
         # Return the cobra association collisions along the trajectory
-        return distances < (linkRadius[cobraAssociations[0], np.newaxis] + linkRadius[cobraAssociations[1], np.newaxis])
+        return distances < (linkRadius[cobraAssociations[0], np.newaxis] + linkRadius[cobraAssociations[1], np.newaxis]), distances
     
     
     def addToFigure(self, colors=np.array([0.4, 0.4, 0.4, 1.0]), indices=None, paintFootprints=False, footprintColors=np.array([0.0, 0.0, 1.0, 0.05])):
