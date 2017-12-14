@@ -25,7 +25,7 @@ class CollisionSimulator():
     
     """
     
-    def __init__(self, bench, targets, trajectorySteps=110, trajectoryStepWidth=50):
+    def __init__(self, bench, targets, trajectorySteps=150, trajectoryStepWidth=50):
         """Constructs a new collision simulator instance.
         
         Parameters
@@ -36,7 +36,7 @@ class CollisionSimulator():
             The target group instance.
         nSteps: int, optional
             The total number of steps in the cobra trajectories. Default is
-            110.
+            150.
         stepWidth: int, optional
             The trajectory step width in units of motor steps. Default is 50.
         

@@ -250,19 +250,23 @@ class CobraGroup(AttributePrinter):
         if useRealLinks:
             if calibrationProduct.nCobras == self.nCobras:
                 # Use directly the calibration product arrays
+                self.tht0 = calibrationProduct.tht0.copy()
+                self.tht1 = calibrationProduct.tht1.copy()
                 self.phiIn = calibrationProduct.phiIn.copy()
                 self.phiOut = calibrationProduct.phiOut.copy()
                 self.L1 = calibrationProduct.L1.copy()
                 self.L2 = calibrationProduct.L2.copy()
             else:
                 # Randomize the calibration cobra indices
-                indices = np.random.randint(calibrationProduct.nCobras, size=(4, self.nCobras))
+                indices = np.random.randint(calibrationProduct.nCobras, size=(3, self.nCobras))
                 
                 # Assign random link properties to each cobra
-                self.phiIn = calibrationProduct.phiIn[indices[0]]
+                self.tht0 = calibrationProduct.tht0[indices[0]]
+                self.tht1 = calibrationProduct.tht1[indices[0]]
+                self.phiIn = calibrationProduct.phiIn[indices[1]]
                 self.phiOut = calibrationProduct.phiOut[indices[1]]
                 self.L1 = calibrationProduct.L1[indices[2]]
-                self.L2 = calibrationProduct.L2[indices[3]]
+                self.L2 = calibrationProduct.L2[indices[2]]
             
             # Add some safety range to the phi limits
             self.phiIn += PHI_SAFETY_ANGLE

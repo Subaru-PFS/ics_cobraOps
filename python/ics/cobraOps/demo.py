@@ -21,7 +21,7 @@ from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 targetDensity = 1.5
 
 # Load the cobras calibration product
-calibrationProduct = CobrasCalibrationProduct("updatedMotorMapsFromThisRun2.xml")
+calibrationProduct = CobrasCalibrationProduct("updatedMaps6.xml")
 
 # Create the bench instance
 bench = Bench(layout="full", calibrationProduct=calibrationProduct)
