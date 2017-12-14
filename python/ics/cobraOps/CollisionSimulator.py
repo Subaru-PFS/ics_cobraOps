@@ -186,12 +186,12 @@ class CollisionSimulator():
         # Calculate the total number of motor steps required to reach the final
         # positions from the positive and the negative home positions
         (posThtMotorSteps, posPhiMotorSteps) = self.bench.cobras.motorMaps.calculateSteps(posDeltaTht, posStartPhi, posDeltaPhi)
-        (negThtMotorSetps, negPhiMotorSteps) = self.bench.cobras.motorMaps.calculateSteps(negDeltaTht, negStartPhi, negDeltaPhi)       
+        (negThtMotorSteps, negPhiMotorSteps) = self.bench.cobras.motorMaps.calculateSteps(negDeltaTht, negStartPhi, negDeltaPhi)       
         
         # Calculate the number of trajectory steps required to reach the final
         # positions from the positive and the negative starting positions
         self.posSteps = np.ceil(np.max((posThtMotorSteps, posPhiMotorSteps), axis=0) / self.trajectoryStepWidth).astype("int") + 1
-        self.negSteps = np.ceil(np.max((negThtMotorSetps, negPhiMotorSteps), axis=0) / self.trajectoryStepWidth).astype("int") + 1
+        self.negSteps = np.ceil(np.max((negThtMotorSteps, negPhiMotorSteps), axis=0) / self.trajectoryStepWidth).astype("int") + 1
         
         # Make sure that at least one of the movements requires less steps than
         # the maximum number of steps allowed
