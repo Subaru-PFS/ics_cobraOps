@@ -30,18 +30,18 @@ deltaThtN = ( mod(Target.tht - geom.tht1 - thteps, 2*pi) - ...
 
 deltaPhi = (Target.phi - startP.phi); 
 
-if ~isempty(geom.S1Pm) % if there is a motor map...
+if ~isempty(geom.F1Pm) % if there is a motor map...
     
     % calculate the number of steps for each motor of each positioner
     % pull in the maps.  reverse move maps are flipped so that motion
     % in time always increases the index in Map.x
-    Map.thtP =        geom.S1Pm;
-    Map.thtN = fliplr(geom.S1Nm);
-    Map.phiP =        geom.S2Pm;
-    Map.phiN = fliplr(geom.S2Nm); % unnecessary in this context.
+    Map.thtP =        geom.F1Pm;
+    Map.thtN = fliplr(geom.F1Nm);
+    Map.phiP =        geom.F2Pm;
+    Map.phiN = fliplr(geom.F2Nm); % unnecessary in this context.
     
-    n1bins = size(geom.S1Pm,2);
-    n2bins = size(geom.S2Pm,2);
+    n1bins = size(geom.F1Pm,2);
+    n2bins = size(geom.F2Pm,2);
 
     %% start bins for P and N moves, unflipped maps.
     strtBin.thtP = (mod(startP.tht - geom.tht0 + thteps, 2*pi) - thteps - geom.map_range.tht(1))/geom.binWidth;
@@ -74,6 +74,15 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     fnshINDX.phiP = max(ceil(fnshBin.phiP), 1);
     fnshINDX.phiN = max(ceil(fnshBin.phiN), 1);
 
+    %% don't let the fnshINDX exceed n1bins
+    tempbool = fnshINDX.thtN > n1bins;
+    if sum(tempbool) > 0
+        disp(['Warning: fnshINDX exceeds n1bins in some cases probably due to roundoff.  ' ...
+              'Correcting positioners (don''t worry if thtp is small...'])
+        disp(sprintf('pid %02d, thtp = %g\n',[find(tempbool) fnshBin.thtP(tempbool)].'))
+        fnshINDX.thtN(tempbool) = n1bins;
+    end
+        
     %% calculate the fractional bins at the Randbedingung of the trajectory
     strtOverCount.thtP = strtBin.thtP - (strtINDX.thtP - 1);
     strtOverCount.thtN = strtBin.thtN - (strtINDX.thtN - 1);
@@ -111,8 +120,11 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     nSteps.phiP = max(nSteps.phiP, 0);
     nSteps.phiN = max(nSteps.phiN, 0);
 
-    nSteps.max = max([nSteps.thtP; nSteps.thtN; nSteps.phiP; nSteps.phiN]);
-    
+    try
+        nSteps.max = max([nSteps.thtP; nSteps.thtN; nSteps.phiP; nSteps.phiN]);
+    catch
+        keyboard;
+    end
     %% need to write Tht and Phi
     
     %% fractionalBinError derived in PHM's COO notebook #2, 1-dec-2015
