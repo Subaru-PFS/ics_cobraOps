@@ -132,7 +132,10 @@ if useRealMaps | useRealLinks
     % phiIn
     % phiOut
     % S[12][FR]m
-    configData = packstruct(L1,L2,phiIn,phiOut,S1Nm,S1Pm,S2Pm,S2Nm,distCobras, pids, mids);
+    configData = packstruct(L1,L2,phiIn,phiOut,...
+                            S1Nm,S1Pm,S2Pm,S2Nm,...
+                            F1Nm,F1Pm,F2Pm,F2Nm,...
+                            distCobras, pids, mids);
 else
     map_range.tht = [0 , 112 * 3.6 * pi / 180];
     map_range.phi = [0 , 112 * 3.6 * pi / 180] - pi;
@@ -155,16 +158,24 @@ if ~isempty(centers)
     tht1 = mod(tht0 + thtrange, 2*pi); % opp sense hard stop
     
     if useRealMaps
-        mapAssignment = ceil(rand(length(center),4) * length(configData.L1));
+        mapAssignment = ceil(rand(length(center),8) * length(configData.L1));
         S1Pm   = configData.S1Pm(mapAssignment(:,1),:);
         S1Nm   = configData.S1Nm(mapAssignment(:,2),:);
         S2Pm   = configData.S2Pm(mapAssignment(:,3),:);
         S2Nm   = configData.S2Nm(mapAssignment(:,4),:);
+        F1Pm   = configData.F1Pm(mapAssignment(:,5),:);
+        F1Nm   = configData.F1Nm(mapAssignment(:,6),:);
+        F2Pm   = configData.F2Pm(mapAssignment(:,7),:);
+        F2Nm   = configData.F2Nm(mapAssignment(:,8),:);
     else
         S1Pm = ONE*ones(1,112)*50;
         S2Pm = ONE*ones(1,112)*50;
         S1Nm = ONE*ones(1,112)*50;
         S2Nm = ONE*ones(1,112)*50;
+        F1Pm = ONE*ones(1,112)*50;
+        F2Pm = ONE*ones(1,112)*50;
+        F1Nm = ONE*ones(1,112)*50;
+        F2Nm = ONE*ones(1,112)*50;
     end
     if useRealLinks
         %take L1,L2, phiIn/Out from CobraConfig.
@@ -243,7 +254,8 @@ field.ang = atan(subarray(cmplx(@polyfit,center,1),1));
 output = packstruct(center, L1, L2, phiIn, phiOut, tht0, tht1, rMin, rMax, ...
                     dA, rRange,home0,home1,...
                     nnMap, NN, rf, distCobras, minDist, ...
-                    S1Nm, S1Pm, S2Pm, S2Nm, map_range, binWidth, ...
+                    S1Nm, S1Pm, S2Pm, S2Nm, ...
+                    F1Nm, F1Pm, F2Pm, F2Nm, map_range, binWidth, ...
                     alpha, beta, ...
                     pids, mids, thteps, tht_overlap, field);
 if exist('mapAssignment','var')
