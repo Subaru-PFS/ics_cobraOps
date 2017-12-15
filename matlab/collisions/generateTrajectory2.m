@@ -77,9 +77,11 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
     %% don't let the fnshINDX exceed n1bins
     tempbool = fnshINDX.thtN > n1bins;
     if sum(tempbool) > 0
-        disp(['Warning: fnshINDX exceeds n1bins in some cases probably due to roundoff.  ' ...
-              'Correcting positioners (don''t worry if thtp is small...'])
-        disp(sprintf('pid %02d, thtp = %g\n',[find(tempbool) fnshBin.thtP(tempbool)].'))
+        if sum(fnshBin.thtP(tempbool) < -thteps)
+            disp(['Warning: fnshINDX exceeds n1bins in some cases probably due to roundoff.  ' ...
+                  'Correcting positioners (don''t worry if thtp is small...'])
+            disp(sprintf('pid %02d, thtp = %g\n',[find(tempbool) fnshBin.thtP(tempbool)].'))
+        end
         fnshINDX.thtN(tempbool) = n1bins;
     end
         
