@@ -370,7 +370,6 @@ class CollisionSimulator():
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = np.sum(self.endPointCollisions)
     
-		
     
     def plotResults(self, extraTargets=None, paintFootprints=False):
         """Plots the collision simulator results in a new figure.

@@ -55,6 +55,10 @@ class MotorMapGroup():
         self.S1Nm = np.full((self.nMaps, nTht), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR1_STEP_SIZE)
         self.S2Pm = np.full((self.nMaps, nPhi), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR2_STEP_SIZE)
         self.S2Nm = np.full((self.nMaps, nPhi), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR2_STEP_SIZE)
+        self.F1Pm = self.S1Pm.copy()
+        self.F1Nm = self.S1Nm.copy()
+        self.F2Pm = self.S2Pm.copy()
+        self.F2Nm = self.S2Nm.copy()
         
         # Set the theta and phi offset arrays
         self.thtOffsets = np.arange(nTht + 1) * self.angularSteps[:, np.newaxis]
@@ -64,16 +68,29 @@ class MotorMapGroup():
         self.calculateIntegratedStepMaps()
     
     
-    def calculateIntegratedStepMaps(self):
+    def calculateIntegratedStepMaps(self, useSlowMaps=True):
         """Calculates the integrated theta and phi step maps.
+        
+        Parameters
+        ----------
+        useSlowMaps: bool, optional
+            If True (False), the slow (fast) motor maps will be used in the
+            calculation. Default is True.
         
         """
         # Calculate the cumulative step sums
         zeros = np.zeros((self.nMaps, 1))
-        self.posThtSteps = np.hstack((zeros, np.cumsum(self.S1Pm, axis=1)))
-        self.negThtSteps = np.hstack((zeros, np.cumsum(self.S1Nm, axis=1)))
-        self.posPhiSteps = np.hstack((zeros, np.cumsum(self.S2Pm, axis=1)))
-        self.negPhiSteps = np.hstack((zeros, np.cumsum(self.S2Nm, axis=1)))
+        
+        if useSlowMaps:
+            self.posThtSteps = np.hstack((zeros, np.cumsum(self.S1Pm, axis=1)))
+            self.negThtSteps = np.hstack((zeros, np.cumsum(self.S1Nm, axis=1)))
+            self.posPhiSteps = np.hstack((zeros, np.cumsum(self.S2Pm, axis=1)))
+            self.negPhiSteps = np.hstack((zeros, np.cumsum(self.S2Nm, axis=1)))
+        else:
+            self.posThtSteps = np.hstack((zeros, np.cumsum(self.F1Pm, axis=1)))
+            self.negThtSteps = np.hstack((zeros, np.cumsum(self.F1Nm, axis=1)))
+            self.posPhiSteps = np.hstack((zeros, np.cumsum(self.F2Pm, axis=1)))
+            self.negPhiSteps = np.hstack((zeros, np.cumsum(self.F2Nm, axis=1)))
     
     
     def useCalibrationProduct(self, calibrationProduct):
@@ -92,6 +109,10 @@ class MotorMapGroup():
             self.S2Pm = calibrationProduct.S2Pm.copy()
             self.S1Nm = calibrationProduct.S1Nm.copy()
             self.S2Nm = calibrationProduct.S2Nm.copy()
+            self.F1Pm = calibrationProduct.F1Pm.copy()
+            self.F2Pm = calibrationProduct.F2Pm.copy()
+            self.F1Nm = calibrationProduct.F1Nm.copy()
+            self.F2Nm = calibrationProduct.F2Nm.copy()
         else:
             # Assign the motor maps properties randomly
             indices = np.random.randint(calibrationProduct.nCobras, size=self.nMaps)
@@ -100,6 +121,10 @@ class MotorMapGroup():
             self.S2Pm = calibrationProduct.S2Pm[indices]
             self.S1Nm = calibrationProduct.S1Nm[indices]
             self.S2Nm = calibrationProduct.S2Nm[indices]
+            self.F1Pm = calibrationProduct.F1Pm[indices]
+            self.F2Pm = calibrationProduct.F2Pm[indices]
+            self.F1Nm = calibrationProduct.F1Nm[indices]
+            self.F2Nm = calibrationProduct.F2Nm[indices]
         
         # Set the theta and phi offset arrays
         self.thtOffsets = np.arange(self.S1Pm.shape[1] + 1) * self.angularSteps[:, np.newaxis]
@@ -160,11 +185,14 @@ class MotorMapGroup():
         return (nThtSteps, nPhiSteps)
     
     
-    def plot(self, indices=None):
+    def plot(self, useSlowMaps=True, indices=None):
         """Plots the cobras motor maps on a new figure.
         
         Parameters
         ----------
+        useSlowMaps: bool, optional
+            If True (False), the slow (fast) motor maps will be plotted.
+            Default is True.
         indices: object, optional
             A numpy array with the map indices to use. If it is set to None,
             all the maps will be used. Default is None.
@@ -181,10 +209,20 @@ class MotorMapGroup():
         for m in indices:
             # Draw the theta motor maps
             angleOffsets = np.rad2deg(self.thtOffsets[m, :-1])
-            plotUtils.addLine(angleOffsets, self.S1Pm[m], color=[0, 0, 0, 0.4])
-            plotUtils.addLine(angleOffsets, self.S1Nm[m], color=[1, 0, 0, 0.4])
+            
+            if useSlowMaps:
+                plotUtils.addLine(angleOffsets, self.S1Pm[m], color=[0, 0, 0, 0.4])
+                plotUtils.addLine(angleOffsets, self.S1Nm[m], color=[1, 0, 0, 0.4])
+            else:
+                plotUtils.addLine(angleOffsets, self.F1Pm[m], color=[0, 0, 0, 0.4])
+                plotUtils.addLine(angleOffsets, self.F1Nm[m], color=[1, 0, 0, 0.4])
             
             # Draw the phi motor maps
             angleOffsets = np.rad2deg(self.phiOffsets[m, :-1])
-            plotUtils.addLine(angleOffsets, self.S2Pm[m], color=[0, 1, 0, 0.4])
-            plotUtils.addLine(angleOffsets, self.S2Nm[m], color=[0, 0, 1, 0.4])
+
+            if useSlowMaps:
+                plotUtils.addLine(angleOffsets, self.S2Pm[m], color=[0, 1, 0, 0.4])
+                plotUtils.addLine(angleOffsets, self.S2Nm[m], color=[0, 0, 1, 0.4])
+            else:
+                plotUtils.addLine(angleOffsets, self.F2Pm[m], color=[0, 1, 0, 0.4])
+                plotUtils.addLine(angleOffsets, self.F2Nm[m], color=[0, 0, 1, 0.4])
