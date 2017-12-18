@@ -72,6 +72,10 @@ class CobrasCalibrationProduct(AttributePrinter):
             self.S1Nm = np.empty((self.nCobras, self.motorMapSteps))
             self.S2Pm = np.empty((self.nCobras, self.motorMapSteps))
             self.S2Nm = np.empty((self.nCobras, self.motorMapSteps))
+            self.F1Pm = np.empty((self.nCobras, self.motorMapSteps))
+            self.F1Nm = np.empty((self.nCobras, self.motorMapSteps))
+            self.F2Pm = np.empty((self.nCobras, self.motorMapSteps))
+            self.F2Nm = np.empty((self.nCobras, self.motorMapSteps))
         
         # Fill the cobras calibration arrays
         for i in range(self.nCobras):
@@ -100,20 +104,29 @@ class CobrasCalibrationProduct(AttributePrinter):
             if hasattr(self, "motorMapSteps"):
                 # Get the angular step used in the measurements
                 slowCalTable = dataContainers[i].find("SLOW_CALIBRATION_TABLE")
+                fastCalTable = dataContainers[i].find("FAST_CALIBRATION_TABLE")
                 angularPositions = slowCalTable.find("Joint1_fwd_regions").text.split(",")[2:-1]
                 angularStep = float(angularPositions[1]) - float(angularPositions[0])
                 
                 # Get the cobra motors speeds in degrees per step
-                joint1Fwd = slowCalTable.find("Joint1_fwd_stepsizes").text.split(",")[2:-1]
-                joint1Rev = slowCalTable.find("Joint1_rev_stepsizes").text.split(",")[2:-1]
-                joint2Fwd = slowCalTable.find("Joint2_fwd_stepsizes").text.split(",")[2:-1]
-                joint2Rev = slowCalTable.find("Joint2_rev_stepsizes").text.split(",")[2:-1]
+                slowJoint1Fwd = slowCalTable.find("Joint1_fwd_stepsizes").text.split(",")[2:-1]
+                slowJoint1Rev = slowCalTable.find("Joint1_rev_stepsizes").text.split(",")[2:-1]
+                slowJoint2Fwd = slowCalTable.find("Joint2_fwd_stepsizes").text.split(",")[2:-1]
+                slowJoint2Rev = slowCalTable.find("Joint2_rev_stepsizes").text.split(",")[2:-1]
+                fastJoint1Fwd = fastCalTable.find("Joint1_fwd_stepsizes").text.split(",")[2:-1]
+                fastJoint1Rev = fastCalTable.find("Joint1_rev_stepsizes").text.split(",")[2:-1]
+                fastJoint2Fwd = fastCalTable.find("Joint2_fwd_stepsizes").text.split(",")[2:-1]
+                fastJoint2Rev = fastCalTable.find("Joint2_rev_stepsizes").text.split(",")[2:-1]
                 
                 # Calculate the motor steps required to move that angular step
-                self.S1Pm[i] = angularStep / np.array(list(map(float, joint1Fwd)))
-                self.S1Nm[i] = angularStep / np.array(list(map(float, joint1Rev)))
-                self.S2Pm[i] = angularStep / np.array(list(map(float, joint2Fwd)))
-                self.S2Nm[i] = angularStep / np.array(list(map(float, joint2Rev)))
+                self.S1Pm[i] = angularStep / np.array(list(map(float, slowJoint1Fwd)))
+                self.S1Nm[i] = angularStep / np.array(list(map(float, slowJoint1Rev)))
+                self.S2Pm[i] = angularStep / np.array(list(map(float, slowJoint2Fwd)))
+                self.S2Nm[i] = angularStep / np.array(list(map(float, slowJoint2Rev)))
+                self.F1Pm[i] = angularStep / np.array(list(map(float, fastJoint1Fwd)))
+                self.F1Nm[i] = angularStep / np.array(list(map(float, fastJoint1Rev)))
+                self.F2Pm[i] = angularStep / np.array(list(map(float, fastJoint2Fwd)))
+                self.F2Nm[i] = angularStep / np.array(list(map(float, fastJoint2Rev)))
                 
                 # Save the angular step in radians
                 self.angularSteps[i] = np.deg2rad(angularStep)

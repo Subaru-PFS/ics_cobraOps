@@ -201,9 +201,11 @@ class TrajectoryGroup(AttributePrinter):
         
         Returns
         -------
-        object
-            A boolean numpy array indicating which cobra associations are
-            involved in a collision for each step in the trajectory.
+        tuple
+            A python tuple with a boolean numpy array indicating which cobra
+            associations are involved in a collision for each step in the
+            trajectory and a double numpy array with the cobra association
+            distances along the trajectories.
         
         """
         # Extract some useful information
@@ -225,7 +227,8 @@ class TrajectoryGroup(AttributePrinter):
         # Reshape the distances array
         distances = distances.reshape((len(cobraAssociations[0]), self.nSteps))
         
-        # Return the cobra association collisions along the trajectory
+        # Return the cobra association collisions along the trajectory and the
+        # distances array
         return distances < (linkRadius[cobraAssociations[0], np.newaxis] + linkRadius[cobraAssociations[1], np.newaxis]), distances
     
     
