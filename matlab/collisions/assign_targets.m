@@ -151,8 +151,8 @@ collisions = ncobras;
 % be altered by increments of pi/3 if there are collisions.
 tgtTP = XY2TP(bench.home0 - bench.center, bench.L1, bench.L2);
 tgtTP.tht = tgtTP.tht + 0.1;
-tgt_home = (bench.center + bench.L1 * exp(i*tgtTP.tht) + ...
-            bench.L2 * exp(i*(tgtTP.tht + tgtTP.phi))); 
+tgt_home = (bench.center + bench.L1 .* exp(i*tgtTP.tht) + ...
+            bench.L2 .* exp(i*(tgtTP.tht + tgtTP.phi))); 
 
 ctr.reassigns=0;
 while (collisions > 0)
