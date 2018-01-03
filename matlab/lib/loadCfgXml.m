@@ -7,14 +7,27 @@ function CobraConfig = loadCfgXml(cfgFilePath,cfgFile)
 % $$$     [cfgFile cfgFilePath] = uigetfile('*.xml','Select cobra config xml to load');
 % $$$ end
 
-if ~exist('cfgFilePath','var'), cfgFilePath = '.'; end
+if ~exist('cfgFilePath','var'), cfgFilePath = '.'; 
+else
+    if ~exist('cfgFile','var')
+         try % shortcut loading for 
+            CobraConfig = xml2struct(fullfile(cfgFilePath,'usedXMLFile.xml'));
+            CobraConfig.cfgFile = 'usedXMLFile.xml';
+            CobraConfig.cfgPath = cfgFilePath;
+            return;
+         catch 
+         end
+    end
+end
 if ~exist('cfgFile','var')
   warning off ;
-  try
-    cfgfiles = dir2cell('*.xml');
-  catch
-    cfgfiles = {};
-  end
+ 
+      try
+        cfgfiles = dir2cell('*.xml');
+      catch
+        cfgfiles = {};
+      end
+   
   warning on ;
   %% if there is one file in the default directory, and the directory was specified, then prompt the
   %% user on the command line to use it.  only an 'n' will trigger the GUI.

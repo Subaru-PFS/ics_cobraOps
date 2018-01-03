@@ -45,12 +45,13 @@ for jj = 1: length(CobraConfig.ARM_DATA.ARM_DATA_CONTAINER)
             outputY = mMapStr2NumArr(CobraConfig.ARM_DATA.ARM_DATA_CONTAINER{jj}.(TBL_SPEED).(TABLE_DAT).Text);
             outputX = mMapStr2NumArr(CobraConfig.ARM_DATA.ARM_DATA_CONTAINER{jj}.(TBL_SPEED).(TABLE_ANG).Text);
             outputX(3:end) = outputX(3:end)*pi/180;
+            break;
         else
             warning('Parameter name does not exist in configuration structure');
         end
     end
 end
-else 
+else  % Backward compatibility when the xml was still havein ARM_DATA_1 etc.
 for i = 1:sum(regexpcmp(fieldnames(CobraConfig.ARM_DATA),'ARM_DATA_*')) % Count all struct that start with the name ARM_DATA_
     ARM_DATA_n = sprintf('ARM_DATA_%d', i);
     if(armID ==  str2num(CobraConfig.ARM_DATA.(ARM_DATA_n).DATA_HEADER.Positioner_Id.Text))
@@ -58,6 +59,7 @@ for i = 1:sum(regexpcmp(fieldnames(CobraConfig.ARM_DATA),'ARM_DATA_*')) % Count 
             outputY = mMapStr2NumArr(CobraConfig.ARM_DATA.(ARM_DATA_n).(TBL_SPEED).(TABLE_DAT).Text);
             outputX = mMapStr2NumArr(CobraConfig.ARM_DATA.(ARM_DATA_n).(TBL_SPEED).(TABLE_ANG).Text);
             outputX(3:end) = outputX(3:end)*pi/180;
+            break;
         else
             warning('Parameter name does not exist in configuration structure');
         end
