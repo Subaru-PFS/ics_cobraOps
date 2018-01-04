@@ -31,7 +31,7 @@ end
 ntgt = length(tgt);
 
 % full calc of distances
-XY   = tgt - bench.center;
+XY   = bsxfun(@minus,tgt,bench.center);
 dst  = abs(XY);
 % filter for reachability
 IN_PATROL_REGION = sparse( dst > bench.rMin & dst < bench.rMax );
