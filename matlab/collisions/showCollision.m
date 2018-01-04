@@ -132,49 +132,52 @@ function output=showCollision(simFunOut, pid1, pid2)
     L1_vict = (geom.center(victim) - elb_vict)/CollAxis/geom.L1(victim);
     
     %% generate the figure with the collision at the origin
-    plotcircle(-1,0,1,'b:','linewidth',3); %perp fiber
+    plotcircle(-1,0,1,'b:','linewidth',2); %perp fiber
     hold on; axis equal;
-    plotcircle( 1,0,1,'g:','linewidth',3); % victim struck point
+    plotcircle( 1,0,1,'g:','linewidth',2); % victim struck point
 
-    plot([i0 v_perp*vscale]-1,'r');         % perp initial velocity
-    ph(2) = plot(complex([0 v_vict*vscale]+1),'r'); % victim initial velocity
+    plot(complex([0 v_perp*vscale]-1),'b','linewidth',4,'DisplayName','initial velocity: perpetrator');
+    plot(complex([0 v_vict*vscale]+1),'g','linewidth',4,'DisplayName','initial velocity: victim');
 
-    plot([i0 v_perp_final*vscale],'b','linewidth',3);      % perp final velocity
-    plot([i0 v_vict_final*vscale],'g','linewidth',3);      % victim final velocity
+    plot(complex([0 v_perp_final*vscale]-1),'r','linewidth',4,'DisplayName','final velocity'); % of perp
+    plot(complex([0 v_vict_final*vscale]+1),'r','linewidth',4);      % victim final velocity
 
-    ph(1) = plot(([geom.center(perp)   elb_perp z_perp]-z_perp)/CollAxis - 1,'k'); % perp arms
-    plot(([geom.center(victim) elb_vict fib_vict]-z_vict)/CollAxis + 1,'k'); % victim arms
+    plot(([geom.center(perp)   elb_perp   z_perp]-z_perp)/CollAxis - 1,'k','linewidth',3); % perp arms
+    plot(([geom.center(victim) elb_vict fib_vict]-z_vict)/CollAxis + 1,'k','linewidth',3, ... % victim arms
+         'DisplayName','Cobra arms'); 
 
-    cmplx(@plotcircle, (elb_perp-z_perp)/CollAxis-1, 1, 'b:','linewidth',3); % perp elbow
+    cmplx(@plotcircle, (elb_perp-z_perp)/CollAxis-1, 1, 'b:','linewidth',2); % perp elbow
     if collisionType == 1
-        cmplx(@plotcircle, (fib_vict - z_vict) / CollAxis + 1, 1, 'g:','linewidth',3); % victim fiber
+        cmplx(@plotcircle, (fib_vict - z_vict) / CollAxis + 1, 1, 'g:','linewidth',2); % victim fiber
     elseif collisionType > 4
-        cmplx(@plotcircle, (elb_vict-z_vict) / CollAxis + 1, 1, 'g:','linewidth',3); % victim elbow 
+        cmplx(@plotcircle, (elb_vict-z_vict) / CollAxis + 1, 1, 'g:','linewidth',2); % victim elbow 
     end
     
-    legend(ph,'cobra arms','velocity \times 5');
-    title(sprintf('pid %d vs. pid %d',perp,victim));
-    
     % bump or jam?
-    text(-3,0,sprintf('%.2f',alrv_perp),'fontsize',15,'horiz','center');
-    text( 3,0,sprintf('%.2f',alrv_vict),'fontsize',15,'horiz','center');
+% $$$     text(-3,0,sprintf('%.2f',alrv_perp),'fontsize',15,'horiz','center');
+% $$$     text( 3,0,sprintf('%.2f',alrv_vict),'fontsize',15,'horiz','center');
     if abs(alrv_perp) > .5 & abs(alrv_vict) > .5
-        plot(alrv_perp,max(alrv_vict,-3),'rx','markersize',10,'linewidth',3,'DisplayName','JAM!');
+        text(0,1,'JAM!','color','r','fontsize',15,'horizontal','center','vertical','bottom');
         collResult = 1;
     else
-        plot(alrv_perp,max(alrv_vict,-3),'go','markersize',10,'linewidth',3,'DisplayName','bump...');
+        text(0,1,'BUMP','color',[.25 .75 .25],'fontsize',15,'horizontal','center');
         collResult = 0;
     end        
     
     % elbow jam
     if collisionType == 1 & v_final_normal > 0.05
         if abs(angle(L1_vict/v_vict_final)) < pi/6
-% $$$             plot(([geom.center(victim) elb_vict]-z_vict)/CollAxis + 1,'r--','linewidth',3,...
-% $$$                  'DisplayName','Elbow Jam'); % victim L1
+            plot(([geom.center(victim) elb_vict]-z_vict)/CollAxis + 1,'r:','linewidth',2);%,...
+% $$$  % 'DisplayName','Elbow Jam'); % victim L1
+            text(0,.5,'Elbow jam!','color','r','fontsize',15);
             collResult = collResult + 2;
         end
     end
 
+    % get plots that have DisplayName set and run legend on only those elements
+% $$$     legend(findobj(gca,'Type','line','-and','-not','DisplayName',''),'Location','best');
+    title(sprintf('pid %d vs. pid %d',perp,victim));
+    ylim(ylim+[-.3,.3]); % give the figure some breathing space.
     hold off;
 
     %% outputs

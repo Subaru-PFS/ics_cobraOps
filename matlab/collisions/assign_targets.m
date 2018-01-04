@@ -30,20 +30,6 @@ end
 
 ntgt = length(tgt);
 
-% $$$ %% check min/max radius compliance.
-% $$$ LL = sparse(abs(bsxfun(@minus, tgt, bench.center)) < max(bench.rMax)); ...
-% $$$ %Who is in patrol area
-% $$$ XY = LL*0; % initialize XY with zeros
-% $$$ [cc tt] = find(LL); % ccobras and targets that are nonzero
-% $$$ for jj = 1:length(cc) % for every cobra check assigment 
-% $$$     xy   = tgt(tt(jj)) - bench.center(cc(jj)); % get the local coordinate
-% $$$     dst  = abs(xy);
-% $$$     if (dst > bench.rMin(cc(jj)) & dst < bench.rMax(cc(jj)))
-% $$$         XY(cc(jj),tt(jj)) = xy;
-% $$$     end
-% $$$ end
-% $$$ clear xy dst cc tt
-
 % full calc of distances
 XY   = bsxfun(@minus,tgt,bench.center);
 dst  = abs(XY);
@@ -161,8 +147,13 @@ clear uu it iu jj kk iuvalue n_tgts_per_cobra single_tgt_cobras Multiply_Assigne
 
 collisions = ncobras;
 
-tgt_home = bench.home0; % initially, home positions in SS move out. tgt_home can be changed by collisions
-                        % on unassigned cobras.
+% nudge the default home position by 0.1 radian from the SS home (home0).  These positions may
+% be altered by increments of pi/3 if there are collisions.
+tgtTP = XY2TP(bench.home0 - bench.center, bench.L1, bench.L2);
+tgtTP.tht = tgtTP.tht + 0.1;
+tgt_home = (bench.center + bench.L1 .* exp(i*tgtTP.tht) + ...
+            bench.L2 .* exp(i*(tgtTP.tht + tgtTP.phi))); 
+
 ctr.reassigns=0;
 while (collisions > 0)
     %% Find end-point collisions and reassign targets as needed.
@@ -241,8 +232,7 @@ while (collisions > 0)
                 my_angles.tht = my_angles.tht + pi/3;
                 tgt_home(not_me) = (bench.center(not_me) + ...
                                      bench.L1(not_me) * exp(i*my_angles.tht) + ...
-                                     bench.L2(not_me) * exp(i* ...
-                                                            (my_angles.tht + my_angles.phi)) );
+                                     bench.L2(not_me) * exp(i*(my_angles.tht + my_angles.phi)));
             end
 % $$$             fprintf(1, 'moved %4d\n',not_me);
             ctr.reassigns = ctr.reassigns + 1;
@@ -256,10 +246,9 @@ clear R2 cobras curr_collisions last_collisions not_me occurences
 TP = XY2TP(tgt_assigned - bench.center, bench.L1, bench.L2);
 
 n_assigned = sum(srtTGT_ID(:,1) > 0);
-% $$$ fprintf(1,'Assigned %d targets (%5.1f %% of valid)\n', n_assigned, n_assigned/nvalid*100);
-% $$$ fprintf(1,'# unassigned cobras: %d\n', sum(srtTGT_ID(:,1) <= 0));
-% $$$ fprintf(1,'# reassigned cobras: %d\n', ctr.reassigns);
-fprintf(1,'mean target offset from cobra axis: %.2f mm\n',full(mean(srtDIST(isassigned,1))));
+
+% uncomment below to output mean target offset of assigned cobras
+% fprintf(1,'mean target offset from cobra axis: %.2f mm\n',full(mean(srtDIST(isassigned,1))));
 
 cobra_arms = [bench.center ...
               bench.center + bench.L1.*exp(i*TP.tht) ...

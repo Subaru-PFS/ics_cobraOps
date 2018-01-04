@@ -49,10 +49,14 @@ if useRealMaps | useRealLinks
     phiOut = [];
     L1 = [];
     L2 = [];
-    S1Nm = [];
+    S1Nm = []; % slow maps
     S2Pm = [];
     S1Pm = [];
     S2Nm = [];
+    F1Nm = []; % fast maps
+    F2Pm = [];
+    F1Pm = [];
+    F2Nm = [];
     for ii = 1:length(CobraConfig.ARM_DATA.ARM_DATA_CONTAINER)
         dc = CobraConfig.ARM_DATA.ARM_DATA_CONTAINER{ii};
         pids = [pids; str2num(dc.DATA_HEADER.Positioner_Id.Text)];
@@ -90,6 +94,23 @@ if useRealMaps | useRealLinks
             values = 1./values * 3.6;
             S2Nm = [S2Nm; values(3:end)];
         end
+        if isfield(dc.FAST_CALIBRATION_TABLE, 'Joint1_fwd_stepsizes')
+            % regions are expected to be standard bin width of 3.6deg
+            % phi out of HS in positive direction
+            % tht out of HS in negative direction
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint1_fwd_stepsizes.Text);
+            values = 1./values * 3.6;
+            F1Pm = [F1Pm; values(3:end)];
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint2_fwd_stepsizes.Text);
+            values = 1./values * 3.6;
+            F2Pm = [F2Pm; values(3:end)];
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint1_rev_stepsizes.Text);
+            values = 1./values * 3.6;
+            F1Nm = [F1Nm; values(3:end)];
+            values = str2num(dc.FAST_CALIBRATION_TABLE.Joint2_rev_stepsizes.Text);
+            values = 1./values * 3.6;
+            F2Nm = [F2Nm; values(3:end)];
+        end
     end
     % calculated map ranges (not physical range of motion).  other
     % option is to read it directly from regions.
@@ -111,7 +132,13 @@ if useRealMaps | useRealLinks
     % phiIn
     % phiOut
     % S[12][FR]m
-    configData = packstruct(L1,L2,phiIn,phiOut,S1Nm,S1Pm,S2Pm,S2Nm,distCobras, pids, mids);
+    configData = packstruct(L1,L2,phiIn,phiOut,...
+                            S1Nm,S1Pm,S2Pm,S2Nm,...
+                            F1Nm,F1Pm,F2Pm,F2Nm,...
+                            distCobras, pids, mids);
+else
+    map_range.tht = [0 , 112 * 3.6 * pi / 180];
+    map_range.phi = [0 , 112 * 3.6 * pi / 180] - pi;
 end
 
 if ~isempty(centers)
@@ -131,13 +158,24 @@ if ~isempty(centers)
     tht1 = mod(tht0 + thtrange, 2*pi); % opp sense hard stop
     
     if useRealMaps
-        mapAssignment = ceil(rand(length(center),4) * length(configData.L1));
+        mapAssignment = ceil(rand(length(center),8) * length(configData.L1));
         S1Pm   = configData.S1Pm(mapAssignment(:,1),:);
         S1Nm   = configData.S1Nm(mapAssignment(:,2),:);
         S2Pm   = configData.S2Pm(mapAssignment(:,3),:);
         S2Nm   = configData.S2Nm(mapAssignment(:,4),:);
+        F1Pm   = configData.F1Pm(mapAssignment(:,5),:);
+        F1Nm   = configData.F1Nm(mapAssignment(:,6),:);
+        F2Pm   = configData.F2Pm(mapAssignment(:,7),:);
+        F2Nm   = configData.F2Nm(mapAssignment(:,8),:);
     else
-        S1Pm = []; S2Pm = []; S1Nm = []; S2Nm = [];
+        S1Pm = ONE*ones(1,112)*50;
+        S2Pm = ONE*ones(1,112)*50;
+        S1Nm = ONE*ones(1,112)*50;
+        S2Nm = ONE*ones(1,112)*50;
+        F1Pm = ONE*ones(1,112)*50;
+        F2Pm = ONE*ones(1,112)*50;
+        F1Nm = ONE*ones(1,112)*50;
+        F2Nm = ONE*ones(1,112)*50;
     end
     if useRealLinks
         %take L1,L2, phiIn/Out from CobraConfig.
@@ -216,7 +254,8 @@ field.ang = atan(subarray(cmplx(@polyfit,center,1),1));
 output = packstruct(center, L1, L2, phiIn, phiOut, tht0, tht1, rMin, rMax, ...
                     dA, rRange,home0,home1,...
                     nnMap, NN, rf, distCobras, minDist, ...
-                    S1Nm, S1Pm, S2Pm, S2Nm, map_range, binWidth, ...
+                    S1Nm, S1Pm, S2Pm, S2Nm, ...
+                    F1Nm, F1Pm, F2Pm, F2Nm, map_range, binWidth, ...
                     alpha, beta, ...
                     pids, mids, thteps, tht_overlap, field);
 if exist('mapAssignment','var')

@@ -1,39 +1,57 @@
 """
 
 This file demonstrates how to use the collisions simulation code.
-  
+
 """
 
 import numpy as np
 import time as time
 
-import cobraUtils as cobraUtils
-import targetUtils as targetUtils
-import benchUtils as benchUtils
-import plotUtils as plotUtils
+import ics.cobraOps.plotUtils as plotUtils
+import ics.cobraOps.targetUtils as targetUtils
+
+from ics.cobraOps.Bench import Bench
+from ics.cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
+from ics.cobraOps.CollisionSimulator import CollisionSimulator
+from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
+from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 
 
 # Define the target density to use
 targetDensity = 1.5
 
-# Get the cobras central positions for the full PFI
-centers = cobraUtils.getPFICenters()
-print("Number of cobras: " + str(len(centers)))
+# Load the cobras calibration product
+calibrationProduct = CobrasCalibrationProduct("updatedMaps6.xml")
 
-# Define the bench geometry
-bench = benchUtils.defineBenchGeometry(centers, True, True)
+# Create the bench instance
+bench = Bench(layout="full", calibrationProduct=calibrationProduct)
+print("Number of cobras:", bench.cobras.nCobras)
 
-# Create a random sample of targets
-targetPositions = targetUtils.generateTargets(targetDensity, bench)
-print("Number of simulated targets: " + str(len(targetPositions)))
+# Generate the targets
+targets = targetUtils.generateRandomTargets(targetDensity, bench)
+print("Number of simulated targets:", targets.nTargets)
 
-# Assign the targets to the cobras and get the cobra positions
-(assignedTargets, fiberPositions) = targetUtils.assignTargets(targetPositions, bench)
+# Select the targets
+selector = DistanceTargetSelector(bench, targets)
+selector.run()
+selectedTargets = selector.getSelectedTargets()
 
-# Get the cobras for which the collision could not solved
-(problematicCobras, nearbyProblematicCobras) = targetUtils.getProblematicCobras(fiberPositions, bench)
-print("Number of unsolved collisions: " + str(len(problematicCobras)/2))
+# Simulate an observation
+start = time.time()
+simulator = CollisionSimulator(bench, selectedTargets)
+simulator.run()
+print("Number of cobras involved in collisions:", simulator.nCollisions)
+print("Number of cobras unaffected by end collisions: ", simulator.nCollisions - simulator.nEndPointCollisions)
+print("Total simulation time (s):", time.time() - start)
 
-# Plot the cobra-target associations
-targetUtils.plotCobraTargetAssociations(fiberPositions, problematicCobras, assignedTargets, targetPositions, bench)
+# Plot the simulation results
+simulator.plotResults(extraTargets=targets, paintFootprints=False)
+
+# Animate one of the trajectory collisions
+(problematicCobras,) = np.where(np.logical_and(simulator.collisions, simulator.endPointCollisions == False))
+
+if len(problematicCobras) > 0:
+    simulator.animateCobraTrajectory(problematicCobras[0], extraTargets=targets)
+
+# Pause the execution to have time to inspect the figures
 plotUtils.pauseExecution()

@@ -1,5 +1,6 @@
 function output = generateFieldTargets(nfields,density)
-
+% Generates random targets of given density for cobra testing
+% uses simFun with a predefined bench.
     
     bench = defineBenchGeometry([],1,1);
 
@@ -10,8 +11,10 @@ function output = generateFieldTargets(nfields,density)
     useP = logical(zeros(ncobras,nfields));
 
     for ff = 1:nfields
-        res = simFun(density,'',1,1,'UseThisBench',bench);
+        % get the targets
+        res = simFun(density,'',1,1,'UseThisBench',bench,'SkipTargetReplan',false);
             
+        % extract info for the target list: x,y, tht delay, phi delay, direction
         targets(:,ff)  = res.targets;
         phiDT(:,ff) = res.Traj.phiDT;
         thtDT(:,ff) = (res.Traj.thtDTL .* res.Traj.useL +...
@@ -22,10 +25,8 @@ function output = generateFieldTargets(nfields,density)
     %% The zeros have to be waitsteps. 
     pids = bench.pids;
     
-    direction = {'N','P'};
-    
     for jj = 1:length(bench.pids)
-        fname = sprintf('TargetList_mId_%02d_pId_%02d.txt',bench.mids(jj),bench.pids(jj));
+        fname = sprintf('TargetList_mId_%d_pId_%d.txt',bench.mids(jj),bench.pids(jj));
         tfile = fopen(fname,'a');
 
         for qq = 1:length(targets(jj,:))
@@ -36,4 +37,4 @@ function output = generateFieldTargets(nfields,density)
         fclose(tfile);
     end
     
-    output = packstruct(targets, thtDT, phiDT, pids);
+    output = packstruct(targets, thtDT, phiDT, pids, bench);

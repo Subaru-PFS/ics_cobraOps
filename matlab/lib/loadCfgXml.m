@@ -21,14 +21,13 @@ else
 end
 if ~exist('cfgFile','var')
   warning off ;
- 
-      try
-        cfgfiles = dir2cell('*.xml');
-      catch
-        cfgfiles = {};
-      end
    
-  warning on ;
+   try
+    cfgfiles = dir2cell([cfgFilePath '/*.xml']);
+  catch
+    cfgfiles = {};
+   end
+   warning on ;
   %% if there is one file in the default directory, and the directory was specified, then prompt the
   %% user on the command line to use it.  only an 'n' will trigger the GUI.
   %
@@ -44,7 +43,8 @@ if ~exist('cfgFile','var')
       [cfgFile cfgFilePath] = uigetfile('*.xml','Select cobra config xml to load');
     else
       %% this is the default for 1 file in the specified directory.
-      cfgFile = cfgfiles{1};
+      [fdir, fname, fext] = fileparts(cfgfiles{1});
+      cfgFile = [fname fext];
     end
     %% if there are no files or more than one file, then trigger
     %% the GUI.
