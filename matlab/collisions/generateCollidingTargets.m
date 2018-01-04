@@ -1,13 +1,13 @@
 function output = generateCollidingTargets(nfields,density)
 
-    ncobras = 13;
+    bench = defineBenchGeometry([],1,1);
+    ncobras = length(bench.center);
     toggle.include_nearest_neighbors = false;
     
     targets = zeros(ncobras,nfields);
     phiDT = zeros(ncobras,nfields);
     thtDT = zeros(ncobras,nfields);
     useP = logical(zeros(ncobras,nfields));
-    bench = defineBenchGeometry([],1,1);
 
     ctr.loops = 0;
     
@@ -17,9 +17,9 @@ function output = generateCollidingTargets(nfields,density)
         while true
             ctr.loops = ctr.loops + 1;
             
-            res = simFun(density,'',1,1,'UseThisBench',bench);
+            res = simFun(density,'',1,1,'UseThisBench',bench,'alpha',0);
             
-            nn = find(res.minDist < 2.5 * res(1).bench.minDist/2);
+            nn = find(res.minDist < 2.2 * res(1).bench.minDist/2);
             
             assign_these = false(ncobras,1); % track assignments and update
                                              % after the for loop over pairs.
@@ -54,6 +54,7 @@ function output = generateCollidingTargets(nfields,density)
                 if (maxrun >= 2), break, end;
             end
             if (maxrun < 2), break, end;
+            fprintf(1,'%d: assigned %d/%d\n',ctr.loops,sum(assigned), ncobras);
         end 
     
         figure(99);
