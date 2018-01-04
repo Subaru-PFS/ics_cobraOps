@@ -1,4 +1,5 @@
 function output = generateFieldTargets(nfields,density)
+% output = generateFieldTargets(nfields,density)
 % Generates random targets of given density for cobra testing
 % uses simFun with a predefined bench.
     
