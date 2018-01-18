@@ -216,7 +216,7 @@ phiHome = phiIn;
 phiHome = phiHome + 0.5;
 
 %% read in phiHome from elsewhere
-matfiles = ls2cell('*.mat');
+matfiles = ls2cell('*mId*pId*.mat');
 if length(matfiles) > 0
     disp('Warning -- using mat file positions for home in defineBenchGeometry');
     data = loadTestData('',CobraConfig,1); 
