@@ -38,7 +38,7 @@ function output=realizeTrajectory2(gt2,geom,useP,useL)
     nmax = max([ntht nphi]);  % max # steps needed
 
 
-    nCobras = length(gt2.nmax);
+    nCobras = length(useP);
     
     % what is the penalty for using the longer theta path?
     ltdiff = (useN .* gt2.lthtP + useP .* gt2.lthtN) - lmax;
