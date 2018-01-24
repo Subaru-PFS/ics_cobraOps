@@ -17,7 +17,7 @@ function output=realizeTrajectory2(gt2,geom,useP,useL)
 % tht   : MxN local theta
 % phi   : MxN local phi
 % thtDT(L) : 1xM fwd bin shifts (0 == maximally early) >= 0
-% phiDT : 1xM rev bin shifts (0 == maximally late)  >= 0
+% phiDT : 1xM fwd bin shifts (0 == maximally late)  >= 0
 % ltdiff: 1xM time difference over lmax for changing theta direction
     
     if ~exist('useP','var')
@@ -76,6 +76,8 @@ function output=realizeTrajectory2(gt2,geom,useP,useL)
     % use late theta trajectory when we are not using the primary strategy
     traj(useL,:) = trajL(useL,:);
     
+    % DT's are # of steps to push back the start of this component
+    % of the trajectory.
     thtDT = zeros(size(Tht));
     phiDT = nmax - gt2.nphi;
     thtDTL = max(nmax - gt2.nthtN,0);
