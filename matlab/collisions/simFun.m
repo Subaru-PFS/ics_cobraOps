@@ -341,43 +341,6 @@ for kk = 1:numFields
         clear last_Traj last_Coll this_Traj this_Traj last_nCollisions
         
         minTrajDist = min(Coll.minDist,Coll.minDist');
-        %%% plot the trajectory minimum distances.
-% $$$         if true
-% $$$             figure(1010)
-% $$$             try
-% $$$                 cmplx(@scatter,bench.NN.xy,30,nonzeros(minTrajDist),'fill'); 
-% $$$             catch
-% $$$                 indx = sub2ind(size(minTrajDist), bench.NN.row, bench.NN.col);
-% $$$                 zind = indx(find(minTrajDist(indx) == 0))
-% $$$                 [r c] = ind2sub(size(minTrajDist),zind)
-% $$$                 cmplx(@scatter,bench.NN.xy,30,...
-% $$$                       minTrajDist(sub2ind(size(minTrajDist),bench.NN.row,bench.NN.col)),'fill'); 
-% $$$                 disp('look at minTrajDist');
-% $$$                 % this problem originates in generateTrajectory.
-% $$$                 keyboard;
-% $$$             end;
-% $$$             hold on;
-% $$$             plot(bench.NN.xy(find(nonzeros(Coll.minDist) < bench.minDist)), ...
-% $$$                  'r.','MarkerSize',30)
-% $$$             hold off;
-% $$$             axis equal;
-% $$$             title('nearest neighbor distances');
-% $$$             colorbar; 
-% $$$             colormap([1 0 0;...
-% $$$                       1 0 0;...
-% $$$                       1 1 0;...
-% $$$                       1 1 0;...
-% $$$                       0 0 1;...
-% $$$                       0 0 1;...
-% $$$                       0 0 1;...
-% $$$                       0 0 1;...
-% $$$                       0 0 1;...
-% $$$                       0 0 1;...
-% $$$                      ]);
-% $$$             caxis([0,10]);
-% $$$             drawnow;
-% $$$         end 
-        %%% end of plot min trajectory distances
 
         minDist(:,loopCounter) = nonzeros(minTrajDist);
 
@@ -419,35 +382,7 @@ for kk = 1:numFields
             if (toggle.firstRun)
                 toggle.firstRun = false; 
                 numcoll = numcoll + nCollisions; 
-
-                %# [2016 07 18:  why do I need to plot these?
-% $$$                 if toggle.showMoves
-% $$$                     for jj = 1:length(rows)
-% $$$                         rr = rows(jj);
-% $$$                         cc = cols(jj);
-% $$$                         if rr < cc
-% $$$                             figure(12);
-% $$$                             showMovementNN(  primary.traj, bench, priColl, rr, targets(:,kk));
-% $$$                             try
-% $$$                                 textbp(sprintf('default (primary) trajectories',kk,jj,length(rows)));
-% $$$                             catch
-% $$$                             end
-% $$$                             figure(12+100);
-% $$$                             showMovementNN(alternate.traj, bench, altColl, rr, targets(:,kk));
-% $$$                             try
-% $$$                                 textbp(sprintf('%s move strategy (Alt strategy)', altmoveStrategy));
-% $$$                             catch
-% $$$                             end
-% $$$                             figure(12+200);
-% $$$                             showMovementNN(  trajectories, bench,    coll, rr, targets(:,kk)); 
-% $$$                             try
-% $$$                                 textbp(sprintf('Final for Field=%d; collision %d/%d',kk,jj,length(rows)));
-% $$$                             catch
-% $$$                             end
-% $$$                         end
-% $$$                     end
-% $$$                 end
-            end % if toggle.firstRun
+            end
             
             % decide on which positioner to retarget, assign new target
 
@@ -456,8 +391,7 @@ for kk = 1:numFields
             for jj = 1:length(rows)
                 rr = rows(jj);
                 cc = cols(jj);
-% $$$                 disp('Need to fix things here to proceed with target replanning (simFun L457)')
-% $$$                 keyboard
+
                 %%% from each pair, take the target with the longest theta moves
                 if Traj.useP(rr) % get # tht steps taken by rr
                     ntht_rr = proto.nthtP(rr);
