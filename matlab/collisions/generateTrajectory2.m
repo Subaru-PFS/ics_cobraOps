@@ -122,11 +122,6 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
     nSteps.phiP = max(nSteps.phiP, 0);
     nSteps.phiN = max(nSteps.phiN, 0);
 
-    try
-        nSteps.max = max([nSteps.thtP; nSteps.thtN; nSteps.phiP; nSteps.phiN]);
-    catch
-        keyboard;
-    end
     %% need to write Tht and Phi
     
     %% fractionalBinError derived in PHM's COO notebook #2, 1-dec-2015
@@ -152,7 +147,6 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
     noisyMap.phiN = [noisyMap.phiN ones(nCobras,1)*1e9];
 
     stepsPerTime = 50;
-    lengthTime = ceil(nSteps.max/stepsPerTime);
 
     for jj = 1:nCobras
 % $$$         %% It's a bad idea to assume we start from the first bin in the cumulative sum.
@@ -238,8 +232,12 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
     tBins.phi = tBins.phiP;
     tBins.phi(phi_moves_N) = tBins.phiN(phi_moves_N);
     
+    % should this be max(min(thtp, thtn), phi) ? see note below. 
+    % nSteps.max is not presently an important variable.
+    nSteps.max = max([nSteps.thtP; nSteps.thtN; nSteps.phi]);
     %%%
-
+    
+    % this is the longest vector needed for any trajectory.
     tBins.max = max([tBins.thtP tBins.thtN tBins.phi]);
 end % there is always a motor map now    
 
@@ -247,7 +245,8 @@ output = packstruct(ThtP, ThtN, Phi);
 output.nthtP = nSteps.thtP;
 output.nthtN = nSteps.thtN;
 output.nphi  = nSteps.phi;
-output.nmax  = nSteps.max;
+output.nmax  = nSteps.max; % presently (1/24/18) not used
+                           % downstream except for its size.
 output.lthtP = tBins.thtP;
 output.lthtN = tBins.thtN;
 output.lphi  = tBins.phi;
