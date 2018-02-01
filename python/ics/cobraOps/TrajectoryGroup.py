@@ -144,44 +144,16 @@ class TrajectoryGroup(AttributePrinter):
             nPhiMoves = len(phiMoves)
             
             if thtEarly[c]:
-                if phiEarly[c]:
-                    # Early-early movement
-                    tht[c, :nThtMoves] = thtMoves
-                    phi[c, :nPhiMoves] = phiMoves
-                else:
-                    # Early-late movement
-                    tht[c, :nThtMoves] = thtMoves
-                    phi[c, :-nPhiMoves] = startPhi[c]
-                    phi[c, -nPhiMoves:] = phiMoves
+                tht[c, :nThtMoves] = thtMoves
             else:
-                if phiEarly[c]:
-                    # Late-early movement. This should never happen!!
-                    tht[c, :-nThtMoves] = startTht[c]
-                    tht[c, -nThtMoves:] = thtMoves
-                    phi[c, :nPhiMoves] = phiMoves
-                else:
-                    # Late-late movement
-                    if nThtMoves > nPhiMoves:
-                        # If we have more theta moves, do the extra moves
-                        # early, because the other cobras are still close to
-                        # the center and the collision probability is smaller
-                        extraMoves = nThtMoves - nPhiMoves
-                        tht[c, :extraMoves] = thtMoves[:extraMoves]
-                        
-                        # Keep the theta position before phi and theta start to
-                        # move together
-                        tht[c, extraMoves:-nPhiMoves] = thtMoves[extraMoves - 1]
-                        
-                        # Execute the rest of the theta movement together with
-                        # the phi movement
-                        tht[c, -nPhiMoves:] = thtMoves[extraMoves:]
-                        phi[c, :-nPhiMoves] = startPhi[c]
-                        phi[c, -nPhiMoves:] = phiMoves
-                    else:
-                        tht[c, :-nThtMoves] = startTht[c]
-                        tht[c, -nThtMoves:] = thtMoves
-                        phi[c, :-nPhiMoves] = startPhi[c]
-                        phi[c, -nPhiMoves:] = phiMoves
+                tht[c, :-nThtMoves] = startTht[c]
+                tht[c, -nThtMoves:] = thtMoves
+            
+            if phiEarly[c]:
+                phi[c, :nPhiMoves] = phiMoves
+            else:
+                phi[c, :-nPhiMoves] = startPhi[c]
+                phi[c, -nPhiMoves:] = phiMoves
         
         # Calculate the elbow and fiber positions along the trajectory
         self.elbowPositions = cobraCenters[:, np.newaxis] + L1[:, np.newaxis] * np.exp(1j * tht)
