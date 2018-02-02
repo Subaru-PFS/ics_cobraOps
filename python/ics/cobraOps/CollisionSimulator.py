@@ -25,7 +25,7 @@ class CollisionSimulator():
     
     """
     
-    def __init__(self, bench, targets, trajectorySteps=150, trajectoryStepWidth=50):
+    def __init__(self, bench, targets, trajectorySteps=170, trajectoryStepWidth=50):
         """Constructs a new collision simulator instance.
         
         Parameters
