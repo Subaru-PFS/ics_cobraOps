@@ -59,6 +59,61 @@ class TargetGroup(AttributePrinter):
         self.notNull = self.ids != NULL_TARGET_ID
     
     
+    @classmethod
+    def fromFile(cls, fileName):
+        """Constructs a new target group instance from an input file.
+        
+        Parameters
+        ----------
+        fileName: object
+            The path to the file with the target group information.
+        
+        Returns
+        -------
+        object
+            The target group instance.
+        
+        """
+        # Read the input file and save the targets information in two lists
+        positions = []
+        ids = []
+        
+        with open(fileName, "r") as f:
+            for line in f:
+                # The data should be separated with comas
+                data = line.split(",")
+                positions.append(float(data[0]) + 1j * float(data[1]))
+                
+                # Check if the file contains the target ids
+                if len(data) > 2:
+                    ids.append(data[2].strip())
+        
+        # Transform the lists into numpy arrays
+        positions = np.array(positions, dtype="complex")
+        ids = np.array(ids, dtype="<U10")
+        
+        # Return a new target group instance
+        if len(ids) == len(positions):
+            return cls(positions, ids)
+        else:
+            return cls(positions)
+    
+    
+    def saveToFile(self, fileName):
+        """Saves the target group data to a file.
+        
+        Parameters
+        ----------
+        fileName: object
+            The path to the output file where the target group information
+            should be saved.
+        
+        """
+        with open(fileName, "w") as f:
+            for p, i in zip(self.positions, self.ids):
+                f.write(", ".join((str(p.real), str(p.imag), i)) + "\n")
+    
+    
     def select(self, indices):
         """Selects a subset of the targets.
         
