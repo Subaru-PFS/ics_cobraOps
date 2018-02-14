@@ -25,7 +25,7 @@ class CollisionSimulator():
     
     """
     
-    def __init__(self, bench, targets, trajectorySteps=150, trajectoryStepWidth=50):
+    def __init__(self, bench, targets, trajectorySteps=170, trajectoryStepWidth=50):
         """Constructs a new collision simulator instance.
         
         Parameters
@@ -204,13 +204,7 @@ class CollisionSimulator():
         # direction:
         #    - The positive movement should require less steps than the
         #    negative movement.
-        #    - The cobra fibers should not go too far in phi, because it is
-        #    easier to have collisions when moving in the positive direction.
-        posThtMovement = np.logical_and(self.posSteps < self.negSteps, finalPhi < -0.3 * np.pi)
-        
-        # Select the positive theta movement if the negative movement would
-        # require too many steps
-        posThtMovement[self.negSteps > self.trajectorySteps] = True
+        posThtMovement = self.posSteps < self.negSteps
         
         # Calculate the phi movement direction
         posPhiMovement = negDeltaPhi > 0

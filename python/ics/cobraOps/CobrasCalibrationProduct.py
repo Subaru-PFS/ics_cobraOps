@@ -12,6 +12,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 import xml.etree.ElementTree as ElementTree
+from copy import deepcopy
 
 from ics.cobraOps.AttributePrinter import AttributePrinter
 
@@ -134,3 +135,55 @@ class CobrasCalibrationProduct(AttributePrinter):
         # HACK SOLUTION TO BAD PHI HOMES
         self.phiIn = np.maximum(-np.pi, self.phiIn)
         self.phiOut = np.minimum(self.phiOut, 0.0)
+
+
+def createCalibrationFile(inputFileName, outputFileName, cobraCenters):
+    """Creates a new XML calibration file based on another input calibration
+    file and a list of cobra centrers.
+    
+    Parameters
+    ----------
+    inputFileName: object
+        The path to the input XML calibration file.
+    outputFileName: object
+        The path where the output XML calibration file should be saved.
+    cobraCenters: object
+        A complex numpy array with the cobras central positions. The
+        calibration file will contain a separate ARM_DATA_CONTAINER for each
+        cobra central position.
+    
+    """
+    # Load the input XML calibration file
+    rootElement = ElementTree.parse(inputFileName).getroot()
+    
+    # Get all the data container elements
+    dataContainers = rootElement.findall("ARM_DATA_CONTAINER")
+    
+    # Create the output XML tree
+    newXmlTree = ElementTree.ElementTree(ElementTree.Element("ARM_DATA"))
+    newRootElement = newXmlTree.getroot()
+    
+    # Randomize the cobras data container indices
+    nContainers = len(dataContainers)
+    nCobras = len(cobraCenters)
+    indices = np.random.randint(nContainers, size=nCobras)
+    
+    # The first containers should be the same as the original ones
+    indices[:np.min((nContainers, nCobras))] = np.arange(np.min((nContainers, nCobras)))
+    
+    # Fill the calibration file
+    for index, center in zip(indices, cobraCenters):
+        # Work on a copy of the original container
+        newContainer = deepcopy(dataContainers[index])
+        
+        # Update the cobra central position information
+        kinematics = newContainer.find("KINEMATICS")
+        pixelScale = float(kinematics.find("Pixel_scale").text) / 1000.0
+        kinematics.find("Global_base_pos_x").text = str(center.real / pixelScale)
+        kinematics.find("Global_base_pos_y").text = str(center.imag / pixelScale)
+        
+        # Append the arm data container to the root element
+        newRootElement.append(newContainer)
+    
+    # Save the new XML calibration file
+    newXmlTree.write(outputFileName, encoding="UTF-8", xml_declaration=True)
