@@ -32,9 +32,9 @@ deltaPhi = (Target.phi - startP.phi);
 
 if ~isempty(geom.F1Pm) % if there is a motor map...
     
-    % calculate the number of steps for each motor of each positioner
-    % pull in the maps.  reverse move maps are flipped so that motion
-    % in time always increases the index in Map.x
+    %% calculate the number of steps for each motor of each positioner
+
+    % pull in the maps.
     Map.thtP = cumsum([zeros(nCobras,1) geom.F1Pm],2);
     Map.thtN = cumsum([zeros(nCobras,1) geom.F1Nm],2);
     Map.phiP = cumsum([zeros(nCobras,1) geom.F2Pm],2);
@@ -61,17 +61,6 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
     fnshBin.thtN = interp1(ang.tht,bins.tht, mod(Target.tht - geom.tht0, 2*pi) + 2*pi*TGT_IN_OVERLAP);
     fnshBin.phi  = (Target.phi - geom.map_range.phi(1))/geom.binWidth;
 
-    %% don't let the fnshINDX exceed n1bins  **interp1 fixes this?**
-% $$$     tempbool = fnshINDX.thtN > n1bins;
-% $$$     if sum(tempbool) > 0
-% $$$         if sum(fnshBin.thtP(tempbool) < -thteps)
-% $$$             disp(['Warning: fnshINDX exceeds n1bins in some cases probably due to roundoff.  ' ...
-% $$$                   'Correcting positioners (don''t worry if thtp is small...'])
-% $$$             disp(sprintf('pid %02d, thtp = %g\n',[find(tempbool) fnshBin.thtP(tempbool)].'))
-% $$$         end
-% $$$         fnshINDX.thtN(tempbool) = n1bins;
-% $$$     end
-        
     % calculate number of steps required for each positioner
     for jj = 1:nCobras
         try
