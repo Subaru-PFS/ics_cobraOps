@@ -132,11 +132,12 @@ if ~isempty(geom.S1Pm) % if there is a motor map...
     tBins.max = max([tBins.tht tBins.phi]);
 
     %% Turn Tht/Phi stubby arrays into uniform-length arrays.
-    thtPad = 'post';
     for jj = 1:nCobras
         if phiFWD(jj)
+            thtPad = 'post'; % traditional earlyLate for outgoing trajectories.
             phiPad = 'pre';
         else
+            thtPad = 'pre';  % run phi late if it's moving to the inside
             phiPad = 'post'; % run phi early if it's moving to the inside
         end
         Tht(jj,:) = padarray(protoTht{jj}, [0, tBins.max - tBins.tht(jj)],'replicate',thtPad);
