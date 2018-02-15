@@ -7,7 +7,7 @@ function noisy=addNoise(cumMap, fBE)
     mapSize = size(Map);
 
     noisy = Map .* mapFactor(fBE, mapSize);
-    noisy = cumsum([zeros(mapSize(1),1) Map], dataAxis);
+    noisy = cumsum([zeros(mapSize(1),1) noisy], dataAxis);
     % make last entry huge to eliminate over-runs
     noisy(:,end) = 1e9;
 end
