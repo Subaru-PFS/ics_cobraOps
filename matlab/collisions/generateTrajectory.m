@@ -1,25 +1,20 @@
-function output=generateTrajectory(currentPosition,targetList, geom, trajectory_strategy, verify)
+function output=generateTrajectory(currentPosition,targetList, geom, verify)
 % generate a trajectory matrix given an assigned target list and
 % center positions
 %
 % example: after running q = simFun(1.5,'full',1,1) try this:
-% generateTrajectory(q.Traj.traj(:,end), q.targets, q.bench, 'earlyLate', 1);
-
-if ~exist('trajectory_strategy','var'), trajectory_strategy = 'lateLate'; end;
-
-stepSize = 100e-3; %radians, for non-motormap simulations
-
-% this is an epsilon to make sure that values near zero in theta are
-% intepreted on the positive (or negative) side of the cut,
-% respectively. Make it negative for same same direction moveouts (positive
-% for positive hardstop).
-thteps = 1e-12;
+% generateTrajectory(q.Traj.traj(:,end), q.targets, q.bench, 1);
 
 nCobras = length(geom.center);
 
 % theta/phi positions of the current and target positions
 strtPos = XY2TP(currentPosition - geom.center, geom.L1, geom.L2);
 Targets = XY2TP(targetList      - geom.center, geom.L1, geom.L2);
+
+strtTht0 = round(mod(strtPos.tht - geom.tht0, 2*pi), 13);
+fnshTht0 = round(mod(Targets.tht - geom.tht0, 2*pi), 13);
+strtTht1 = strtTht0 + 2*pi*(strtTht0 < geom.tht_overlap);
+fnshTht1 = fnshTht0 + 2*pi*(fnshTht0 < geom.tht_overlap);
 
 % some useful variables on the way to calculating the number of
 % steps required to complete the trajectory.
@@ -30,192 +25,129 @@ Targets = XY2TP(targetList      - geom.center, geom.L1, geom.L2);
 % $$$ deltatht.long  = -(2*pi*sign(deltatht.short) - deltatht.short); % [-2pi,-pi],0,[pi,2pi]
 % $$$ deltatht.from0 = mod(Targets.tht - geom.tht0, 2*pi) - mod(strtPos.tht - geom.tht0, 2*pi);
 % $$$ deltatht.from1 = mod(Targets.tht - geom.tht1, 2*pi) - mod(strtPos.tht - geom.tht1, 2*pi);
+
 % $$$ % It's tricky business to decide whether the long or the short path is the one that
 % $$$ % doesn't cross a hard stop.  For now, let's assume that the short path is the one that
 % $$$ % doesn't cross.  The only case I can think of right now is if the short path crosses BOTH
 % $$$ % hard stops.  In that case, "from0" and "from1" will both match "long", so we'd have to
 % $$$ % detect that condition.  In simulation, unless alpha is VERY large, that won't happen.
 
-deltaTht = mod(Targets.tht - strtPos.tht + pi, 2*pi) - pi; % the "short" move
+dtht0 = fnshTht0 - strtTht0;
+dtht1 = fnshTht1 - strtTht1;
+Use1  = (abs(dtht1) < abs(dtht0)); % strtTht or fnshTht is > 2*pi.
+strtTht = strtTht0.*~Use1 + strtTht1.*Use1;
+fnshTht = fnshTht0.*~Use1 + fnshTht1.*Use1;
+
+deltaTht = fnshTht - strtTht; % the shortest available move that doens't cross boundaries.
 
 deltaPhi = (Targets.phi - strtPos.phi); 
 
-active = abs(deltaTht) > thteps; % logical array, true for cobras that move.
+active = abs(deltaTht) > 0; % logical array, true for cobras that move.
 
 % logical flag for forward trajectories
-thtFWD = deltaTht > 0; 
-phiFWD = deltaPhi > 0;
-% direction is direction.
-thtDIR = thtFWD * 2 - 1;
-phiDIR = phiFWD * 2 - 1;
+thtFWD = deltaTht >= 0; 
+phiFWD = deltaPhi >= 0;
 
 if ~isempty(geom.S1Pm) % if there is a motor map...
     
-    % calculate the number of steps for each motor of each positioner
-    % pull in the maps.  reverse move maps are flipped so that motion
-    % in time always increases the index in Map.x
-    n1bins = 100;
-    n2bins = 50;
+    % pull in the maps.
+    Map.thtP = cumsum([zeros(nCobras,1) geom.F1Pm],2);
+    Map.thtN = cumsum([zeros(nCobras,1) geom.F1Nm],2);
+    Map.phiP = cumsum([zeros(nCobras,1) geom.F2Pm],2);
+    Map.phiN = cumsum([zeros(nCobras,1) geom.F2Nm],2);
     
-    Map.tht = fliplr(geom.S1Nm(:,1:n1bins));
-    Map.phi = fliplr(geom.S2Nm(:,1:n2bins));
-    Map.tht(thtFWD,:) = geom.S1Pm(thtFWD,1:n1bins);
-    Map.phi(phiFWD,:) = geom.S2Pm(phiFWD,1:n2bins);
-    
-    % tht_stop is the hardstop position for the direction of movement
-    tht_stop         = geom.tht1;
-    tht_stop(thtFWD) = geom.tht0(thtFWD);
-    
-    % real number bin indices - reverse movement indices handled by second term
-    strtBin.tht = thtDIR.*((mod(strtPos.tht-tht_stop + thteps, 2*pi)-thteps/2)/geom.binWidth - ~thtFWD*n1bins);
-    fnshBin.tht = thtDIR.*((mod(Targets.tht-tht_stop + thteps, 2*pi)-thteps/2)/geom.binWidth - ~thtFWD*n1bins);
-    try
-        strtBin.phi = phiDIR.*((mod(strtPos.phi-geom.phiIn + pi/2, 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
-        fnshBin.phi = phiDIR.*((mod(Targets.phi-geom.phiIn + pi/2, 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
-    catch
-        disp('generateTrajectory: args to mod were complex.  taking real part...')
-        strtBin.phi = phiDIR.*((mod(real(strtPos.phi-geom.phiIn + pi/2), 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
-        fnshBin.phi = phiDIR.*((mod(real(Targets.phi-geom.phiIn + pi/2), 2*pi) - pi/2)/geom.binWidth - ~phiFWD*n2bins);
-    end
+    n1bins = size(geom.F1Pm,2);
+    n2bins = size(geom.F2Pm,2);
 
-    % calculate number of steps required for each positioner
+    ang.tht = (0:geom.binWidth:(geom.binWidth*n1bins))'; % tht indexes off SS hardstop
+    ang.phi = (0:geom.binWidth:(geom.binWidth*n2bins))'-pi; %phi indexes off -pi
+
+    %% # steps to command (interpolate strt/fnshTht against (ang,Map))
     for jj = 1:nCobras
-        if active(jj)
-            jjstrt = ceil(strtBin.tht(jj)); jjstrt = min(max(jjstrt,1),n1bins);
-            jjfnsh = ceil(fnshBin.tht(jj)); jjfnsh = min(max(jjfnsh,1),n1bins);
-            % start with total including the partial bins and then trim the ends
-            try
-                nSteps.tht(jj) = sum(Map.tht(jj, jjstrt:jjfnsh)) ...
-                    - Map.tht(jj, jjstrt) * mod(strtBin.tht(jj),1) ...
-                    - Map.tht(jj, jjfnsh) * mod(-fnshBin.tht(jj),1) ;
-            catch
-                keyboard
+        try
+            if thtFWD(jj)
+                nSteps.tht(1,jj) = (interp1(ang.tht, Map.thtP(jj,:), fnshTht(jj)) - ...
+                                     interp1(ang.tht, Map.thtP(jj,:), strtTht(jj)));
+            else
+                nSteps.tht(1,jj) = (interp1(ang.tht, Map.thtN(jj,:), fnshTht(jj)) - ...
+                                     interp1(ang.tht, Map.thtN(jj,:), strtTht(jj)));
             end
-            if nSteps.tht(jj) < 0
-                disp('nsteps.tht < 0 detected');
+            if phiFWD(jj)
+                nSteps.phi(1,jj) = (interp1(ang.phi, Map.phiP(jj,:), Targets.phi(jj)) - ...
+                                     interp1(ang.phi, Map.phiP(jj,:), strtPos.phi(jj)));
+            else
+                nSteps.phi(1,jj) = (interp1(ang.phi, Map.phiN(jj,:), Targets.phi(jj)) - ...
+                                     interp1(ang.phi, Map.phiN(jj,:), strtPos.phi(jj)));
             end
-            % ceil because matlab starts at 1, not zero.
-            jjstrt = ceil(strtBin.phi(jj)); jjstrt = min(max(jjstrt,1),n2bins);
-            jjfnsh = ceil(fnshBin.phi(jj)); jjfnsh = min(max(jjfnsh,1),n2bins);
-            % start with total including the partial bins and then trim the ends
-            nSteps.phi(jj) = sum(Map.phi(jj, jjstrt:jjfnsh)) ...
-                - Map.phi(jj, jjstrt) * mod(strtBin.phi(jj),1) ...
-                - Map.phi(jj, jjfnsh) * mod(-fnshBin.phi(jj),1);
-        else
-            nSteps.tht(jj) = 0;
-            nSteps.phi(jj) = 0;
+        catch
+            disp(['generateTrajectory2 warning: Usually, when things ' ...
+                  'go wrong, it is because the XML file is bad. Error in pid ' ...
+                  num2str(geom.pids(jj))]);
         end
     end
-    nSteps.max = max([nSteps.tht nSteps.phi]);
-    nSteps.tht = nSteps.tht(:);
-    nSteps.phi = nSteps.phi(:);
 
-    %% need to write Tht and Phi
-    
-    %% fractionalBinError derived in PHM's COO notebook #2, 1-dec-2015
+    %% # noise up the map
+    % fractionalBinError derived in PHM's COO notebook #2, 1-dec-2015
     fractionalBinError = geom.alpha * geom.binWidth^(geom.beta - 1);
-
-    %% Map has dimensions (#fibers,steps) where steps = 100 (tht),
-    %% 50 (phi)
 
     % need to calculate a map error factor.  fBE * randn = DX must be
     % repeatedly applied until the cumulative sum of 1+DX exceeds 1
     % (the normalized bin width).  The error factor multiplied into
     % Map to make noisyMap is ((#-1) of random numbers + fraction of
     % the last one)
-    noisyMap.tht = Map.tht .* mapFactor(fractionalBinError,size(Map.tht));
-    noisyMap.phi = Map.phi .* mapFactor(fractionalBinError,size(Map.phi));
-% $$$     noisyMap.tht = Map.tht .* (1./ abs(1 + fractionalBinError * randn(size(Map.tht))));
-% $$$     noisyMap.phi = Map.phi .* (1./ abs(1 + fractionalBinError * randn(size(Map.phi))));
-    
-    % add an sticky bin at the end to prevent over-runs.
-    noisyMap.tht = [noisyMap.tht ones(nCobras,1)*1e9];
-    noisyMap.phi = [noisyMap.phi ones(nCobras,1)*1e9];
 
+    % addNoise takes a cumsum Map and returns a cumsum Map with noise defined by fBE
+    noisyMap.thtP = addNoise(Map.thtP, fractionalBinError);
+    noisyMap.thtN = addNoise(Map.thtN, fractionalBinError);
+    noisyMap.phiP = addNoise(Map.phiP, fractionalBinError);
+    noisyMap.phiN = addNoise(Map.phiN, fractionalBinError);
+
+    %% find final position and trajectory with # steps - final location ~= target location.
     stepsPerTime = 50;
-    lengthTime = ceil(nSteps.max/stepsPerTime);
-    
-    switch trajectory_strategy
-      case 'earlyLate'
-        thtPad = 'post'; nSteps.dtht = zeros(nCobras,1);
-        phiPad = 'pre';  nSteps.dphi = nSteps.max - nSteps.phi;
-      case 'lateLate'
-        thtPad = 'pre';  nSteps.dtht = nSteps.max - nSteps.tht;
-        phiPad = 'pre';  nSteps.dphi = nSteps.max - nSteps.phi;
-      case 'earlyEarly'
-        thtPad = 'post'; nSteps.dtht = zeros(nCobras,1);
-        phiPad = 'post'; nSteps.dphi = zeros(nCobras,1);       
-      case 'lateEarly'
-        thtPad = 'pre';  nSteps.dtht = nSteps.max - nSteps.tht;
-        phiPad = 'post'; nSteps.dphi = zeros(nCobras,1);       
-    end
-    
-    
     for jj = 1:nCobras
-        jjstrt = ceil(strtBin.tht(jj));
-        jjfnsh = ceil(fnshBin.tht(jj));
-        try
-            frntExtraSteps = noisyMap.tht(jj,jjstrt) * mod(strtBin.tht(jj),1);
-        catch
-            keyboard;
+        if thtFWD(jj)
+            trajSteps  = ([0:stepsPerTime:nSteps.tht(jj), nSteps.tht(jj)] +...
+                          interp1(ang.tht, noisyMap.thtP(jj,:), strtTht(jj)));
+            protoTht{jj} = geom.tht0(jj) + interp1(noisyMap.thtP(jj,:), ang.tht, trajSteps);
+        else
+            trajSteps  = ([0:-stepsPerTime:nSteps.tht(jj), nSteps.tht(jj)] +...
+                          interp1(ang.tht, noisyMap.thtN(jj,:), strtTht(jj)));
+            protoTht{jj} = geom.tht0(jj) + interp1(noisyMap.thtN(jj,:), ang.tht, trajSteps);
         end
-        trajEndBin = find( (nSteps.tht(jj) + frntExtraSteps) < ...
-                           cumsum(noisyMap.tht(jj,jjstrt:end)),1) + jjstrt - 1;
-        stepCtr = [0, cumsum(noisyMap.tht(jj, jjstrt:trajEndBin))];
-        binCtr  = 0:(length(stepCtr)-1);
-        trajSteps  = [0:stepsPerTime:nSteps.tht(jj), nSteps.tht(jj)] + frntExtraSteps;
-        if trajSteps(1) < stepCtr(1) | trajSteps(end) > stepCtr(end)
-            fprintf(1,'Warning extrapolating to determine tht trajectory on fiber %d\n',jj);
-        end
-        Tht(jj,:) = padarray(strtPos.tht(jj) + thtDIR(jj) * geom.binWidth * ...
-                             (interp1(stepCtr, binCtr, trajSteps,'linear','extrap') - ...
-                              mod(strtBin.tht(jj),1)),...
-                             [0 lengthTime - length(trajSteps) + 1], 'replicate',thtPad);
-        %% theta has been checked out, but only for forward moves.  Phi is untested as of now.
-        jjstrt = ceil(strtBin.phi(jj)); jjstrt = min(max(jjstrt,1),n2bins);
-        jjfnsh = ceil(fnshBin.phi(jj)); jjfnsh = min(max(jjfnsh,1),n2bins);
-        frntExtraSteps = noisyMap.phi(jj,jjstrt) * mod(strtBin.phi(jj),1);
-        trajEndBin = find( (nSteps.phi(jj) + frntExtraSteps) < ...
-                           cumsum(noisyMap.phi(jj,jjstrt:end)),1) + jjstrt - 1;
-        stepCtr = [0, cumsum(noisyMap.phi(jj, jjstrt:trajEndBin))];
-        binCtr  = 0:(length(stepCtr)-1);
-        trajSteps  = [0:stepsPerTime:nSteps.phi(jj), nSteps.phi(jj)] + frntExtraSteps;
-        % linear is default method for interp1.  'extrap' allows an
-        % extrapolation outside of the bounds.  NOT a good idea,
-        % except it helps handle some Phi situations.
-        if trajSteps(1) < stepCtr(1) | trajSteps(end) > stepCtr(end)
-            fprintf(1,'Warning extrapolating to determine phi trajectory on fiber %d\n',jj);
-        end
-        Phi(jj,:) = padarray(strtPos.phi(jj) + phiDIR(jj) * geom.binWidth * ...
-                             (interp1(stepCtr, binCtr, trajSteps,'linear','extrap') -...
-                              mod(strtBin.phi(jj),1)), ...
-                             [0 lengthTime - length(trajSteps) + 1], 'replicate',phiPad);
-        %        keyboard;
-    end
+        tBins.tht(jj) = length(trajSteps);
 
-% $$$     figure(1)
-% $$$     plot(Tht'/(2*pi)); xlabel('time [50steps]'); ylabel('\Theta/(2*pi) [rad]');
-% $$$     figure(2)
-% $$$     plot(Phi'/pi); xlabel('time [50steps]'); ylabel('\Phi/\pi [rad]');
+        if phiFWD(jj)
+            trajSteps  = ([0:stepsPerTime:nSteps.phi(jj), nSteps.phi(jj)] +...
+                          interp1(ang.phi, noisyMap.phiP(jj,:), strtPos.phi(jj)));
+            protoPhi{jj} = interp1(noisyMap.phiP(jj,:), ang.phi, trajSteps);
+        else
+            trajSteps  = ([0:-stepsPerTime:nSteps.phi(jj), nSteps.phi(jj)] +...
+                          interp1(ang.phi, noisyMap.phiN(jj,:), strtPos.phi(jj)));
+            protoPhi{jj} = interp1(noisyMap.phiN(jj,:), ang.phi, trajSteps);
+        end
+        tBins.phi(jj) = length(trajSteps);
+
+    end
+    % this is the longest vector needed for any trajectory.
+    tBins.max = max([tBins.tht tBins.phi]);
+
+    %% Turn Tht/Phi stubby arrays into uniform-length arrays.
+    thtPad = 'post';
+    for jj = 1:nCobras
+        if phiFWD(jj)
+            phiPad = 'pre';
+        else
+            phiPad = 'post'; % run phi early if it's moving to the inside
+        end
+        Tht(jj,:) = padarray(protoTht{jj}, [0, tBins.max - tBins.tht(jj)],'replicate',thtPad);
+        Phi(jj,:) = padarray(protoPhi{jj}, [0, tBins.max - tBins.phi(jj)],'replicate',phiPad);
+    end
     
-    %% Plot for johannes to check credibility of noisy map.(something is still fishy with the values but i am off to lunch now).
-% $$$     for kk = 1:length(geom.center)
-% $$$         q = noisyMap.tht(kk,:);
-% $$$         figure()
-% $$$         hold on;
-% $$$         qm = repmat(q,length(q),1);
-% $$$         sumsq= sum(tril(qm),2);
-% $$$         movstart = linspace(0,0,100)';
-% $$$         movend = linspace(0,100,100)';
-% $$$         movvel = movend./sumsq;
-% $$$         plot(movstart, movvel, 'rx');
-% $$$         plot(movend, movvel, 'rx')
-% $$$         plot([movstart, movend]', [movvel, movvel]', 'r')
-% $$$     end
-% $$$ keyboard;    
-    %%
 else % if there is no motor map...
-    
+    %% WARNING : as of 2/15/2018, this branch of the code is behind.
+
+    stepSize = 100e-3; %radians, for non-motormap simulations
+
     %%%%%  PHI REVERSE MOVES NOT IMPLEMENTED YET
     maxDeltaAngle = max(max(abs(deltaTht)), max(abs(deltaPhi)));
     nSteps.max = ceil(maxDeltaAngle/stepSize);
@@ -266,12 +198,12 @@ Trajectories = (bsxfun(@times, geom.L1, exp(1i*Tht)) + ...
                 bsxfun(@times, geom.L2, exp(1i*(Tht+Phi)) ) );
 Trajectories = bsxfun(@plus, geom.center, Trajectories);
 
-output.traj = Trajectories;
-output.ntht = nSteps.tht;
-output.dtht = nSteps.dtht;
-output.nphi = nSteps.phi;
-output.dphi = nSteps.dphi;
-output.nmax = nSteps.max;
+output = Trajectories;
+% $$$ output.ntht = nSteps.tht;
+% $$$ output.dtht = nSteps.dtht;
+% $$$ output.nphi = nSteps.phi;
+% $$$ output.dphi = nSteps.dphi;
+% $$$ output.nmax = nSteps.max;
 
 %% verification plots
 if exist('verify','var')
