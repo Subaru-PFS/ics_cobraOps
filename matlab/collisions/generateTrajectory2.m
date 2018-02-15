@@ -18,18 +18,6 @@ startP = XY2TP(geom.home0 - geom.center, geom.L1, geom.L2);
 startN = XY2TP(geom.home1 - geom.center, geom.L1, geom.L2);
 Target = XY2TP(targetList - geom.center, geom.L1, geom.L2);
 
-% for relative angles, N direction moves need 2*pi added if they are in the overlap region
-ADD2Pi = (mod(startN.tht - geom.tht0, 2*pi) < geom.tht_overlap + thteps) * 2 * pi;
-
-% some useful variables on the way to calculating the number of
-% steps required to complete the trajectory.
-deltaThtP = ( mod(Target.tht - geom.tht0 + thteps, 2*pi) - ...
-              mod(startP.tht - geom.tht0 + thteps, 2*pi));
-deltaThtN = ( mod(startN.tht - geom.tht1 - thteps, 2*pi) - ...
-              mod(Target.tht - geom.tht1 - thteps, 2*pi));
-
-deltaPhi = (Target.phi - startP.phi); 
-
 if ~isempty(geom.F1Pm) % if there is a motor map...
     
     %% calculate the number of steps for each motor of each positioner
@@ -45,33 +33,25 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
 
     ang.tht = (0:geom.binWidth:(geom.binWidth*n1bins))'; % tht indexes off SS hardstop
     ang.phi = (0:geom.binWidth:(geom.binWidth*n2bins))'-pi; %phi indexes off -pi
-    bins.tht = 0:n1bins;
-    bins.phi = 0:n2bins;
     
-    %% start bins for P and N moves, unflipped maps.
-    strtBin.thtP = max(interp1(ang.tht,bins.tht, mod(startP.tht - geom.tht0 + thteps, 2*pi) - thteps),0);
-    strtBin.thtN = min(interp1(ang.tht,bins.tht, mod(startN.tht - geom.tht0, 2*pi) + ADD2Pi), n1bins);
-    strtBin.phi  = max((startP.phi - geom.map_range.phi(1))/geom.binWidth, 0);
+    %% corrected theta angles for start and finish
+    strtTht.P = round( mod( startP.tht - geom.tht0 + thteps, 2*pi) - thteps, 10);
+    strtTht.N = round( mod( startN.tht - geom.tht0 - geom.tht_overlap - thteps, 2*pi) + ...
+                       geom.tht_overlap + thteps, 10);
+    fnshTht.P = round( mod( Target.tht - geom.tht0, 2*pi), 10);
+    fnshTht.N = fnshTht.P + 2*pi* (fnshTht.P < geom.tht_overlap & strtTht.N > 2*pi);
 
-    % here, thteps takes care of near zero tht targets while leaving those too close to the opp-sense HS
-    % for the same-sense situation.
-    TGT_IN_OVERLAP = mod(Target.tht - geom.tht0 + thteps, 2*pi) < (geom.tht_overlap + thteps);
-    
-    fnshBin.thtP = interp1(ang.tht,bins.tht, mod(Target.tht - geom.tht0 - thteps, 2*pi) + thteps);
-    fnshBin.thtN = interp1(ang.tht,bins.tht, mod(Target.tht - geom.tht0, 2*pi) + 2*pi*TGT_IN_OVERLAP);
-    fnshBin.phi  = (Target.phi - geom.map_range.phi(1))/geom.binWidth;
-
-    % calculate number of steps required for each positioner
+    %% calculate number of steps required for each positioner
     for jj = 1:nCobras
         try
-            nSteps.thtP(1,jj) = (interp1(bins.tht, Map.thtP(jj,:), fnshBin.thtP(jj)) - ...
-                                 interp1(bins.tht, Map.thtP(jj,:), strtBin.thtP(jj)));
-            nSteps.thtN(1,jj) = (interp1(bins.tht, Map.thtN(jj,:), fnshBin.thtN(jj)) - ...
-                                 interp1(bins.tht, Map.thtN(jj,:), strtBin.thtN(jj)));
-            nSteps_phiP(1,jj) = (interp1(bins.phi, Map.phiP(jj,:), fnshBin.phi(jj)) - ...
-                                 interp1(bins.phi, Map.phiP(jj,:), strtBin.phi(jj)));
-            nSteps_phiN(1,jj) = (interp1(bins.phi, Map.phiN(jj,:), fnshBin.phi(jj)) - ...
-                                 interp1(bins.phi, Map.phiN(jj,:), strtBin.phi(jj)));
+            nSteps.thtP(1,jj) = (interp1(ang.tht, Map.thtP(jj,:), fnshTht.P(jj)) - ...
+                                 interp1(ang.tht, Map.thtP(jj,:), strtTht.P(jj)));
+            nSteps.thtN(1,jj) = (interp1(ang.tht, Map.thtN(jj,:), fnshTht.N(jj)) - ...
+                                 interp1(ang.tht, Map.thtN(jj,:), strtTht.N(jj)));
+            nSteps_phiP(1,jj) = (interp1(ang.phi, Map.phiP(jj,:), Target.phi(jj)) - ...
+                                 interp1(ang.phi, Map.phiP(jj,:), startP.phi(jj)));
+            nSteps_phiN(1,jj) = (interp1(ang.phi, Map.phiN(jj,:), Target.phi(jj)) - ...
+                                 interp1(ang.phi, Map.phiN(jj,:), startN.phi(jj)));
         
         catch
             disp(['generateTrajectory2 warning: Usually, when things ' ...
@@ -82,8 +62,6 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
 
     nSteps.phi = max(nSteps_phiP, -nSteps_phiN);
     phiIsP = nSteps_phiP >= 0; % logical to track trajectories that move out in phi
-    
-    %% need to write Tht and Phi
     
     %% fractionalBinError derived in PHM's COO notebook #2, 1-dec-2015
     fractionalBinError = geom.alpha * geom.binWidth^(geom.beta - 1);
@@ -105,24 +83,24 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
     for jj = 1:nCobras
         %%% THT P (tht moving out SS)
         trajSteps  = ([0:stepsPerTime:nSteps.thtP(jj), nSteps.thtP(jj)] +...
-                      interp1(bins.tht, noisyMap.thtP(jj,:), strtBin.thtP(jj)));
+                      interp1(ang.tht, noisyMap.thtP(jj,:), strtTht.P(jj)));
         ThtP{jj} = geom.tht0(jj) + interp1(noisyMap.thtP(jj,:), ang.tht, trajSteps);
         tBins.thtP(jj) = length(trajSteps);
         %%% THT N (tht moving out OS)
         trajSteps  = ([0:-stepsPerTime:nSteps.thtN(jj), nSteps.thtN(jj)] +...
-                      interp1(bins.tht, noisyMap.thtN(jj,:), strtBin.thtN(jj)));
+                      interp1(ang.tht, noisyMap.thtN(jj,:), strtTht.N(jj)));
         ThtN{jj} = geom.tht0(jj) + interp1(noisyMap.thtN(jj,:), ang.tht, trajSteps);
         tBins.thtN(jj) = length(trajSteps);
 
         if phiIsP(jj) % (nsteps.phiP(jj) >= 0)
             %%% PHI P (phi moving out)
             trajSteps  = ([0:stepsPerTime:nSteps.phi(jj), nSteps.phi(jj)] +...
-                          interp1(bins.phi, noisyMap.phiP(jj,:), strtBin.phi(jj)));
+                          interp1(ang.phi, noisyMap.phiP(jj,:), startP.phi(jj)));
             Phi{jj} = interp1(noisyMap.phiP(jj,:), ang.phi, trajSteps);
         else
             %%% PHI N (phi moving in)
             trajSteps  = ([0:-stepsPerTime:nSteps.phi(jj), nSteps.phi(jj)] +...
-                          interp1(bins.phi, noisyMap.phiN(jj,:), strtBin.phi(jj)));
+                          interp1(ang.phi, noisyMap.phiN(jj,:), startN.phi(jj)));
             Phi{jj} = interp1(noisyMap.phiN(jj,:), ang.phi, trajSteps);
         end
         tBins.phi(jj) = length(trajSteps);
@@ -168,11 +146,12 @@ if exist('verify','var')
     plot(TrajP.','b'); hold on;
     plot(TrajN.','c');
     cmplx(@plotcircle,geom.center, geom.L1+geom.L2, 'k:');
-    plot(targetList,'ro','MarkerFace','r');
-    plot(TrajN(:,end),'kx');
-    plot(geom.L1.*exp(i*geom.tht0) + geom.L2.*exp(i*(geom.tht0+geom.phiIn)) + ...
-        geom.center,'go','MarkerFace','g');
+    plot(targetList,'ro','MarkerFace','r','DisplayName','target');
+    plot(TrajN(:,end),'kx','DisplayName','OS end');
+% $$$     plot(geom.L1.*exp(i*geom.tht0) + geom.L2.*exp(i*(geom.tht0+geom.phiIn)) + ...
+% $$$         geom.center,'go','MarkerFace','g');
     hold off;
+    legend(flipud(findobj(gca,'Type','line','-and','-not','DisplayName','')), 'location','best'); 
 end
 
 return
