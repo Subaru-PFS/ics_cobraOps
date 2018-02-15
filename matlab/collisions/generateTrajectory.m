@@ -5,14 +5,15 @@ function output=generateTrajectory(currentPosition,targetList, geom, verify)
 % example: after running q = simFun(1.5,'full',1,1) try this:
 % generateTrajectory(q.Traj.traj(:,end), q.targets, q.bench, 1);
 
+thteps = 1e-12;
 nCobras = length(geom.center);
 
 % theta/phi positions of the current and target positions
 strtPos = XY2TP(currentPosition - geom.center, geom.L1, geom.L2);
 Targets = XY2TP(targetList      - geom.center, geom.L1, geom.L2);
 
-strtTht0 = round(mod(strtPos.tht - geom.tht0, 2*pi), 13);
-fnshTht0 = round(mod(Targets.tht - geom.tht0, 2*pi), 13);
+strtTht0 = round(mod(strtPos.tht - geom.tht0 + thteps, 2*pi) - thteps, 10);
+fnshTht0 = round(mod(Targets.tht - geom.tht0 + thteps, 2*pi) - thteps, 10);
 strtTht1 = strtTht0 + 2*pi*(strtTht0 < geom.tht_overlap);
 fnshTht1 = fnshTht0 + 2*pi*(fnshTht0 < geom.tht_overlap);
 
