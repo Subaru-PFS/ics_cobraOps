@@ -55,7 +55,7 @@ if ~isempty(geom.F1Pm) % if there is a motor map...
 
     % here, thteps takes care of near zero tht targets while leaving those too close to the opp-sense HS
     % for the same-sense situation.
-    TGT_IN_OVERLAP = mod(Target.tht - geom.tht0 + thteps, 2*pi) < geom.tht_overlap;
+    TGT_IN_OVERLAP = mod(Target.tht - geom.tht0 + thteps, 2*pi) < (geom.tht_overlap + thteps);
     
     fnshBin.thtP = interp1(ang.tht,bins.tht, mod(Target.tht - geom.tht0 - thteps, 2*pi) + thteps);
     fnshBin.thtN = interp1(ang.tht,bins.tht, mod(Target.tht - geom.tht0, 2*pi) + 2*pi*TGT_IN_OVERLAP);
