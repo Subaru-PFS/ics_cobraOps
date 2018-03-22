@@ -1,5 +1,5 @@
 function noisy=addNoise(cumMap, fBE)
-% add noise to a cumulative map, according to the fractionBinError (fBE).
+% add noise to a cumulative map, according to the fractionalBinError (fBE).
 
     dataAxis = 2; % each cobras data is laid out in the 2nd axis
 
@@ -38,19 +38,19 @@ function output = mapFactor(fBE,mapSize)
     
         done = Xend >= 1; % bin is done when total travel > 1
         
-        fracMove = Xremaining./dx;
+        fracMove = Xremaining./dx; % fraction of commanded steps used to reach
+                                   % the end of the bin.
         
-        fracMove(~done & moveMe) = 1;
-        
+        fracMove(~done & moveMe) = 1; % if it didn't make it to the end, then
+                                      % all steps are assigned to this
+                                      % bin.
         MF = MF + fracMove;
         XX = min(Xend,1);
         
         X(ctr,:) = XX; % X holds the move history
-    
+
     end
-    
     MF = reshape(MF,mapSize); % ultimately this multiplies against the
                               % inverse motor map (steps/bin)
-    
     output = MF;
 end
