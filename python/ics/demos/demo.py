@@ -7,14 +7,14 @@ This file demonstrates how to use the collisions simulation code.
 import numpy as np
 import time as time
 
-import ics.cobraOps.plotUtils as plotUtils
-import ics.cobraOps.targetUtils as targetUtils
+from cobraOps import plotUtils
+from cobraOps import targetUtils
 
-from ics.cobraOps.Bench import Bench
-from ics.cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
-from ics.cobraOps.CollisionSimulator import CollisionSimulator
-from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
-from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
+from cobraOps.Bench import Bench
+from cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
+from cobraOps.CollisionSimulator import CollisionSimulator
+from cobraOps.DistanceTargetSelector import DistanceTargetSelector
+from cobraOps.RandomTargetSelector import RandomTargetSelector
 
 
 # Define the target density to use

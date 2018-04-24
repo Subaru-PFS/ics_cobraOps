@@ -7,14 +7,14 @@ Calculates some cobra collision statistics.
 import os
 import numpy as np
 
-import ics.cobraOps.plotUtils as plotUtils
-import ics.cobraOps.targetUtils as targetUtils
+from . import plotUtils
+from . import targetUtils
 
-from ics.cobraOps.Bench import Bench
-from ics.cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
-from ics.cobraOps.CollisionSimulator import CollisionSimulator
-from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
-from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
+from .Bench import Bench
+from .CobrasCalibrationProduct import CobrasCalibrationProduct
+from .CollisionSimulator import CollisionSimulator
+from .DistanceTargetSelector import DistanceTargetSelector
+from .RandomTargetSelector import RandomTargetSelector
 
 
 # Decide if the code should try to solve cobra collisions assigning new targets
@@ -49,22 +49,22 @@ calibrationProduct = CobrasCalibrationProduct("updatedMotorMapsFromThisRun2.xml"
 # Calculate the collisions for each maxDist-density combination
 for i in range(len(maxDistanceArray)):
     print("TargetDensity", targetDensityArray[i], "MaxDistance", maxDistanceArray[i])
-    
+
     # Create the bench instance
     bench = Bench(layout="full", calibrationProduct=calibrationProduct)
-    
+
     # Create a random sample of targets
     targets = targetUtils.generateRandomTargets(targetDensityArray[i], bench)
-    
+
     # Select the targets
     selector = DistanceTargetSelector(bench, targets)
     selector.run(maximumDistance=maxDistanceArray[i], solveCollisions=solveCollisions)
     selectedTargets = selector.getSelectedTargets()
-    
+
     # Simulate an observation
     simulator = CollisionSimulator(bench, selectedTargets)
     simulator.run()
-    
+
     # Fill the statistics arrays
     unassignedCobrasArray[i] = np.sum(simulator.assignedCobras == False)
     collisionsArray[i] = simulator.nCollisions
