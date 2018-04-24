@@ -45,7 +45,8 @@ class TargetSelector():
         # Define some internal arrays that will be used and filled by the
         # computeAccessibleTargets and selectTargets methods
         self.accessibleTargetIndices = None
-        self.accesssibleTargetDistances = None
+        self.accessibleTargetDistances = None
+        self.accessibleTargetElbows = None
         self.assignedTargetIndices = None
 
 
@@ -119,6 +120,9 @@ class TargetSelector():
         targetIndices = targetIndices[validIndices]
         distances = distances[validIndices]
 
+        # Calculate the elbow positions for all the cobra-target associations
+        elbows = self.bench.cobras.calculateMultipleElbowPositions(targetPositions, cobraIndices, targetIndices)
+
         # Calculate the total number of targets that each cobra can reach
         nTargetsPerCobra = np.bincount(cobraIndices)
 
@@ -126,6 +130,7 @@ class TargetSelector():
         maxTagetsPerCobra = nTargetsPerCobra.max()
         self.accessibleTargetIndices = np.full((nCobras, maxTagetsPerCobra), NULL_TARGET_INDEX, dtype="int")
         self.accessibleTargetDistances = np.zeros((nCobras, maxTagetsPerCobra))
+        self.accessibleTargetElbows = np.zeros((nCobras, maxTagetsPerCobra), dtype="complex")
 
         # Fill the arrays ordering the targets by their distance to the cobra
         counter = 0
@@ -135,11 +140,13 @@ class TargetSelector():
             nTargetsForThisCobra = nTargetsPerCobra[i]
             targetsForThisCobra = targetIndices[counter:counter + nTargetsForThisCobra]
             distancesForThisCobra = distances[counter:counter + nTargetsForThisCobra]
+            elbowsForThisCobra = elbows[counter:counter + nTargetsForThisCobra]
 
             # Sort the targets by their distance to the cobra and fill the arrays
             sortedIndices = distancesForThisCobra.argsort()
             self.accessibleTargetIndices[i, :nTargetsForThisCobra] = targetsForThisCobra[sortedIndices]
             self.accessibleTargetDistances[i, :nTargetsForThisCobra] = distancesForThisCobra[sortedIndices]
+            self.accessibleTargetElbows[i, :nTargetsForThisCobra] = elbowsForThisCobra[sortedIndices]
 
             # Increase the counter
             counter += nTargetsForThisCobra

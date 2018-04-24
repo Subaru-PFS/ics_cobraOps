@@ -187,6 +187,48 @@ class CobraGroup(AttributePrinter):
         return centers + L1 * np.exp(1j * tht)
 
 
+    def calculateMultipleElbowPositions(self, targetPositions, cobraIndices, targetIndices, useNegativePhi=True):
+        """Calculates the cobra elbow positions for a list of cobra-target associations.
+
+        The code assumes that the cobras can reach the given target positions.
+
+        Parameters
+        ----------
+        targetPositions: object
+            A complex numpy array with the target positions.
+        cobraIndices: object
+            A numpy array with the cobra indices to use.
+        targetIndices: object
+            A numpy array with the target indices to use.
+        useNegativePhi: bool, optional
+            If True the phi angle values will be negative. If False, the phi
+            angles will be positive. Default is True.
+
+        Returns
+        -------
+        object
+            A complex numpy array with the elbow positions.
+
+        """
+        # Extract some useful information
+        centers = self.centers[cobraIndices]
+        L1 = self.L1[cobraIndices]
+        L2 = self.L2[cobraIndices]
+        targetPositions = targetPositions[targetIndices]
+        
+        # Calculate the cobras theta angles applying the law of cosines
+        relativePositions = targetPositions - centers
+        distance = np.abs(relativePositions)
+        distanceSq = distance ** 2
+        L1Sq = L1 ** 2
+        L2Sq = L2 ** 2
+        phiSign = -1 if useNegativePhi else +1
+        tht = np.angle(relativePositions) - phiSign * np.arccos(-(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
+
+        # Return the elbow positions
+        return centers + L1 * np.exp(1j * tht)
+
+
     def calculateCobraElbowPositions(self, cobraIndex, fiberPositions, useNegativePhi=True):
         """Calculates the elbow positions for a given cobra and a list of fiber positions.
 
