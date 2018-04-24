@@ -309,29 +309,24 @@ class TrajectoryGroup(AttributePrinter):
                 linkColors = linkColors[indices]
 
         # Define the animation update function
-        lineCollection = None
-        thickLineCollection = None
-        trajectoryCollection = None
+        lineCollection = [None]
+        thickLineCollection = [None]
+        trajectoryCollection = [None]
 
         def update(frame):
-            # The function should be able to modify these variables
-            nonlocal lineCollection
-            nonlocal thickLineCollection
-            nonlocal trajectoryCollection
-
             # Remove the cobras line collections painted in the previous step
-            if lineCollection is not None:
-                plotUtils.plt.gca().collections.remove(lineCollection)
-                plotUtils.plt.gca().collections.remove(thickLineCollection)
-                plotUtils.plt.gca().collections.remove(trajectoryCollection)
+            if lineCollection[0] is not None:
+                plotUtils.plt.gca().collections.remove(lineCollection[0])
+                plotUtils.plt.gca().collections.remove(thickLineCollection[0])
+                plotUtils.plt.gca().collections.remove(trajectoryCollection[0])
 
             # Draw the cobras using a combination of thin and thick lines
-            lineCollection = plotUtils.addLines(cobraCenters, elbowPositions[:, frame], edgecolor=linkColors, linewidths=2)
-            thickLineCollection = plotUtils.addThickLines(elbowPositions[:, frame], fiberPositions[:, frame], linkRadius, facecolors=linkColors)
+            lineCollection[0] = plotUtils.addLines(cobraCenters, elbowPositions[:, frame], edgecolor=linkColors, linewidths=2)
+            thickLineCollection[0] = plotUtils.addThickLines(elbowPositions[:, frame], fiberPositions[:, frame], linkRadius, facecolors=linkColors)
 
             # Draw also their line trajectories
             combinedTrajectories = np.vstack((elbowPositions[:, :frame + 1], fiberPositions[:, :frame + 1]))
-            trajectoryCollection = plotUtils.addTrajectories(combinedTrajectories, color=np.vstack((colors, colors)), linewidth=1)
+            trajectoryCollection[0] = plotUtils.addTrajectories(combinedTrajectories, color=np.vstack((colors, colors)), linewidth=1)
 
         # Add the animation to the current figure
         plotUtils.addAnimation(update, elbowPositions.shape[1], fileName=fileName)
