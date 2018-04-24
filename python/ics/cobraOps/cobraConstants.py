@@ -50,6 +50,12 @@ MOTOR_NOISE_ALPHA = 0.07
 MOTOR_NOISE_BETA = 0.50
 """The default cobras motor noise exponent."""
 
+BLACK_DOT_RELATIVE_POSITION = 0 + 2.35j 
+"""The default cobra back dot position relative to the cobra center in mm."""
+
+BLACK_DOT_RADIUS = 1.375
+"""The default cobra back dot radius in mm."""
+
 NULL_TARGET_INDEX = -1
 """Integer value used to indicate the index of a null target."""
 

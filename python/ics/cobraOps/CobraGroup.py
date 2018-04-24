@@ -19,7 +19,9 @@ from .MotorMapGroup import MotorMapGroup
 from .cobraConstants import (COBRA_LINK_LENGTH,
                                          COBRA_LINK_RADIUS,
                                          PHI_SAFETY_ANGLE,
-                                         HOMES_THETA_DISTANCE)
+                                         HOMES_THETA_DISTANCE,
+                                         BLACK_DOT_RELATIVE_POSITION,
+                                         BLACK_DOT_RADIUS)
 
 
 class CobraGroup(AttributePrinter):
@@ -61,6 +63,10 @@ class CobraGroup(AttributePrinter):
 
         # Set the default link radius
         self.linkRadius = np.full(self.nCobras, COBRA_LINK_RADIUS)
+
+        # Set the default black dot position and radius
+        self.blackDotPosition = np.full(self.nCobras, BLACK_DOT_RELATIVE_POSITION)
+        self.blackDotRadius = np.full(self.nCobras, BLACK_DOT_RADIUS)
 
         # Set the default motor maps
         self.motorMaps = MotorMapGroup(self.nCobras)
@@ -322,7 +328,7 @@ class CobraGroup(AttributePrinter):
             self.motorMaps.useCalibrationProduct(calibrationProduct)
 
 
-    def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]), indices=None, paintHardStops=True):
+    def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]), indices=None, paintHardStops=True, paintBlackDots=True):
         """Draws the cobras patrol areas on top of an existing figure.
 
         Parameters
@@ -334,6 +340,8 @@ class CobraGroup(AttributePrinter):
             all the cobras will be used. Default is None.
         paintHardStops: bool, optional
             True if the cobra hard stops should be painted. Default is True.
+        paintBlackDots: bool, optional
+            True if the cobra black dots should be painted. Default is True.
 
         """
         # Extract some useful information
@@ -342,7 +350,9 @@ class CobraGroup(AttributePrinter):
         rMax = self.rMax
         tht0 = self.tht0
         tht1 = self.tht1
-
+        blackDotPosition = self.blackDotPosition
+        blackDotRadius = self.blackDotRadius
+        
         # Select a subset of the cobras if necessary
         if indices is not None:
             centers = centers[indices]
@@ -350,12 +360,18 @@ class CobraGroup(AttributePrinter):
             rMax = rMax[indices]
             tht0 = tht0[indices]
             tht1 = tht1[indices]
+            blackDotPosition = blackDotPosition[indices]
+            blackDotRadius = blackDotRadius[indices]
 
             if colors.ndim == 2:
                 colors = colors[indices]
 
         # Draw the cobra patrol areas using ring shapes
         plotUtils.addRings(centers, rMin, rMax, facecolors=colors)
+        
+        # Draw the cobra black dots if necessary
+        if paintBlackDots:
+            plotUtils.addCircles(centers + blackDotPosition, blackDotRadius, facecolors=np.array([0.0, 0.0, 0.0, 0.15]))
 
         # Add the theta hard stops if necessary
         if paintHardStops:

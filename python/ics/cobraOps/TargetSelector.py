@@ -91,6 +91,8 @@ class TargetSelector():
         rMax = self.bench.cobras.rMax
         targetPositions = self.targets.positions
         notNullTargets = self.targets.notNull
+        cobraBlackDotPosition = self.bench.cobras.blackDotPosition
+        cobraBlackDotRadius = self.bench.cobras.blackDotRadius
 
         # Calculate the maximum target distance allowed for each cobra
         rMax = rMax.copy()
@@ -107,9 +109,12 @@ class TargetSelector():
         cobraIndices = cobraIndices[validIndices]
         targetIndices = targetIndices[validIndices]
 
-        # Select only those targets that can be reached by each cobra
+        # Select only those targets that can be reached by each cobra and avoid
+        # targets falling in the cobra black dots
         distances = np.abs(cobraCenters[cobraIndices] - targetPositions[targetIndices])
+        blackDotdistances = np.abs(cobraCenters[cobraIndices] + cobraBlackDotPosition[cobraIndices] - targetPositions[targetIndices])
         validIndices = np.logical_and(distances > rMin[cobraIndices], distances < rMax[cobraIndices])
+        validIndices = np.logical_and(validIndices, blackDotdistances > cobraBlackDotRadius[cobraIndices])
         cobraIndices = cobraIndices[validIndices]
         targetIndices = targetIndices[validIndices]
         distances = distances[validIndices]
