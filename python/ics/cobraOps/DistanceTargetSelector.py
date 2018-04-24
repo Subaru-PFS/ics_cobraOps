@@ -12,23 +12,23 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from ics.cobraOps.cobraConstants import NULL_TARGET_INDEX
-from ics.cobraOps.TargetSelector import TargetSelector
+from .cobraConstants import NULL_TARGET_INDEX
+from .TargetSelector import TargetSelector
 
 
 class DistanceTargetSelector(TargetSelector):
     """
-    
+
     Subclass of the TargetSelector class used to select optimal targets for a
     given PFI bench. The selection criteria is based on the target to cobra
     distance.
-    
+
     """
-    
+
     def run(self, maximumDistance=np.Inf, solveCollisions=True):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
-        
+
         Parameters
         ----------
         maximumDistance: float, optional
@@ -38,55 +38,55 @@ class DistanceTargetSelector(TargetSelector):
         solveCollisions: bool, optional
             If True, the selector will try to solve cobra collisions assigning
             them alternative targets. Default is True.
-        
+
         """
         # Obtain the accessible targets for each cobra
         self.calculateAccessibleTargets(maximumDistance)
-        
+
         # Select a single target for each cobra
         self.selectTargets()
-        
+
         # Try to solve end point collisions
         if solveCollisions:
             self.solveEndPointCollisions()
-    
-    
+
+
     def selectTargets(self):
         """Selects a single target for each cobra based on their distance to
         the cobra center.
-        
+
         This method should always be run after the calculateAccessibleTargets
         method.
-        
+
         """
         # Extract some useful information
         nCobras = self.bench.cobras.nCobras
         nTargets = self.targets.nTargets
         maxTargetsPerCobra = self.accessibleTargetIndices.shape[1]
-        
+
         # Assign targets to cobras looping from the closest to the more far
         # away ones
         self.assignedTargetIndices = np.full(nCobras, NULL_TARGET_INDEX, dtype="int")
         freeCobras = np.full(nCobras, True)
         freeTargets = np.full(nTargets, True)
-        
+
         for i in range(maxTargetsPerCobra):
             # Get a list with the unique targets in the given column
             columnTargetIndices = self.accessibleTargetIndices[:, i]
             uniqueTargetIndices = np.unique(columnTargetIndices[freeCobras])
-            
+
             # Remove from the list the NULL_TARGET_INDEX value if it's present
             uniqueTargetIndices = uniqueTargetIndices[uniqueTargetIndices != NULL_TARGET_INDEX]
-            
+
             # Select free targets only
             uniqueTargetIndices = uniqueTargetIndices[freeTargets[uniqueTargetIndices]]
-            
+
             # Loop over the unique target indices
             for targetIndex in uniqueTargetIndices:
                 # Get the free cobras for which this target is the closest in
                 # the current column
                 (associatedCobras,) = np.where(np.logical_and(columnTargetIndices == targetIndex, freeCobras))
-                
+
                 # Check how many associated cobras we have
                 if len(associatedCobras) == 1:
                     # Use this single cobra for this target
@@ -97,7 +97,7 @@ class DistanceTargetSelector(TargetSelector):
                     targetIsAvailable = np.logical_and(accessibleTargets != NULL_TARGET_INDEX, freeTargets[accessibleTargets])
                     nAvailableTargets = np.sum(targetIsAvailable, axis=1)
                     singleTargetCobras = associatedCobras[nAvailableTargets == 1]
-                    
+
                     # Decide depending on how many of these cobras we have
                     if len(singleTargetCobras) == 0:
                         # All cobras have multiple targets: select the closest
@@ -112,7 +112,7 @@ class DistanceTargetSelector(TargetSelector):
                         # Assign the target to the closest single target cobra
                         distances = self.accessibleTargetDistances[singleTargetCobras, i]
                         cobraToUse = singleTargetCobras[distances.argmin()]
-                
+
                 # Assign the target to the selected cobra
                 self.assignedTargetIndices[cobraToUse] = targetIndex
                 freeCobras[cobraToUse] = False
