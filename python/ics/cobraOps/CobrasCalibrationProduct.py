@@ -51,6 +51,7 @@ class CobrasCalibrationProduct(AttributePrinter):
         # Create some of the calibration data arrays
         self.moduleIds = np.empty(self.nCobras, dtype="int")
         self.positionerIds = np.empty(self.nCobras, dtype="int")
+        self.serialIds = np.empty(self.nCobras, dtype="int")
         self.centers = np.empty(self.nCobras, dtype="complex")
         self.tht0 = np.empty(self.nCobras)
         self.tht1 = np.empty(self.nCobras)
@@ -97,6 +98,7 @@ class CobrasCalibrationProduct(AttributePrinter):
             header = dataContainers[i].find("DATA_HEADER")
             self.moduleIds[i] = int(header.find("Module_Id").text)
             self.positionerIds[i] = int(header.find("Positioner_Id").text)
+            self.serialIds[i] = int(header.find("Serial_Number").text, base=10)
 
             # Save some of the kinematics information
             kinematics = dataContainers[i].find("KINEMATICS")
