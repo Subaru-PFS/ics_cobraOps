@@ -1,3 +1,9 @@
+# Main modules
+
+## cobraConstants.py
+
+Defines some constants related with the cobras and the simulation code, like the default cobra link lengths, the number of cobras per module, or the default motor maps angular step size.
+
 ## CobrasCalibrationProduct.py
 
 Defines the `CobrasCalibrationProduct` class. This class is used to read (and save for testing) the XML files with the cobras calibration information: cobra centers, links lengths, motor maps, etc.
@@ -55,3 +61,18 @@ Defines the `CollisionSimulator` class. This class is used to simulate a PFS obs
 This class contains all the logic designed to avoid trajectory collisions. When it's run, it calculates the cobra trajectories for the default theta and phi movement directions (positive or negative) and strategies (early or late) and detects trajectory collisions. If a collision is found, it changes the movement directions and strategies of the involved cobras until the collisions are minimized. Again, in some cases this cannot be avoided.
 
 After running an instance of this class, one can access the finally adopted theta and phi movement directions and strategies, the cobras trajectories (an instance from the `TragetoryGroup` class) and all the unsolved end point and trajectory collisions.
+
+
+# Utility modules
+
+## AttributePrinter.py
+
+Defines the `AttributePrinter` class. This class overrides the `__str__` method, printing all the instance attributes in their string representation. Any class that subclass it will inherit this property.
+
+## plotUtils.py
+
+This module contains several methods to create plots using matplotlib.
+
+## targetUtils.py
+
+This module contains methods to generate different target distributions.
