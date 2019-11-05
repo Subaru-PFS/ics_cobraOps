@@ -27,3 +27,7 @@ _build
 .sconf_temp
 .sconsign.dblite
 config.log
+
+.project
+.pydevproject
+.settings/
