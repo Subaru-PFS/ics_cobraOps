@@ -7,14 +7,14 @@ Calculates some cobra collision statistics.
 import os
 import numpy as np
 
-from cobraOps import plotUtils
-from cobraOps import targetUtils
+from ics.cobraOps import plotUtils
+from ics.cobraOps import targetUtils
 
-from cobraOps.Bench import Bench
-from cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
-from cobraOps.CollisionSimulator import CollisionSimulator
-from cobraOps.DistanceTargetSelector import DistanceTargetSelector
-from cobraOps.RandomTargetSelector import RandomTargetSelector
+from ics.cobraOps.Bench import Bench
+from ics.cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
+from ics.cobraOps.CollisionSimulator import CollisionSimulator
+from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
+from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 
 
 # Decide if the code should try to solve cobra collisions assigning new targets

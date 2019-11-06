@@ -4,7 +4,7 @@ Collection of unit tests for the AttributePrinter class.
 
 """
 
-from cobraOps.AttributePrinter import AttributePrinter
+from ics.cobraOps.AttributePrinter import AttributePrinter
 
 
 class TestAttributePrinter():
