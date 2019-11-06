@@ -1,33 +1,32 @@
 """
 
-Target group class.
+TargetGroup class.
 
 Consult the following papers for more detailed information:
 
-  http://adsabs.harvard.edu/abs/2012SPIE.8450E..17F
-  http://adsabs.harvard.edu/abs/2014SPIE.9151E..1YF
-  http://adsabs.harvard.edu/abs/2016arXiv160801075T
+  https://ui.adsabs.harvard.edu/abs/2012SPIE.8450E..17F
+  https://ui.adsabs.harvard.edu/abs/2014SPIE.9151E..1YF
+  https://ui.adsabs.harvard.edu/abs/2016arXiv160801075T
+  https://ui.adsabs.harvard.edu/abs/2018SPIE10707E..28Y
+  https://ui.adsabs.harvard.edu/abs/2018SPIE10702E..1CT
 
 """
 
 import numpy as np
 
 from . import plotUtils
-
 from .AttributePrinter import AttributePrinter
 from .cobraConstants import (NULL_TARGET_INDEX,
-                                         NULL_TARGET_POSITION,
-                                         NULL_TARGET_ID)
+                             NULL_TARGET_POSITION,
+                             NULL_TARGET_ID)
 
 
 class TargetGroup(AttributePrinter):
-    """
-
-    Class describing the properties of a group of targets.
+    """Class describing the properties of a group of targets.
 
     """
 
-    def __init__(self, positions, ids=None):
+    def __init__(self, positions, ids=None, priorities=None):
         """Constructs a new target group instance.
 
         Parameters
@@ -38,6 +37,9 @@ class TargetGroup(AttributePrinter):
             A unicode numpy array with the targets unique ids. If it is set to
             None, the targets will have consecutive ids starting from zero.
             Default is None.
+        priorities: object, optional
+            A numpy array with the targets priorities. If it is set to None,
+            all the targets will have priority 1. Default is None.
 
         Returns
         -------
@@ -55,9 +57,14 @@ class TargetGroup(AttributePrinter):
         else:
             self.ids = np.arange(self.nTargets).astype("<U10")
 
+        # Save the target priorities or set them to 1
+        if priorities is not None:
+            self.priorities = priorities.copy()
+        else:
+            self.priorities = np.ones(self.nTargets)
+
         # Check which targets are not NULL
         self.notNull = self.ids != NULL_TARGET_ID
-
 
     @classmethod
     def fromFile(cls, fileName):
@@ -98,7 +105,6 @@ class TargetGroup(AttributePrinter):
         else:
             return cls(positions)
 
-
     def saveToFile(self, fileName):
         """Saves the target group data to a file.
 
@@ -112,7 +118,6 @@ class TargetGroup(AttributePrinter):
         with open(fileName, "w") as f:
             for p, i in zip(self.positions, self.ids):
                 f.write(", ".join((str(p.real), str(p.imag), i)) + "\n")
-
 
     def select(self, indices):
         """Selects a subset of the targets.
@@ -138,7 +143,6 @@ class TargetGroup(AttributePrinter):
         selectedIds[realIndices] = self.ids[indices[realIndices]]
 
         return TargetGroup(selectedPositions, selectedIds)
-
 
     def addToFigure(self, colors=np.array([0.4, 0.4, 0.4, 1.0]), indices=None):
         """Draws the targets on top of an existing figure.

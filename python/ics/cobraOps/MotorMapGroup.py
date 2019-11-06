@@ -1,12 +1,14 @@
 """
 
-Motor map group class.
+MotorMapGroup class.
 
 Consult the following papers for more detailed information:
 
-  http://adsabs.harvard.edu/abs/2012SPIE.8450E..17F
-  http://adsabs.harvard.edu/abs/2014SPIE.9151E..1YF
-  http://adsabs.harvard.edu/abs/2016arXiv160801075T
+  https://ui.adsabs.harvard.edu/abs/2012SPIE.8450E..17F
+  https://ui.adsabs.harvard.edu/abs/2014SPIE.9151E..1YF
+  https://ui.adsabs.harvard.edu/abs/2016arXiv160801075T
+  https://ui.adsabs.harvard.edu/abs/2018SPIE10707E..28Y
+  https://ui.adsabs.harvard.edu/abs/2018SPIE10702E..1CT
 
 """
 

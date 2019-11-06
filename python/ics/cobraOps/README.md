@@ -30,11 +30,9 @@ This class has several methods that are useful to deal with cobra collisions. Fo
 
 ## TargetGroup.py
 
-Defines the `TargetGroup` class. This class is used to represent the properties (xy coordinates and source id) of a group of PFS targets.
+Defines the `TargetGroup` class. This class is used to represent the properties (xy coordinates, source id and priority) of a group of PFS targets.
 
 The class can deal with NULL targets, which are the targets of unassigned cobras.
-
-Probably in the future we should add a target priority property...
 
 ## TargetSelector.py
 
@@ -43,7 +41,7 @@ Defines the `TargetSelector` class. This class is used to select (assign) target
 This class is meant to be extended, by implementing the `run()` and `selectTargets()` methods. We have currently two example subclasses:
  * `DistanceTargetSelector.py`, which selects targets based on their distance to the cobra centers (similar to what the MATLAB code was doing)
  * `RandomTargetSelector.py`, which selects targets randomly (from the subset of targets that can be reach by each cobra).
- 
+
 In the future we can have a `NetflowSelector` subclass that selects targets based on the Netflow algorithm.
 
 The `TargetSelector` class has a method to avoid end point collisions. This method can be run optionally, and if it's used it will reassign targets to cobras until the end point collisions are minimized. However, there could be cases when the collisions cannot be avoided because the two colliding cobras have only one possible target each. The MATLAB code was leaving one of the cobras unassigned, while in the python code we leave the two cobras assigned, which will generate an end collision at the end. We can change this when we decide what is the best thing to do (maybe look at a sky position?).  Also, the Netflow implementation might solve this problem automatically...
@@ -67,7 +65,16 @@ After running an instance of this class, one can access the finally adopted thet
 
 ## AttributePrinter.py
 
-Defines the `AttributePrinter` class. This class overrides the `__str__` method, printing all the instance attributes in their string representation. Any class that subclass it will inherit this property.
+Defines the `AttributePrinter` class. This class overrides the `__str__` method to print all instance attributes followed by their respective values:
+
+```
+attribute_1 = value1
+attribute_2 = value2
+...
+attribute_n = value_n
+```
+
+Any class that subclass it will inherit this method.
 
 ## plotUtils.py
 
