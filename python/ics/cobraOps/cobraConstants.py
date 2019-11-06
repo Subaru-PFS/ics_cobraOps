@@ -66,3 +66,6 @@ NULL_TARGET_POSITION = 0j
 
 NULL_TARGET_ID = "NULL"
 """Unicode value used to indicate the id of a null target."""
+
+NULL_TARGET_PRIORITY = -1
+"""Float value used to indicate the priority of a null target."""
