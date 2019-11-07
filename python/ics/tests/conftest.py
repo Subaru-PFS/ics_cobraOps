@@ -7,8 +7,6 @@ Collection of fixtures for the unit tests.
 import pytest
 import numpy as np
 
-from ics.cobraOps.cobraConstants import NULL_TARGET_ID
-
 
 @pytest.fixture(scope="function")
 def targetPositions():
@@ -17,9 +15,9 @@ def targetPositions():
 
 @pytest.fixture(scope="function")
 def targetIds():
-    return np.array(["a", NULL_TARGET_ID, "c", "d"])
+    return np.array(["source00+11", "source_b", "+c", "-d"])
 
 
 @pytest.fixture(scope="function")
 def targetPriorities():
-    return np.array([1, 1, 2, 3])
+    return np.array([1, 1, 2, 8])

@@ -50,7 +50,7 @@ class TargetGroup(AttributePrinter):
         """
         # Save the number of targets and their positions
         self.nTargets = len(positions)
-        self.positions = positions.copy()
+        self.positions = np.array(positions)
 
         # Save the target ids or create some default ids
         if ids is not None:
@@ -59,9 +59,9 @@ class TargetGroup(AttributePrinter):
                 raise ValueError("The ids array should have the same length "
                                  "as the positions array.")
 
-            self.ids = ids.copy()
+            self.ids = np.array(ids)
         else:
-            self.ids = np.arange(self.nTargets).astype("<U10")
+            self.ids = np.arange(self.nTargets).astype("U")
 
         # Save the target priorities or set them to 1
         if priorities is not None:
@@ -70,7 +70,7 @@ class TargetGroup(AttributePrinter):
                 raise ValueError("The priorities array should have the same "
                                  "length as the positions array.")
 
-            self.priorities = priorities.copy()
+            self.priorities = np.array(priorities)
         else:
             self.priorities = np.ones(self.nTargets)
 
@@ -120,7 +120,7 @@ class TargetGroup(AttributePrinter):
 
         # Transform the lists into numpy arrays
         positions = np.array(positions, dtype="complex")
-        ids = np.array(ids, dtype="<U10") if len(ids) > 0 else None
+        ids = np.array(ids, dtype="U") if len(ids) > 0 else None
         priorities = np.array(priorities) if len(priorities) > 0 else None
 
         # Return a new TargetGroup instance
@@ -154,6 +154,9 @@ class TargetGroup(AttributePrinter):
             A new TargetGroup instance containing only the selected targets.
 
         """
+        # Make sure indices is a numpy array
+        indices = np.array(indices)
+
         # Initialize the selected target positions, ids and priorities arrays
         selectedPositions = np.full(
             len(indices), NULL_TARGET_POSITION, dtype=self.positions.dtype)
@@ -190,6 +193,7 @@ class TargetGroup(AttributePrinter):
 
         # Select a subset of the targets if necessary
         if indices is not None:
+            indices = np.array(indices)
             indices = indices[indices != NULL_TARGET_INDEX]
             positions = positions[indices]
             priorities = priorities[indices]
