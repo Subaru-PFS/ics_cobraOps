@@ -15,22 +15,19 @@ Consult the following papers for more detailed information:
 import numpy as np
 
 from . import plotUtils
-
 from .cobraConstants import (HOMES_THETA_DISTANCE,
-                                         MOTOR_MAP_ANGULAR_STEP,
-                                         MOTOR1_STEP_SIZE,
-                                         MOTOR2_STEP_SIZE)
+                             MOTOR_MAP_ANGULAR_STEP,
+                             MOTOR1_STEP_SIZE,
+                             MOTOR2_STEP_SIZE)
 
 
 class MotorMapGroup():
-    """
-
-    Class describing the properties of a group of cobra motor maps.
+    """Class describing the properties of a group of cobra motor maps.
 
     """
 
     def __init__(self, nMaps):
-        """Constructs a new motor map group instance with default properties.
+        """Constructs a new MotorMapGroup instance with default properties.
 
         Parameters
         ----------
@@ -41,10 +38,10 @@ class MotorMapGroup():
         Returns
         -------
         object
-            The motor map group instance.
+            The MotorMapGroup instance.
 
         """
-        # Set the number of motor maps
+        # Save the number of motor maps
         self.nMaps = nMaps
 
         # Set the default angular step sizes between measurements

@@ -1,6 +1,6 @@
 """
 
-Some utility methods related with the science targets.
+Some utility methods related with PFS science targets.
 
 Consult the following papers for more detailed information:
 
@@ -31,12 +31,12 @@ def generateOneTargetPerCobra(bench, maximumDistance=np.Inf):
     Returns
     -------
     Object
-        A target group instance.
+        A TargetGroup instance.
 
     """
     # Extract some useful information
     nCobras = bench.cobras.nCobras
-    cobraCenters = bench.cobra.centers
+    cobraCenters = bench.cobras.centers
     rMin = bench.cobras.rMin
     rMax = bench.cobras.rMax
 
@@ -47,7 +47,8 @@ def generateOneTargetPerCobra(bench, maximumDistance=np.Inf):
 
     # Calculate the target positions
     ang = 2 * np.pi * np.random.random(nCobras)
-    radius = np.sqrt((rMax ** 2 - rMin ** 2) * np.random.random(nCobras) + rMin ** 2)
+    radius = np.sqrt((rMax ** 2 - rMin ** 2) * np.random.random(nCobras) + 
+                     rMin ** 2)
     targetPositions = cobraCenters + radius * np.exp(1j * ang)
 
     return  TargetGroup(targetPositions)
@@ -71,8 +72,9 @@ def generateRandomTargets(density, bench):
 
     """
     # Calculate the total number of targets based on the bench properties
-    medianPatrolAreaRadius = np.median(bench.cobras.rMax)
-    nTargets = int(np.ceil(density * (bench.radius / medianPatrolAreaRadius) ** 2))
+    averagePatrolArea = np.mean(np.pi * bench.cobras.rMax ** 2)
+    benchArea = np.pi * bench.radius ** 2
+    nTargets = int(np.ceil(density * benchArea / averagePatrolArea))
 
     # Calculate the uniformly distributed target positions
     ang = 2 * np.pi * np.random.random(nTargets)
