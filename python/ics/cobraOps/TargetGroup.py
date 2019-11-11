@@ -75,9 +75,13 @@ class TargetGroup(AttributePrinter):
             self.priorities = np.ones(self.nTargets)
 
         # Check which targets are not NULL
-        self.notNull = self.ids != NULL_TARGET_ID
+        self.notNull = np.logical_and(self.ids != NULL_TARGET_ID,
+                                      self.positions != NULL_TARGET_POSITION)
+        self.notNull = np.logical_and(self.notNull,
+                                      self.priorities != NULL_TARGET_PRIORITY)
 
-        # Use the default position and priority values for the NULL targets
+        # Use the default id, position and priority values for the NULL targets
+        self.ids[~self.notNull] = NULL_TARGET_ID
         self.positions[~self.notNull] = NULL_TARGET_POSITION
         self.priorities[~self.notNull] = NULL_TARGET_PRIORITY
 

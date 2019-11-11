@@ -7,6 +7,7 @@ Collection of unit tests for the targetUtils module.
 import numpy as np
 
 from ics.cobraOps import targetUtils
+from ics.cobraOps.cobraConstants import NULL_TARGET_ID
 
 
 class TestTargetUtils():
@@ -40,6 +41,13 @@ class TestTargetUtils():
         rMax[rMax < rMin] = rMin[rMax < rMin]
         assert np.all(np.logical_and(distances + epsilon > rMin,
                                      distances - epsilon < rMax))
+
+        # Generate a new set of targets with zero maximum distance
+        maximumDistance = 0
+        targets = targetUtils.generateOneTargetPerCobra(bench, maximumDistance)
+
+        # Check that all the targets are NULL targets
+        assert np.all(targets.ids == NULL_TARGET_ID)
 
     def test_generateRandomTargets_method(self, bench):
         # Generate the targets
