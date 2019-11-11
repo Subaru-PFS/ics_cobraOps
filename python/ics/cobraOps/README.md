@@ -36,15 +36,15 @@ The class can deal with NULL targets, which are the targets of unassigned cobras
 
 ## TargetSelector.py
 
-Defines the `TargetSelector` class. This class is used to select (assign) targets to a given `Bench` instance. It takes as inputs a `TargetGroup` instance and a `Bench` instance and generates a new `TargetGroup` instance containing the targets assigned to each cobra in the the Bench. In some cases the these targets will be NULL targets.
+Defines the `TargetSelector` abstract class. This class is used to select (assign) targets to a given `Bench` instance. It takes as inputs a `TargetGroup` instance and a `Bench` instance and generates a new `TargetGroup` instance containing the targets assigned to each cobra in the the Bench. In some cases the these targets will be NULL targets.
 
 This class is meant to be extended, by implementing the `run()` and `selectTargets()` methods. We have currently two example subclasses:
- * `DistanceTargetSelector.py`, which selects targets based on their distance to the cobra centers (similar to what the MATLAB code was doing)
+ * `DistanceTargetSelector.py`, which selects targets based on their distance to the cobra centers (similar to what the MATLAB code was doing).
  * `RandomTargetSelector.py`, which selects targets randomly (from the subset of targets that can be reach by each cobra).
 
-In the future we can have a `NetflowSelector` subclass that selects targets based on the Netflow algorithm.
+In the future we can have a `NetflowTargetSelector` subclass that selects targets based on the Netflow algorithm.
 
-The `TargetSelector` class has a method to avoid end point collisions. This method can be run optionally, and if it's used it will reassign targets to cobras until the end point collisions are minimized. However, there could be cases when the collisions cannot be avoided because the two colliding cobras have only one possible target each. The MATLAB code was leaving one of the cobras unassigned, while in the python code we leave the two cobras assigned, which will generate an end collision at the end. We can change this when we decide what is the best thing to do (maybe look at a sky position?).  Also, the Netflow implementation might solve this problem automatically...
+The `TargetSelector` class has a method to avoid end point collisions. This method can be run optionally, and if it's used it will reassign targets to cobras until the end point collisions are minimized. However, there could be cases where collisions cannot be avoided because the two colliding cobras have only one possible target each. The MATLAB code was leaving one of the cobras unassigned, while in the python code we leave the two cobras assigned, which will generate an end collision at the end. We can change this when we decide what is the best thing to do (maybe look at a sky position?). Also, the Netflow implementation might solve this problem automatically...
 
 ## TrajectoryGroup.py
 

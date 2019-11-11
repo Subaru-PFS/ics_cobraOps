@@ -1,6 +1,6 @@
 """
 
-TargetSelector class.
+TargetSelector abstract class.
 
 Consult the following papers for more detailed information:
 
@@ -13,14 +13,13 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
+from abc import ABC, abstractmethod
 
 from .cobraConstants import NULL_TARGET_INDEX
 
 
-class TargetSelector():
-    """
-
-    Class used to select optimal targets for a given PFI bench.
+class TargetSelector(ABC):
+    """Abstract class used to select optimal targets for a given PFI bench.
 
     """
 
@@ -51,7 +50,7 @@ class TargetSelector():
         self.accessibleTargetElbows = None
         self.assignedTargetIndices = None
 
-
+    @abstractmethod
     def run(self, maximumDistance=np.Inf, solveCollisions=True):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
@@ -67,9 +66,7 @@ class TargetSelector():
             them alternative targets. Default is True.
 
         """
-        # Do nothing. This method should be implemented by the subclass
-        return
-
+        pass
 
     def calculateAccessibleTargets(self, maximumDistance=np.Inf):
         """Calculates the targets that each cobra can reach.
@@ -153,7 +150,7 @@ class TargetSelector():
             # Increase the counter
             counter += nTargetsForThisCobra
 
-
+    @abstractmethod
     def selectTargets(self):
         """Selects a single target for each cobra.
 
@@ -161,9 +158,7 @@ class TargetSelector():
         method.
 
         """
-        # Do nothing. This method should be implemented by the subclass
-        return
-
+        pass
 
     def solveEndPointCollisions(self):
         """Detects and solves cobra collisions assigning them alternative
@@ -287,7 +282,6 @@ class TargetSelector():
                 fiberPositions[nc] = targetPositions[bestTarget2]
                 freeTargets[bestTarget1] = False
                 freeTargets[bestTarget2] = False
-
 
     def getSelectedTargets(self):
         """Returns a new target group with a selected target for each cobra.

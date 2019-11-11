@@ -8,6 +8,7 @@ import pytest
 import numpy as np
 
 from ics.cobraOps.Bench import Bench
+from ics.cobraOps import targetUtils
 
 
 @pytest.fixture(scope="function")
@@ -28,3 +29,8 @@ def targetPriorities():
 @pytest.fixture(scope="function")
 def bench():
     return Bench(layout="full")
+
+
+@pytest.fixture(scope="function")
+def targets(bench):
+    return targetUtils.generateRandomTargets(2, bench)
