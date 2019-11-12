@@ -93,7 +93,7 @@ class TargetSelector(ABC):
         targetPositions = self.targets.positions
 
         # Create a KD tree instance if the number of targets is large enough
-        if len(self.targets.nTargets) > 2e5:
+        if self.targets.nTargets > 2e5:
             kdTree = KDTree(np.column_stack((targetPositions.real,
                                              targetPositions.imag)))
         else:
