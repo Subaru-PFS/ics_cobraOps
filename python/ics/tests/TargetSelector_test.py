@@ -7,10 +7,11 @@ Collection of unit tests for the TargetSelector abstract class.
 import pytest
 
 from ics.cobraOps.TargetSelector import TargetSelector
+from ics.cobraOps import targetUtils
 
 
 class TargetSelectorSubclass(TargetSelector):
-    """Basic TargetSelector subclass used only for tests.
+    """Dummy TargetSelector subclass used only for tests.
 
     """
 
@@ -36,3 +37,8 @@ class TestTargetSelector():
         # Check that we don't get an exception if we subclass the abstract
         # class and implement the abstract methods
         TargetSelectorSubclass(bench, targets)
+
+    def test_calculateAccessibleTargets_method(self, bench):
+        targets = targetUtils.generateRandomTargets(20, bench)
+        selector = TargetSelectorSubclass(bench, targets)
+        selector.calculateAccessibleTargets()
