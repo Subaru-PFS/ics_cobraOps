@@ -26,6 +26,19 @@ class TargetSelectorSubclass(TargetSelector):
         return
 
 
+@pytest.fixture(scope="function", params=[(True, 0.1, True),
+                                          (True, 0.1, False),
+                                          (True, 10, True),
+                                          (True, 10, False),
+                                          (False, 1, True),
+                                          (False, 1, False)])
+def testParameters(request):
+    # Extract the test parameters
+    randomTargetDistribution, targetDensity, useKDTree = request.param
+
+    return randomTargetDistribution, targetDensity, useKDTree
+
+
 class TestTargetSelector():
     """A collection of tests for the TargetSelector abstract class.
 
@@ -47,12 +60,15 @@ class TestTargetSelector():
         cobraCenters = np.array([0 + 0j, 0 + 5j])
         bench = Bench(cobraCenters)
 
-        # Create some targets
-        targetPositions = np.array([0, cobraCenters.mean(), 0 - 3j, 0 + 6j])
+        # Create some random targets
+        targetPositions = 8 * np.random.random(50) + 8j * np.random.random(50)
         targets = TargetGroup(targetPositions)
 
         # Create a dummy TargetSelector
         selector = TargetSelectorSubclass(bench, targets)
+
+        # Check that the KD tree is not available
+        assert selector.kdTree is None
 
         # Construct the KD tree
         selector.constructKDTree()
@@ -98,18 +114,47 @@ class TestTargetSelector():
         assert np.all(positions == expectedPositions)
         assert np.all(np.abs(distances - expectedDistances) < 1e-10)
 
-    def test_calculateAccessibleTargets_method(self, bench):
-        # Create a random set of targets
-        targets = targetUtils.generateRandomTargets(0.1, bench)
+        # Construct the KD tree
+        selector.constructKDTree()
+
+        # Get again the targets that fall inside the second cobra
+        indices, positions, distances = selector.getTargetsInsidePatrolArea(1)
+
+        # Check that we get what we expected
+        expectedIndices = np.array([3, 1])
+        expectedPositions = targetPositions[expectedIndices]
+        expectedDistances = np.abs(cobraCenters[1] - expectedPositions)
+        assert np.all(indices == expectedIndices)
+        assert np.all(positions == expectedPositions)
+        assert np.all(np.abs(distances - expectedDistances) < 1e-10)
+
+    def test_calculateAccessibleTargets_method(self, bench, testParameters):
+        # Extract the test parameters
+        randomTargetDistribution, targetDensity, useKDTree = testParameters
+
+        # Create the targets
+        if randomTargetDistribution:
+            targets = targetUtils.generateRandomTargets(targetDensity, bench)
+        else:
+            targets = targetUtils.generateOneTargetPerCobra(bench)
+
+        # Create a dummy TargetSelector
         selector = TargetSelectorSubclass(bench, targets)
+
+        # Construct the KD tree if requested
+        if useKDTree:
+            selector.constructKDTree()
+
+        # Calculate the accessible targets for each cobra
         selector.calculateAccessibleTargets()
 
         # Check that the targets fall inside the cobras patrol areas
         cobraCenters = bench.cobras.centers
-        targetIndices = selector.accessibleTargetIndices
-        targetPositions = targets.positions[targetIndices]
-        validTargets = targetIndices != NULL_TARGET_INDEX
-        distances = np.abs(cobraCenters[:, np.newaxis] - targetPositions)
+        indices = selector.accessibleTargetIndices
+        positions = targets.positions[indices]
+        distances = np.abs(cobraCenters[:, np.newaxis] - positions)
+        validTargets = indices != NULL_TARGET_INDEX
         assert np.all(
             (distances < bench.cobras.rMax[:, np.newaxis])[validTargets])
-        
+        assert np.all(
+            (distances > bench.cobras.rMin[:, np.newaxis])[validTargets])

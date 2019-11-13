@@ -96,7 +96,8 @@ class TargetSelector(ABC):
         """
         # Calculate the KD tree leaf size if it is not provided
         if leafSize is None:
-            leafSize = 3 * self.targets.nTargets / self.bench.cobras.nCobras
+            leafSize = 3 * self.targets.nTargets // self.bench.cobras.nCobras
+            leafSize = max(2, leafSize)
 
         # Construct the KD tree
         self.kdTree = KDTree(np.column_stack((self.targets.positions.real,
@@ -120,7 +121,8 @@ class TargetSelector(ABC):
         tuple
             A python tuple with the indices, positions and distances of the
             targets that fall inside the cobra patrol area. The arrays are
-            ordered by the distance to the cobra center (closer targets first).
+            ordered by their distance to the cobra center (closer targets
+            appear first).
 
         """
         # Get the cobra center and the patrol area limits
