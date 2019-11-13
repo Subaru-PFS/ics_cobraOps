@@ -61,7 +61,7 @@ BLACK_DOT_RADIUS = 1.375
 NULL_TARGET_INDEX = -1
 """Integer value used to indicate the index of a null target."""
 
-NULL_TARGET_POSITION = 0j
+NULL_TARGET_POSITION = -0.999999j
 """Complex value used to indicate the position of a null target."""
 
 NULL_TARGET_ID = "NULL"

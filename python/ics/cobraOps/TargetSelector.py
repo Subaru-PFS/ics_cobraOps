@@ -44,8 +44,9 @@ class TargetSelector(ABC):
         self.bench = bench
         self.targets = targets
 
-        # Define some internal arrays that will be used and filled by the
+        # Define some internal variables that will be used by the
         # computeAccessibleTargets and selectTargets methods
+        self.kdTree = None
         self.accessibleTargetIndices = None
         self.accessibleTargetDistances = None
         self.accessibleTargetElbows = None
@@ -69,77 +70,40 @@ class TargetSelector(ABC):
         """
         pass
 
-    def calculateAccessibleTargets(self, maximumDistance=np.Inf):
-        """Calculates the targets that each cobra can reach.
+    @abstractmethod
+    def selectTargets(self):
+        """Selects a single target for each cobra.
 
-        The results are saved in the accessibleTargetIndices,
-        accesssibleTargetDistances and accessibleTargetElbows internal arrays.
+        This method should always be run after the calculateAccessibleTargets
+        method.
 
-        This method should always be run before the selecTargets method.
+        """
+        pass
+
+    def constructKDTree(self, leafSize=None):
+        """Constructs a K-dimensional tree using the target positions.
+
+        The KD tree will then be used for the target-to-cobra distance
+        calculations. The KD tree method starts to be efficient compared to
+        brute force for target-to-cobra densities above 50.
 
         Parameters
         ----------
-        maximumDistance: float, optional
-            The maximum radial distance allowed between the targets and the
-            cobra centers. Default is no limit (the maximum radius that the
-            cobra can reach).
+        leafSize: float, optional
+            The KD tree leaf size. If None, an optimal leaf size value will be
+            used. Default is None.
 
         """
-        # Extract some useful information
-        nCobras = self.bench.cobras.nCobras
-        cobraCenters = self.bench.cobras.centers
-        cobraBlackDotPosition = self.bench.cobras.blackDotPosition
-        cobraBlackDotRadius = self.bench.cobras.blackDotRadius
-        targetPositions = self.targets.positions
+        # Calculate the KD tree leaf size if it is not provided
+        if leafSize is None:
+            leafSize = 3 * self.targets.nTargets / self.bench.cobras.nCobras
 
-        # Create a KD tree instance if the number of targets is large enough
-        if self.targets.nTargets > 2e5:
-            kdTree = KDTree(np.column_stack((targetPositions.real,
-                                             targetPositions.imag)))
-        else:
-            kdTree = None
+        # Construct the KD tree
+        self.kdTree = KDTree(np.column_stack((self.targets.positions.real,
+                                              self.targets.positions.imag)),
+                                              leafsize=leafSize)
 
-        # Obtain the cobra-target associations
-        associations = []
-        maxTargetsPerCobra = 0
-
-        for i in range(nCobras):
-            # Get the targets that fall inside the cobra patrol area
-            indices, positions, distances = self.getTargetsInPatrolArea(
-                i, maximumDistance, kdTree)
-
-            # Invalidate targets falling in the cobra black dots
-            blackDotdistances = np.abs(
-                cobraCenters[i] + cobraBlackDotPosition[i] - positions)
-            validTargets = blackDotdistances > cobraBlackDotRadius[i]
-            indices = indices[validTargets]
-            positions = positions[validTargets]
-            distances = distances[validTargets]
-
-            # Save the cobra-target association information
-            associations.append((i, indices, positions, distances))
-            maxTargetsPerCobra = max(maxTargetsPerCobra, len(indices))
-
-        # Create the accessible target arrays
-        arrayShape = (nCobras, maxTargetsPerCobra)
-        self.accessibleTargetIndices = np.full(arrayShape, NULL_TARGET_INDEX)
-        self.accessibleTargetDistances = np.zeros(arrayShape)
-        self.accessibleTargetElbows = np.zeros(arrayShape, dtype="complex")
-
-        # Fill the arrays with the cobra-target association information
-        for i, indices, positions, distances in associations:
-            # Calculate the elbow positions at the target positions
-            elbows = self.bench.cobras.calculateCobraElbowPositions(
-                i, positions)
-
-            # Fill the arrays
-            nTargets = len(indices)
-            self.accessibleTargetIndices[i, :nTargets] = indices
-            self.accessibleTargetDistances[i, :nTargets] = distances
-            self.accessibleTargetElbows[i, :nTargets] = elbows
-
-    def getTargetsInPatrolArea(self, cobraIndex, maximumDistance=np.Inf,
-                               kdTree=None):
+    def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.Inf):
         """Calculates the targets that fall inside a given cobra patrol area.
 
         Parameters
@@ -150,16 +114,13 @@ class TargetSelector(ABC):
             The maximum radial distance allowed between the targets and the
             cobra center. Default is no limit (the maximum radius that the
             cobra can reach).
-        kdTree: object, optional
-            The targets positions KD tree to use for the cobra to target
-            distance calculations. If it's None, the distances will be
-            calculated without a KD tree. Default is None.
 
         Returns
         -------
         tuple
             A python tuple with the indices, positions and distances of the
-            targets that fall inside the cobra patrol area.
+            targets that fall inside the cobra patrol area. The arrays are
+            ordered by the distance to the cobra center (closer targets first).
 
         """
         # Get the cobra center and the patrol area limits
@@ -168,10 +129,10 @@ class TargetSelector(ABC):
         rMax = min(self.bench.cobras.rMax[cobraIndex], maximumDistance)
 
         # If available, use the KD tree for the distance calculations
-        if kdTree is not None:
+        if self.kdTree is not None:
             # Get all the targets that the cobra can reach. Remember to
             # invalidate any possible NULL targets that might exist
-            distances, indices = kdTree.query(
+            distances, indices = self.kdTree.query(
                 [cobraCenter.real, cobraCenter.imag], k=None,
                 distance_upper_bound=rMax)
             indices = np.array(indices, dtype=np.int)
@@ -206,15 +167,66 @@ class TargetSelector(ABC):
 
         return indices, positions, distances
 
-    @abstractmethod
-    def selectTargets(self):
-        """Selects a single target for each cobra.
+    def calculateAccessibleTargets(self, maximumDistance=np.Inf):
+        """Calculates the targets that each cobra can reach.
 
-        This method should always be run after the calculateAccessibleTargets
-        method.
+        The results are saved in the accessibleTargetIndices,
+        accesssibleTargetDistances and accessibleTargetElbows internal arrays.
+
+        This method should always be run before the selecTargets method.
+
+        Parameters
+        ----------
+        maximumDistance: float, optional
+            The maximum radial distance allowed between the targets and the
+            cobra centers. Default is no limit (the maximum radius that the
+            cobra can reach).
 
         """
-        pass
+        # Extract some useful information
+        nCobras = self.bench.cobras.nCobras
+        cobraCenters = self.bench.cobras.centers
+        cobraBlackDotPosition = self.bench.cobras.blackDotPosition
+        cobraBlackDotRadius = self.bench.cobras.blackDotRadius
+
+        # Obtain the cobra-target associations
+        associations = []
+        maxTargetsPerCobra = 0
+
+        for i in range(nCobras):
+            # Get the targets that fall inside the cobra patrol area
+            indices, positions, distances = self.getTargetsInsidePatrolArea(
+                i, maximumDistance)
+
+            # Invalidate targets falling in the cobra black dots
+            blackDotdistances = np.abs(
+                cobraCenters[i] + cobraBlackDotPosition[i] - positions)
+            validTargets = blackDotdistances > cobraBlackDotRadius[i]
+            indices = indices[validTargets]
+            positions = positions[validTargets]
+            distances = distances[validTargets]
+
+            # Save the cobra-target association information
+            associations.append((i, indices, positions, distances))
+            maxTargetsPerCobra = max(maxTargetsPerCobra, len(indices))
+
+        # Create the accessible target arrays
+        arrayShape = (nCobras, maxTargetsPerCobra)
+        self.accessibleTargetIndices = np.full(arrayShape, NULL_TARGET_INDEX)
+        self.accessibleTargetDistances = np.zeros(arrayShape)
+        self.accessibleTargetElbows = np.zeros(arrayShape, dtype="complex")
+
+        # Fill the arrays with the cobra-target association information
+        for i, indices, positions, distances in associations:
+            # Calculate the elbow positions at the target positions
+            elbows = self.bench.cobras.calculateCobraElbowPositions(
+                i, positions)
+
+            # Fill the arrays
+            nTargets = len(indices)
+            self.accessibleTargetIndices[i, :nTargets] = indices
+            self.accessibleTargetDistances[i, :nTargets] = distances
+            self.accessibleTargetElbows[i, :nTargets] = elbows
 
     def solveEndPointCollisions(self):
         """Detects and solves cobra collisions assigning them alternative

@@ -42,6 +42,10 @@ class DistanceTargetSelector(TargetSelector):
             them alternative targets. Default is True.
 
         """
+        # Construct a KD tree if the target density is large enough
+        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
+            self.constructKDTree()
+
         # Obtain the accessible targets for each cobra
         self.calculateAccessibleTargets(maximumDistance)
 
@@ -51,7 +55,6 @@ class DistanceTargetSelector(TargetSelector):
         # Try to solve end point collisions
         if solveCollisions:
             self.solveEndPointCollisions()
-
 
     def selectTargets(self):
         """Selects a single target for each cobra based on their distance to
