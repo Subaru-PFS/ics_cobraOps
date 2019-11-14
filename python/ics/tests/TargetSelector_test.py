@@ -11,7 +11,10 @@ from ics.cobraOps.TargetSelector import TargetSelector
 from ics.cobraOps.Bench import Bench
 from ics.cobraOps.TargetGroup import TargetGroup
 from ics.cobraOps import targetUtils
-from ics.cobraOps.cobraConstants import NULL_TARGET_INDEX
+from ics.cobraOps.cobraConstants import (NULL_TARGET_INDEX,
+                                         NULL_TARGET_POSITION,
+                                         NULL_TARGET_ID,
+                                         NULL_TARGET_PRIORITY)
 
 
 class TargetSelectorSubclass(TargetSelector):
@@ -57,7 +60,7 @@ class TestTargetSelector():
 
     def test_constructKDTree_method(self):
         # Create a basic bench with 2 cobras
-        cobraCenters = np.array([0 + 0j, 0 + 5j])
+        cobraCenters = np.array([0, 5], dtype=np.complex)
         bench = Bench(cobraCenters)
 
         # Create some random targets
@@ -82,11 +85,11 @@ class TestTargetSelector():
 
     def test_getTargetsInsidePatrolArea_method(self):
         # Create a basic bench with 2 cobras
-        cobraCenters = np.array([0 + 0j, 0 + 5j])
+        cobraCenters = np.array([0, 5], dtype=np.complex)
         bench = Bench(cobraCenters)
 
         # Create some targets
-        targetPositions = np.array([0, cobraCenters.mean(), 0 - 3j, 0 + 6j])
+        targetPositions = np.array([0, cobraCenters.mean(), -3, 6])
         targets = TargetGroup(targetPositions)
 
         # Create a dummy TargetSelector
@@ -167,3 +170,76 @@ class TestTargetSelector():
             nTargets = np.sum(validTargets)
             assert np.all(
                 distances[:nTargets] == np.sort(distances[validTargets]))
+
+    def test_solveEndPointCollisions_method(self):
+        # Create a basic bench with 2 cobras
+        cobraCenters = np.array([0, 5], dtype=np.complex)
+        bench = Bench(cobraCenters)
+
+        # Create some targets
+        rMin = bench.cobras.rMin
+        targetPositions = np.array([cobraCenters[0] + 1.2 * rMin[0],
+                                    cobraCenters.mean() - 0.1,
+                                    cobraCenters.mean(),
+                                    cobraCenters[1] + 1.2 * rMin[1]])
+        targets = TargetGroup(targetPositions)
+
+        # Create a dummy TargetSelector
+        selector = TargetSelectorSubclass(bench, targets)
+
+        # Calculate the accessible targets for each cobra
+        selector.calculateAccessibleTargets()
+
+        # Assign the targets in a way that we have an end-point collision
+        selector.assignedTargetIndices = np.array([1, 2])
+
+        # Solve the cobra end-point collisions
+        selector.solveEndPointCollisions()
+
+        # Check that we get the correct assignment
+        assert np.all(selector.assignedTargetIndices == [0, 3])
+
+        # Assign the targets in a way that we don't have an end-point collision
+        selector.assignedTargetIndices = np.array([0, 2])
+
+        # Solve the cobra end-point collisions
+        selector.solveEndPointCollisions()
+
+        # Check that we get the same assignment
+        assert np.all(selector.assignedTargetIndices == [0, 2])
+
+    def test_getSelectedTargets_method(self):
+        # Create a basic bench with 2 cobras
+        cobraCenters = np.array([0, 5], dtype=np.complex)
+        bench = Bench(cobraCenters)
+
+        # Create some targets
+        targetPositions = np.array([0, 3, NULL_TARGET_POSITION, 6])
+        targets = TargetGroup(targetPositions)
+
+        # Create a dummy TargetSelector
+        selector = TargetSelectorSubclass(bench, targets)
+
+        # Assign the cobras to valid targets
+        indices = np.array([3, 0])
+        selector.assignedTargetIndices = indices
+
+        # Get the selected targets
+        selectedTargers = selector.getSelectedTargets()
+
+        # Check that we get the correct targets
+        assert np.all(selectedTargers.positions == targetPositions[indices])
+        assert np.all(selectedTargers.ids == indices.astype(np.str))
+        assert np.all(selectedTargers.priorities == 1)
+
+        # Assign one of the cobras to the NULL target
+        indices = np.array([1, 2])
+        selector.assignedTargetIndices = indices
+
+        # Get the selected targets
+        selectedTargers = selector.getSelectedTargets()
+
+        # Check that we get the NULL target
+        assert selectedTargers.positions[1] == NULL_TARGET_POSITION
+        assert selectedTargers.ids[1] == NULL_TARGET_ID
+        assert selectedTargers.priorities[1] == NULL_TARGET_PRIORITY
