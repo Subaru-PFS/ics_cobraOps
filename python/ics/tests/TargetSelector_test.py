@@ -158,3 +158,12 @@ class TestTargetSelector():
             (distances < bench.cobras.rMax[:, np.newaxis])[validTargets])
         assert np.all(
             (distances > bench.cobras.rMin[:, np.newaxis])[validTargets])
+
+        # Check that the accessible targets are ordered by distance
+        for i in range(bench.cobras.nCobras):
+            indices = selector.accessibleTargetIndices[i]
+            distances = selector.accessibleTargetDistances[i]
+            validTargets = indices != NULL_TARGET_INDEX
+            nTargets = np.sum(validTargets)
+            assert np.all(
+                distances[:nTargets] == np.sort(distances[validTargets]))

@@ -71,7 +71,7 @@ class DistanceTargetSelector(TargetSelector):
 
         # Assign targets to cobras looping from the closest to the more far
         # away ones
-        self.assignedTargetIndices = np.full(nCobras, NULL_TARGET_INDEX, dtype="int")
+        self.assignedTargetIndices = np.full(nCobras, NULL_TARGET_INDEX)
         freeCobras = np.full(nCobras, True)
         freeTargets = np.full(nTargets, True)
 

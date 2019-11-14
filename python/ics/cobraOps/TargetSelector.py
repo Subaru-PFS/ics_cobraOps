@@ -64,8 +64,8 @@ class TargetSelector(ABC):
             cobra centers. Default is no limit (the maximum radius that the
             cobra can reach).
         solveCollisions: bool, optional
-            If True, the selector will try to solve cobra collisions assigning
-            them alternative targets. Default is True.
+            If True, the selector will try to solve cobra end-point collisions
+            assigning them alternative targets. Default is True.
 
         """
         pass
@@ -231,139 +231,167 @@ class TargetSelector(ABC):
             self.accessibleTargetElbows[i, :nTargets] = elbows
 
     def solveEndPointCollisions(self):
-        """Detects and solves cobra collisions assigning them alternative
-        targets.
+        """Detects and solves cobra end-point collisions assigning them
+        alternative targets.
 
         This method should always be run after the selectTargets method.
 
         """
-        # Extract some useful information
-        nTargets = self.targets.nTargets
-        targetPositions = self.targets.positions
-        cobraCenters = self.bench.cobras.centers
+        # Get the indices of the targets that are currently assigned to cobras
+        indices = self.assignedTargetIndices
 
-        # Set the fiber positions to their associated target positions, leaving
-        # unused cobras at their home positions
-        fiberPositions = self.bench.cobras.home0.copy()
-        usedCobras = self.assignedTargetIndices != NULL_TARGET_INDEX
-        fiberPositions[usedCobras] = targetPositions[
-            self.assignedTargetIndices[usedCobras]]
+        # Check which cobras are used (i.e. have a target assigned)
+        usedCobras = indices != NULL_TARGET_INDEX
 
-        # Get the indices of the cobra associations where we have a collision
-        problematicCobraAssociations = self.bench.getProblematicCobraAssociations(
-            fiberPositions)
-        problematicCobras = problematicCobraAssociations[0]
-        nearbyProblematicCobras = problematicCobraAssociations[1]
+        # Check which targets are currently free (i.e. not assigned to a cobra)
+        freeTargets = np.full(self.targets.nTargets, True)
+        freeTargets[indices[usedCobras]] = False
 
-        # Try to solve the collisions one by one
-        freeTargets = np.full(nTargets, True)
-        freeTargets[self.assignedTargetIndices[usedCobras]] = False
+        # Set the cobra fiber positions to the assigned target positions,
+        # leaving unused cobras at their home positions
+        positions = self.bench.cobras.home0.copy()
+        positions[usedCobras] = self.targets.positions[indices[usedCobras]]
 
-        for c, nc in zip(problematicCobras, nearbyProblematicCobras):
-            # Check if one of the colliding cobras is unused
-            if self.assignedTargetIndices[c] == NULL_TARGET_INDEX or self.assignedTargetIndices[nc] == NULL_TARGET_INDEX:
+        # Get the cobra associations where we have an end-point collision
+        problematicAssociations = self.bench.getProblematicCobraAssociations(
+            positions).T
+
+        # Try to solve the cobra collisions one by one
+        for c, nc in problematicAssociations:
+            # Check if one of the colliding cobras is not used
+            if not usedCobras[c] or not usedCobras[nc]:
                 # The unused cobra is the cobra that we are going to move
-                cobraToMove = c if (self.assignedTargetIndices[c] == NULL_TARGET_INDEX) else nc
+                cobraToMove = c if not usedCobras[c] else nc
 
-                # Move the cobra until we find a position with zero collisions
-                cobraCenter = cobraCenters[cobraToMove]
-                initialPosition = fiberPositions[cobraToMove]
+                # Calculate the initial number of collisions for that cobra
+                initialCollisions = self.bench.getCollisionsForCobra(
+                    cobraToMove, positions)
+
+                # Move to the next association if the number of collisions is
+                # already zero (it could have been solved in a previous step)
+                if initialCollisions == 0:
+                    continue
+
+                # Move the cobra until we find the position with the minimum
+                # number of collisions
+                cobraCenter = self.bench.cobras.centers[cobraToMove]
+                initialPosition = positions[cobraToMove]
                 bestPosition = initialPosition
+                bestCollisions = initialCollisions
 
                 for ang in np.linspace(0, 2 * np.pi, 7)[1:-1]:
                     # Rotate the cobra around its center
-                    fiberPositions[cobraToMove] = (initialPosition - cobraCenter) * np.exp(1j * ang) + cobraCenter
+                    positions[cobraToMove] = cobraCenter + (
+                        initialPosition - cobraCenter) * np.exp(1j * ang)
 
-                    # Exit the loop if we found a fiber position with zero
-                    # collisions
-                    if self.bench.getCollisionsForCobra(cobraToMove, fiberPositions) == 0:
-                        bestPosition = fiberPositions[cobraToMove]
-                        break
+                    # Calculate the number of collisions at the rotated position
+                    collisions = self.bench.getCollisionsForCobra(
+                        cobraToMove, positions)
+
+                    # Check if the number of collisions decreased
+                    if collisions < bestCollisions:
+                        # Save the information from this cobra position
+                        bestPosition = positions[cobraToMove]
+                        bestCollisions = collisions
+
+                        # Exit the loop if the number of collisions is zero
+                        if collisions == 0:
+                            break
 
                 # Use the best fiber position
-                fiberPositions[cobraToMove] = bestPosition
+                positions[cobraToMove] = bestPosition
             else:
                 # Calculate the initial number of collisions associated with
                 # the two cobras
-                collisions = self.bench.getCollisionsForCobra(c, fiberPositions)
-                collisions += self.bench.getCollisionsForCobra(nc, fiberPositions)
+                initialCollisions = self.bench.getCollisionsForCobra(
+                    c, positions)
+                initialCollisions += self.bench.getCollisionsForCobra(
+                    nc, positions)
 
                 # Free the current targets
-                initialTarget1 = self.assignedTargetIndices[c]
-                initialTarget2 = self.assignedTargetIndices[nc]
+                initialTarget1 = indices[c]
+                initialTarget2 = indices[nc]
                 freeTargets[initialTarget1] = True
                 freeTargets[initialTarget2] = True
 
                 # Get the targets that can be reached by each cobra
-                targets1 = self.accessibleTargetIndices[c, self.accessibleTargetIndices[c] != NULL_TARGET_INDEX]
-                targets2 = self.accessibleTargetIndices[nc, self.accessibleTargetIndices[nc] != NULL_TARGET_INDEX]
+                targets1 = self.accessibleTargetIndices[c]
+                targets1 = targets1[targets1 != NULL_TARGET_INDEX]
+                targets2 = self.accessibleTargetIndices[nc]
+                targets2 = targets2[targets2 != NULL_TARGET_INDEX]
 
                 # Select only the free targets
                 targets1 = targets1[freeTargets[targets1]]
                 targets2 = targets2[freeTargets[targets2]]
 
-                # Shuffle the arrays to remove the ordering by distance
-                np.random.shuffle(targets1)
-                np.random.shuffle(targets2)
-
-                # Create two arrays reflecting all the possible target
-                # combinations
-                targetsCombination1 = np.repeat(targets1, len(targets2))
-                targetsCombination2 = np.tile(targets2, len(targets1))
+                # Create an array with all the possible target combinations
+                combinations = np.column_stack((
+                    np.repeat(targets1, len(targets2)),
+                    np.tile(targets2, len(targets1))))
 
                 # Exclude the current target combination and combinations that
                 # use the same target for the two cobras
-                validCombinations = np.logical_or(targetsCombination1 != initialTarget1, targetsCombination2 != initialTarget2)
-                validCombinations = np.logical_and(validCombinations, targetsCombination1 != targetsCombination2)
-                targetsCombination1 = targetsCombination1[validCombinations]
-                targetsCombination2 = targetsCombination2[validCombinations]
+                validCombinations = np.logical_or(
+                    combinations[:, 0] != initialTarget1,
+                    combinations[:, 1] != initialTarget2)
+                validCombinations = np.logical_and(
+                    validCombinations,
+                    combinations[:, 0] != combinations[:, 1])
+                combinations = combinations[validCombinations]
 
                 # Loop over all the possible combinations until we find the
                 # minimum number of collisions
                 bestTarget1 = initialTarget1
                 bestTarget2 = initialTarget2
+                bestCollisions = initialCollisions
 
-                for newTarget1, newTarget2 in zip(targetsCombination1, targetsCombination2):
+                for newTarget1, newTarget2 in combinations:
                     # Assign the new fiber positions
-                    fiberPositions[c] = targetPositions[newTarget1]
-                    fiberPositions[nc] = targetPositions[newTarget2]
+                    positions[c] = self.targets.positions[newTarget1]
+                    positions[nc] = self.targets.positions[newTarget2]
 
-                    # Calculate the number of collisions at the current
-                    # positions
-                    currentCollisions = self.bench.getCollisionsForCobra(c, fiberPositions)
-                    currentCollisions += self.bench.getCollisionsForCobra(nc, fiberPositions)
+                    # Calculate the number of collisions at the new positions
+                    collisions = self.bench.getCollisionsForCobra(
+                        c, positions)
+                    collisions += self.bench.getCollisionsForCobra(
+                        nc, positions)
 
                     # Check if the number of collisions decreased
-                    # significantly. A decrease of one means that we solved the
-                    # current collision, but we created a new collision with
-                    # another nearby cobra.
-                    if currentCollisions <= collisions - 2:
+                    if collisions < bestCollisions:
                         # Save the information from this target combination
                         bestTarget1 = newTarget1
                         bestTarget2 = newTarget2
-                        collisions = currentCollisions
+                        bestCollisions = collisions
 
-                    # Exit the loop if the number of collisions is already zero
-                    if collisions == 0:
-                        break
+                        # Exit the loop if the number of collisions is zero
+                        if bestCollisions == 0:
+                            break
+
+                # Do not use the best target combination if the decrease in the
+                # number of collisions is only 1, because this means that we
+                # solved the current collision, but we created a new collision
+                # with another nearby cobra
+                if (initialCollisions - bestCollisions) == 1:
+                    bestTarget1 = initialTarget1
+                    bestTarget2 = initialTarget2
 
                 # Use the target combination where we had less collisions
-                self.assignedTargetIndices[c] = bestTarget1
-                self.assignedTargetIndices[nc] = bestTarget2
-                fiberPositions[c] = targetPositions[bestTarget1]
-                fiberPositions[nc] = targetPositions[bestTarget2]
+                indices[c] = bestTarget1
+                indices[nc] = bestTarget2
+                positions[c] = self.targets.positions[bestTarget1]
+                positions[nc] = self.targets.positions[bestTarget2]
                 freeTargets[bestTarget1] = False
                 freeTargets[bestTarget2] = False
 
     def getSelectedTargets(self):
-        """Returns a new target group with a selected target for each cobra.
+        """Returns a new target group with the selected target for each cobra.
 
         This method should not be run before the selecTargets method.
 
         Returns
         -------
         object
-            A new target group instance with a selected target for each cobra.
+            A new target group instance with the selected target for each cobra.
 
         """
         return self.targets.select(self.assignedTargetIndices)
