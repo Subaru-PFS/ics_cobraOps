@@ -14,15 +14,13 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .cobraConstants import NULL_TARGET_INDEX
 from .TargetSelector import TargetSelector
+from .cobraConstants import NULL_TARGET_INDEX
 
 
 class RandomTargetSelector(TargetSelector):
-    """
-
-    Subclass of the TargetSelector class used to select optimal targets for a
-    given PFI bench. The selection criteria is completely random.
+    """Subclass of the TargetSelector class used to select optimal targets for
+    a given PFI bench. The selection criteria is completely random.
 
     """
 
@@ -37,8 +35,8 @@ class RandomTargetSelector(TargetSelector):
             cobra centers. Default is no limit (the maximum radius that the
             cobra can reach).
         solveCollisions: bool, optional
-            If True, the selector will try to solve cobra collisions assigning
-            them alternative targets. Default is True.
+            If True, the selector will try to solve cobra end-point collisions
+            assigning them alternative targets. Default is True.
 
         """
         # Construct a KD tree if the target density is large enough
@@ -54,12 +52,12 @@ class RandomTargetSelector(TargetSelector):
         # Select a single target for each cobra
         self.selectTargets()
 
-        # Try to solve end point collisions
+        # Try to solve end-point collisions
         if solveCollisions:
             self.solveEndPointCollisions()
 
     def randomizeAccessibleTargetsOrder(self):
-        """Randomizes the accessible targets order.
+        """Randomizes the order of the accessible targets arrays.
 
         """
         # Loop over the cobras
@@ -71,10 +69,10 @@ class RandomTargetSelector(TargetSelector):
 
             # Randomize the targets order
             nTargets = np.sum(indices != NULL_TARGET_INDEX)
-            newOrder = np.random.permutation(nTargets)
-            indices[:nTargets] = indices[newOrder]
-            distances[:nTargets] = distances[newOrder]
-            elbows[:nTargets] = elbows[newOrder]
+            randomOrder = np.random.permutation(nTargets)
+            indices[:nTargets] = indices[randomOrder]
+            distances[:nTargets] = distances[randomOrder]
+            elbows[:nTargets] = elbows[randomOrder]
 
     def selectTargets(self):
         """Selects a single random target for each cobra.
@@ -83,29 +81,32 @@ class RandomTargetSelector(TargetSelector):
         method.
 
         """
-        # Extract some useful information
-        nCobras = self.bench.cobras.nCobras
-        nTargets = self.targets.nTargets
+        # Create the array that will contain the assigned target indices
+        self.assignedTargetIndices = np.full(
+            self.bench.cobras.nCobras, NULL_TARGET_INDEX)
 
-        # Assign random targets to cobras
-        self.assignedTargetIndices = np.full(nCobras, NULL_TARGET_INDEX)
-        freeTargets = np.full(nTargets, True)
+        # Calculate the number of accessible targets per cobra
+        nTargetsPerCobra = np.sum(
+            self.accessibleTargetIndices != NULL_TARGET_INDEX, axis=1)
 
-        for i in range(nCobras):
-            # Get the accessible targets to this cobra
-            targetIndices = self.accessibleTargetIndices[i]
+        # Assign random targets to cobras, starting with those cobras with fewer
+        # accessible targets
+        cobraIndices = np.argsort(nTargetsPerCobra)
+        freeTargets = np.full(self.targets.nTargets, True)
 
-            # Remove from the list the NULL_TARGET_INDEX value if it's present
-            targetIndices = targetIndices[targetIndices != NULL_TARGET_INDEX]
+        for i in cobraIndices:
+            # Get the indices of the accessible targets to this cobra
+            indices = self.accessibleTargetIndices[i]
+            indices = indices[indices != NULL_TARGET_INDEX]
 
-            # Select free targets only
-            targetIndices = targetIndices[freeTargets[targetIndices]]
+            # Select only those targets that are free
+            indices = indices[freeTargets[indices]]
 
             # Check that there is at least one target available
-            if len(targetIndices) > 0:
+            if len(indices) > 0:
                 # Select the first target
-                targetIndex = targetIndices[0]
+                targetIndex = indices[0]
 
-                # Assign the target to the selected cobra
+                # Assign the target to the cobra
                 self.assignedTargetIndices[i] = targetIndex
                 freeTargets[targetIndex] = False
