@@ -46,8 +46,8 @@ class RandomTargetSelector(TargetSelector):
         # Obtain the accessible targets for each cobra ordered by distance
         self.calculateAccessibleTargets(maximumDistance)
 
-        # Randomize the accessible targets order
-        self.randomizeAccessibleTargetsOrder()
+        # Order the accessible targets randomly
+        self.orderAccessibleTargetsRandomly()
 
         # Select a single target for each cobra
         self.selectTargets()
@@ -56,8 +56,8 @@ class RandomTargetSelector(TargetSelector):
         if solveCollisions:
             self.solveEndPointCollisions()
 
-    def randomizeAccessibleTargetsOrder(self):
-        """Randomizes the order of the accessible targets arrays.
+    def orderAccessibleTargetsRandomly(self):
+        """Orders the accessible targets arrays randomly.
 
         """
         # Loop over the cobras
@@ -66,9 +66,9 @@ class RandomTargetSelector(TargetSelector):
             indices = self.accessibleTargetIndices[i]
             distances = self.accessibleTargetDistances[i]
             elbows = self.accessibleTargetElbows[i]
-
-            # Randomize the targets order
             nTargets = np.sum(indices != NULL_TARGET_INDEX)
+
+            # Randomize the targets order to remove the distance order
             randomOrder = np.random.permutation(nTargets)
             indices[:nTargets] = indices[randomOrder]
             distances[:nTargets] = distances[randomOrder]

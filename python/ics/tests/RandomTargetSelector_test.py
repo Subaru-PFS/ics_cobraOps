@@ -15,33 +15,29 @@ class TestRandomTargetSelector():
 
     """
 
-    def test_randomizeAccessibleTargetsOrder_method(self, bench, targets):
+    def test_orderAccessibleTargetsRandomly_method(self, bench, targets):
         # Create a RandomTargetSelector
         selector = RandomTargetSelector(bench, targets)
 
         # Calculate the accessible targets for each cobra
         selector.calculateAccessibleTargets()
 
-        # Randomize the accessible targets order
-        selector.randomizeAccessibleTargetsOrder()
+        # Order the accessible targets randomly
+        selector.orderAccessibleTargetsRandomly()
 
         # Check that the accessible targets are not ordered by distance
         orderedByDistance = True
 
         for i in range(bench.cobras.nCobras):
-            # Get the accessible target indices and distances for this cobra
+            # Get the accessible target indices and distances
             indices = selector.accessibleTargetIndices[i]
             distances = selector.accessibleTargetDistances[i]
             validTargets = indices != NULL_TARGET_INDEX
 
             # Check if the distances are ordered
             nTargets = np.sum(validTargets)
-            orderedByDistance = np.all(
+            orderedByDistance = orderedByDistance and np.all(
                 np.sort(distances[:nTargets]) == distances[:nTargets])
-
-            # Exit the loop if the targets are not ordered by distance
-            if not orderedByDistance:
-                break
 
         assert not orderedByDistance
 
