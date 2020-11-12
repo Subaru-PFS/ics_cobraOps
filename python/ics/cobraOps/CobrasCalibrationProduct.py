@@ -20,32 +20,31 @@ from .AttributePrinter import AttributePrinter
 
 
 class CobrasCalibrationProduct(AttributePrinter):
-    """
-
-    Class describing a cobras calibration product.
+    """Class describing a cobras calibration product.
 
     """
 
     def __init__(self, fileName):
-        """Constructs a new cobras calibration product using the information
-        contained in an XML calibration file.
+        """Constructs a new CobrasCalibrationProduct instance using the
+        information contained in an XML calibration file.
 
         Parameters
         ----------
         fileName: object
-            The path to the XML calibration file.
+            The complete path to the XML calibration file.
 
         Returns
         -------
         object
-            The cobras calibration product.
+            The CobrasCalibrationProduct instance.
 
         """
         # Load the XML calibration file
         calibrationFileRootElement = ElementTree.parse(fileName).getroot()
 
         # Get all the data container elements
-        dataContainers = calibrationFileRootElement.findall("ARM_DATA_CONTAINER")
+        dataContainers = calibrationFileRootElement.findall(
+            "ARM_DATA_CONTAINER")
 
         # The number of cobras is equal to the number of data containers
         self.nCobras = len(dataContainers)
@@ -64,7 +63,7 @@ class CobrasCalibrationProduct(AttributePrinter):
 
         self.motorFreq1 = np.empty(self.nCobras)
         self.motorFreq2 = np.empty(self.nCobras)
-        
+
         self.motorOntimeFwd1 = np.empty(self.nCobras)
         self.motorOntimeFwd2 = np.empty(self.nCobras)
         self.motorOntimeRev1 = np.empty(self.nCobras)
@@ -78,10 +77,11 @@ class CobrasCalibrationProduct(AttributePrinter):
         # Check if the data containers have information about the motor maps
         slowCalTable = dataContainers[0].find("SLOW_CALIBRATION_TABLE")
 
-        if slowCalTable is not None and slowCalTable.find("Joint1_fwd_stepsizes") is not None:
-            # The number of motor map steps is saved in the first element of
-            # the arrays
-            self.motorMapSteps = int(slowCalTable.find("Joint1_fwd_stepsizes").text.split(",")[0])
+        if slowCalTable is not None:
+            # The number of motor map steps is saved in the first element of the
+            # arrays
+            self.motorMapSteps = int(slowCalTable.find(
+                "Joint1_fwd_stepsizes").text.split(",")[0])
 
             # Create the cobra motor map arrays
             self.angularSteps = np.empty(self.nCobras)
@@ -95,20 +95,26 @@ class CobrasCalibrationProduct(AttributePrinter):
             self.F2Nm = np.empty((self.nCobras, self.motorMapSteps))
 
         # Fill the cobras calibration arrays
-        for i in range(self.nCobras):
+        for i, dataContainer in enumerate(dataContainers):
             # Save some of the data header information
-            header = dataContainers[i].find("DATA_HEADER")
+            header = dataContainer.find("DATA_HEADER")
             self.moduleIds[i] = int(header.find("Module_Id").text)
             self.positionerIds[i] = int(header.find("Positioner_Id").text)
-            self.serialIds[i] = int(header.find("Serial_Number").text, base=10)
+            self.serialIds[i] = int(header.find("Serial_Number").text)
 
             # Save some of the kinematics information
-            kinematics = dataContainers[i].find("KINEMATICS")
-            self.centers[i] = float(kinematics.find("Global_base_pos_x").text) + float(kinematics.find("Global_base_pos_y").text) * 1j
-            self.tht0[i] = np.deg2rad(float(kinematics.find("CCW_Global_base_ori_z").text))
-            self.tht1[i] = np.deg2rad(float(kinematics.find("CW_Global_base_ori_z").text))
-            self.phiIn[i] = np.deg2rad(float(kinematics.find("Joint2_CCW_limit_angle").text)) - np.pi
-            self.phiOut[i] = np.deg2rad(float(kinematics.find("Joint2_CW_limit_angle").text)) - np.pi
+            kinematics = dataContainer.find("KINEMATICS")
+            self.centers[i] = complex(
+                float(kinematics.find("Global_base_pos_x").text),
+                float(kinematics.find("Global_base_pos_y").text))
+            self.tht0[i] = np.deg2rad(
+                float(kinematics.find("CCW_Global_base_ori_z").text))
+            self.tht1[i] = np.deg2rad(
+                float(kinematics.find("CW_Global_base_ori_z").text))
+            self.phiIn[i] = np.deg2rad(
+                float(kinematics.find("Joint2_CCW_limit_angle").text)) - np.pi
+            self.phiOut[i] = np.deg2rad(
+                float(kinematics.find("Joint2_CW_limit_angle").text)) - np.pi
             self.L1[i] = float(kinematics.find("Link1_Link_Length").text)
             self.L2[i] = float(kinematics.find("Link2_Link_Length").text)
 
@@ -121,12 +127,12 @@ class CobrasCalibrationProduct(AttributePrinter):
             # Save the motor calibration information
             if hasattr(self, "motorMapSteps"):
                 # Get the angular step used in the measurements
-                slowCalTable = dataContainers[i].find("SLOW_CALIBRATION_TABLE")
-                fastCalTable = dataContainers[i].find("FAST_CALIBRATION_TABLE")
+                slowCalTable = dataContainer.find("SLOW_CALIBRATION_TABLE")
+                fastCalTable = dataContainer.find("FAST_CALIBRATION_TABLE")
                 angularPositions = slowCalTable.find("Joint1_fwd_regions").text.split(",")[2:-1]
                 angularStep = float(angularPositions[1]) - float(angularPositions[0])
 
-                # Get the motor properties: frequencies and stepsizes
+                # Get the motor properties: frequencies and step sizes
                 self.motorFreq1[i] = float(header.find('Motor1_Run_Frequency').text)
                 self.motorFreq2[i] = float(header.find('Motor2_Run_Frequency').text)
 
