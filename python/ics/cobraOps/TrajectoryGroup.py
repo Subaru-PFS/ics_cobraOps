@@ -15,7 +15,6 @@ Consult the following papers for more detailed information:
 import numpy as np
 
 from . import plotUtils
-
 from .AttributePrinter import AttributePrinter
 
 
@@ -73,7 +72,6 @@ class TrajectoryGroup(AttributePrinter):
         # Calculate the cobra trajectories
         self.calculateCobraTrajectories()
 
-
     def calculateStartingFiberPositions(self):
         """Calculates the trajectories starting fiber positions.
 
@@ -81,7 +79,6 @@ class TrajectoryGroup(AttributePrinter):
         # Set the start positions according to the specified movement direction
         self.startFiberPositions = self.bench.cobras.home1.copy()
         self.startFiberPositions[self.movementDirections[0]] = self.bench.cobras.home0[self.movementDirections[0]]
-
 
     def calculateCobraTrajectories(self):
         """Calculates the cobra trajectories using the cobras motor maps.
@@ -161,7 +158,6 @@ class TrajectoryGroup(AttributePrinter):
         self.elbowPositions = cobraCenters[:, np.newaxis] + L1[:, np.newaxis] * np.exp(1j * tht)
         self.fiberPositions = self.elbowPositions + L2[:, np.newaxis] * np.exp(1j * (tht + phi))
 
-
     def calculateCobraAssociationCollisions(self, associationIndices=None):
         """Calculates which cobra associations are involved in a collision for
         each step in the trajectory.
@@ -204,7 +200,6 @@ class TrajectoryGroup(AttributePrinter):
         # Return the cobra association collisions along the trajectory and the
         # distances array
         return distances < (linkRadius[cobraAssociations[0], np.newaxis] + linkRadius[cobraAssociations[1], np.newaxis]), distances
-
 
     def addToFigure(self, colors=np.array([0.4, 0.4, 0.4, 1.0]), indices=None, paintFootprints=False, footprintColors=np.array([0.0, 0.0, 1.0, 0.05])):
         """Draws the cobra trajectories on top of an existing figure.
@@ -271,7 +266,6 @@ class TrajectoryGroup(AttributePrinter):
             # Represent the trajectory footprint as a combination of thick
             # lines
             plotUtils.addThickLines(fiberPositions, elbowPositions, thiknesses, facecolor=footprintColors)
-
 
     def addAnimationToFigure(self, colors=np.array([0.4, 0.4, 0.4, 1.0]), linkColors=np.array([0.0, 0.0, 1.0, 0.5]), indices=None, fileName=None):
         """Animates the cobra trajectories on top of an existing figure.

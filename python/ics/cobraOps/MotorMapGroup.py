@@ -15,10 +15,10 @@ Consult the following papers for more detailed information:
 import numpy as np
 
 from . import plotUtils
-from .cobraConstants import (HOMES_THETA_DISTANCE,
-                             MOTOR_MAP_ANGULAR_STEP,
-                             MOTOR1_STEP_SIZE,
-                             MOTOR2_STEP_SIZE)
+from .cobraConstants import HOMES_THETA_DISTANCE
+from .cobraConstants import MOTOR_MAP_ANGULAR_STEP
+from .cobraConstants import MOTOR1_STEP_SIZE
+from .cobraConstants import MOTOR2_STEP_SIZE
 
 
 class MotorMapGroup():
@@ -66,7 +66,6 @@ class MotorMapGroup():
         # Calculate the integrated step maps
         self.calculateIntegratedStepMaps()
 
-
     def calculateIntegratedStepMaps(self, useSlowMaps=True):
         """Calculates the integrated theta and phi step maps.
 
@@ -90,7 +89,6 @@ class MotorMapGroup():
             self.negThtSteps = np.hstack((zeros, np.cumsum(self.F1Nm, axis=1)))
             self.posPhiSteps = np.hstack((zeros, np.cumsum(self.F2Pm, axis=1)))
             self.negPhiSteps = np.hstack((zeros, np.cumsum(self.F2Nm, axis=1)))
-
 
     def useCalibrationProduct(self, calibrationProduct):
         """Updates the motor map properties with the calibration product ones.
@@ -131,7 +129,6 @@ class MotorMapGroup():
 
         # Update the integrated step maps
         self.calculateIntegratedStepMaps()
-
 
     def calculateSteps(self, deltaTht, startPhi, deltaPhi):
         """Calculates the total number of motor steps required to move the
@@ -182,7 +179,6 @@ class MotorMapGroup():
             nPhiSteps[c] = stepsRange[1] - stepsRange[0]
 
         return (nThtSteps, nPhiSteps)
-
 
     def plot(self, useSlowMaps=True, indices=None):
         """Plots the cobras motor maps on a new figure.

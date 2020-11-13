@@ -15,10 +15,8 @@ Consult the following papers for more detailed information:
 import numpy as np
 
 from . import plotUtils
-
 from .TrajectoryGroup import TrajectoryGroup
 
-#from IPython.core.debugger import Tracer
 
 class CollisionSimulator():
     """
@@ -73,7 +71,6 @@ class CollisionSimulator():
         self.nCollisions = None
         self.nEndPointCollisions = None
 
-
     def run(self, solveCollisions=True):
         """Runs the collisions simulator.
 
@@ -107,7 +104,6 @@ class CollisionSimulator():
             self.solveTrajectoryCollisions(True)
             self.solveTrajectoryCollisions(False)
 
-
     def calculateFinalFiberPositions(self):
         """Calculates the cobras final fiber positions.
 
@@ -120,7 +116,6 @@ class CollisionSimulator():
         # Optimize the unassigned cobra positions to minimize their possible
         # collisions with other cobras
         self.optimizeUnassignedCobraPositions()
-
 
     def optimizeUnassignedCobraPositions(self):
         """Finds the unassigned cobras final fiber positions that minimize
@@ -158,7 +153,6 @@ class CollisionSimulator():
 
             # Update the cobra final fiber position
             self.finalFiberPositions[c] = (self.finalFiberPositions[c] - center) * np.exp(1j * optimalAngle) + center
-
 
     def defineMovementDirections(self):
         """Defines the theta and phi movement directions that the cobras should
@@ -215,7 +209,6 @@ class CollisionSimulator():
         # Save the results in a single array
         self.movementDirections = np.vstack((posThtMovement, posPhiMovement))
 
-
     def defineMovementStrategies(self):
         """Defines the theta and phi movement strategies that the cobras should
         follow.
@@ -256,7 +249,6 @@ class CollisionSimulator():
         # Save the results in a single array
         self.movementStrategies = np.vstack((thtEarly, phiEarly))
 
-
     def calculateTrajectories(self):
         """Calculates the cobra trajectories.
 
@@ -267,7 +259,6 @@ class CollisionSimulator():
                                             finalFiberPositions=self.finalFiberPositions,
                                             movementDirections=self.movementDirections,
                                             movementStrategies=self.movementStrategies)
-
 
     def detectTrajectoryCollisions(self):
         """Detects collisions in the cobra trajectories.
@@ -291,7 +282,6 @@ class CollisionSimulator():
         self.endPointCollisions = np.full(self.bench.cobras.nCobras, False)
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = np.sum(self.endPointCollisions)
-
 
     def solveTrajectoryCollisions(self, selectLowerIndices):
         """Solves trajectory collisions changing the cobras theta movement
@@ -331,7 +321,6 @@ class CollisionSimulator():
             # Recalculate the cobra collisions during the trajectory
             self.recalculateTrajectoryCollisions(cobraIndices)
 
-
     def recalculateTrajectoryCollisions(self, cobraIndices):
         """Recalculates the trajectory collision information for the given
         cobras.
@@ -365,7 +354,6 @@ class CollisionSimulator():
         self.endPointCollisions[:] = False
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = np.sum(self.endPointCollisions)
-
 
     def plotResults(self, extraTargets=None, paintFootprints=False):
         """Plots the collision simulator results in a new figure.
@@ -415,7 +403,6 @@ class CollisionSimulator():
             # Draw only those targets that are not part of the simulation
             unusedTargets = np.logical_not(np.in1d(extraTargets.ids, self.targets.ids))
             extraTargets.addToFigure(indices=unusedTargets)
-
 
     def animateCobraTrajectory(self, cobraIndex, extraTargets=None, fileName=None):
         """Animates the trajectory of a given cobra and its nearest neighbors.

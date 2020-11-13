@@ -14,11 +14,11 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
+from .cobraConstants import COBRAS_SEPARATION
+from .cobraConstants import MODULE_FIRST_LINE_LENGTH
+from .cobraConstants import MODULE_SECOND_LINE_LENGTH
+from .cobraConstants import MODULES_PER_SECTOR
 from .CobraGroup import CobraGroup
-from .cobraConstants import (MODULE_FIRST_LINE_LENGTH,
-                                         MODULE_SECOND_LINE_LENGTH,
-                                         MODULES_PER_SECTOR,
-                                         COBRAS_SEPARATION)
 
 
 class Bench:
@@ -75,7 +75,6 @@ class Bench:
         # Calculate the cobra nearest neighbors associations array
         self.calculateCobraAssociations()
 
-
     def calculateCobraAssociations(self):
         """Calculates the cobras nearest neighbors associations array.
 
@@ -102,7 +101,6 @@ class Bench:
         # Save the cobra associations in a single array
         self.cobraAssociations = np.vstack((cobrasIndices, nearbyCobrasIndices))
 
-
     def getCobraNeighbors(self, cobraIndex):
         """Returns the indices of the cobras that are neighbors to a given
         cobra.
@@ -124,7 +122,6 @@ class Bench:
 
         return np.concatenate((firstNeighborGroup, secondNeighborGroup))
 
-
     def getCobrasNeighbors(self, cobraIndices):
         """Returns the indices of the cobras that are neighbors to the given
         cobras.
@@ -145,7 +142,6 @@ class Bench:
         secondNeighborGroup = self.cobraAssociations[0][np.in1d(self.cobraAssociations[1], cobraIndices)]
 
         return np.unique(np.concatenate((firstNeighborGroup, secondNeighborGroup)))
-
 
     def getCollisionsForCobra(self, cobraIndex, fiberPositions):
         """Calculates the total number of collisions for a given cobra.
@@ -183,7 +179,6 @@ class Bench:
         collisions = distances < (self.cobras.linkRadius[cobraIndex] + self.cobras.linkRadius[nearbyCobrasIndices])
 
         return np.sum(collisions)
-
 
     def calculateCobraAssociationCollisions(self, fiberPositions, associationIndices=None):
         """Calculates which cobra associations are involved in a collision.
@@ -225,7 +220,6 @@ class Bench:
         # Return the cobra associations collisions
         return distances < (linkRadius[cobraAssociations[0]] + linkRadius[cobraAssociations[1]])
 
-
     def getProblematicCobraAssociations(self, fiberPositions):
         """Returns the indices of the cobra associations involved in a
         collision.
@@ -248,7 +242,6 @@ class Bench:
 
         # Return the indices of the cobras involved in the collisions
         return self.cobraAssociations[:, collisions]
-
 
     @staticmethod
     def calculateCobraCenters(layout):
@@ -284,7 +277,6 @@ class Bench:
 
         return cobraCenters
 
-
     @staticmethod
     def calculateFirstSectorCenters():
         """Calculates the cobras central positions for the first PFI sector.
@@ -302,7 +294,7 @@ class Bench:
         # Fill the first module
         firstModule = cobraCenters[:cobrasPerModule]
         firstModule[:MODULE_FIRST_LINE_LENGTH] = COBRAS_SEPARATION * np.arange(MODULE_FIRST_LINE_LENGTH)
-        firstModule[MODULE_FIRST_LINE_LENGTH:] = (COBRAS_SEPARATION * np.arange(MODULE_SECOND_LINE_LENGTH) +
+        firstModule[MODULE_FIRST_LINE_LENGTH:] = (COBRAS_SEPARATION * np.arange(MODULE_SECOND_LINE_LENGTH) + 
                                                   COBRAS_SEPARATION * np.exp(1j * np.pi / 3))
         firstModule += COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
 
@@ -316,7 +308,6 @@ class Bench:
             cobraCenters[i * cobrasPerModule:(i + 1) * cobrasPerModule] = firstModule + i * modulesOffset
 
         return cobraCenters
-
 
     @staticmethod
     def calculatePFICenters():
@@ -346,7 +337,6 @@ class Bench:
         cobraCenters[-cobrasPerSector:] = firstSector * np.exp(1j * 4 * np.pi / 3)
 
         return cobraCenters
-
 
     @staticmethod
     def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2):
@@ -380,7 +370,6 @@ class Bench:
 
         # Return the minimum distances
         return np.min((distances1, distances2, distances3, distances4), axis=0)
-
 
     @staticmethod
     def distancesToLineSegments(points, startPoints, endPoints):

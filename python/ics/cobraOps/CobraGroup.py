@@ -15,15 +15,14 @@ Consult the following papers for more detailed information:
 import numpy as np
 
 from . import plotUtils
-
 from .AttributePrinter import AttributePrinter
+from .cobraConstants import BLACK_DOT_RADIUS
+from .cobraConstants import BLACK_DOT_RELATIVE_POSITION
+from .cobraConstants import COBRA_LINK_LENGTH
+from .cobraConstants import COBRA_LINK_RADIUS
+from .cobraConstants import HOMES_THETA_DISTANCE
+from .cobraConstants import PHI_SAFETY_ANGLE
 from .MotorMapGroup import MotorMapGroup
-from .cobraConstants import (COBRA_LINK_LENGTH,
-                                         COBRA_LINK_RADIUS,
-                                         PHI_SAFETY_ANGLE,
-                                         HOMES_THETA_DISTANCE,
-                                         BLACK_DOT_RELATIVE_POSITION,
-                                         BLACK_DOT_RADIUS)
 
 
 class CobraGroup(AttributePrinter):
@@ -79,14 +78,12 @@ class CobraGroup(AttributePrinter):
         # Calculate the cobras home positions
         self.calculateHomePositions()
 
-
     def calculatePatrolAreaRadii(self):
         """Calculates the minimum and maximum radius that the cobras can reach.
 
         """
         self.rMin = np.abs(self.L1 + self.L2 * np.exp(1j * self.phiIn))
         self.rMax = np.abs(self.L1 + self.L2 * np.exp(1j * self.phiOut))
-
 
     def calculateHomePositions(self, phiOffset=0.5):
         """Calculates the cobras home positions.
@@ -104,7 +101,6 @@ class CobraGroup(AttributePrinter):
         # Calculate the home positions (0 = same sense, 1 = opposite sense)
         self.home0 = self.calculateFiberPositions(self.tht0, phiHome)
         self.home1 = self.calculateFiberPositions(self.tht1, phiHome)
-
 
     def calculateFiberPositions(self, tht, phi, indices=None):
         """Calculates the cobras fiber positions for the given rotation angles.
@@ -140,7 +136,6 @@ class CobraGroup(AttributePrinter):
 
         # Return the fiber positions
         return centers + L1 * np.exp(1j * tht) + L2 * np.exp(1j * (tht + phi))
-
 
     def calculateElbowPositions(self, fiberPositions, indices=None, useNegativePhi=True):
         """Calculates the cobra elbow positions for the given fiber positions.
@@ -188,7 +183,6 @@ class CobraGroup(AttributePrinter):
         # Return the elbow positions
         return centers + L1 * np.exp(1j * tht)
 
-
     def calculateMultipleElbowPositions(self, targetPositions, cobraIndices, targetIndices, useNegativePhi=True):
         """Calculates the cobra elbow positions for a list of cobra-target associations.
 
@@ -230,7 +224,6 @@ class CobraGroup(AttributePrinter):
         # Return the elbow positions
         return centers + L1 * np.exp(1j * tht)
 
-
     def calculateCobraElbowPositions(self, cobraIndex, fiberPositions, useNegativePhi=True):
         """Calculates the elbow positions for a given cobra and a list of fiber positions.
 
@@ -268,7 +261,6 @@ class CobraGroup(AttributePrinter):
 
         # Return the elbow positions
         return center + L1 * np.exp(1j * tht)
-
 
     def calculateRotationAngles(self, fiberPositions, indices=None, useNegativePhi=True):
         """Calculates the cobra rotation angles for the given fiber positions.
@@ -318,7 +310,6 @@ class CobraGroup(AttributePrinter):
         tht = (tht - np.pi) % (2 * np.pi) - np.pi
 
         return (tht, phi)
-
 
     def useCalibrationProduct(self, calibrationProduct, useRealLinks=True, useRealMaps=True):
         """Updates the cobra properties with the calibration product ones.
@@ -371,7 +362,6 @@ class CobraGroup(AttributePrinter):
         if useRealMaps:
             self.motorMaps.useCalibrationProduct(calibrationProduct)
 
-
     def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]), indices=None, paintHardStops=True, paintBlackDots=True):
         """Draws the cobras patrol areas on top of an existing figure.
 
@@ -421,7 +411,6 @@ class CobraGroup(AttributePrinter):
         if paintHardStops:
             plotUtils.addLines(centers, centers + rMax * np.exp(1j * tht0), linewidths=1, linestyles="dashed", color="0.3")
             plotUtils.addLines(centers, centers + rMax * np.exp(1j * tht1), linewidths=1, linestyles="dashdot", color="0.3")
-
 
     def addLinksToFigure(self, fiberPositions, colors=np.array([0.0, 0.0, 1.0, 0.5]), indices=None):
         """Draws the cobras links on top of an existing figure.
