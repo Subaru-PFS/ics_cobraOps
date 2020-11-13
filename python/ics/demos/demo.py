@@ -9,13 +9,11 @@ import time as time
 
 from ics.cobraOps import plotUtils
 from ics.cobraOps import targetUtils
-
 from ics.cobraOps.Bench import Bench
 from ics.cobraOps.CobrasCalibrationProduct import CobrasCalibrationProduct
 from ics.cobraOps.CollisionSimulator import CollisionSimulator
 from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
-
 
 # Define the target density to use
 targetDensity = 1.5
