@@ -22,14 +22,13 @@ from .CobraGroup import CobraGroup
 
 
 class Bench:
-    """
-
-    Class describing the properties of a PFI bench.
+    """Class describing the properties of a PFI bench.
 
     """
 
-    def __init__(self, cobraCenters=None, layout="full", calibrationProduct=None):
-        """Constructs a new bench instance.
+    def __init__(self, cobraCenters=None, layout="full",
+                 calibrationProduct=None):
+        """Constructs a new Bench instance.
 
         Parameters
         ----------
@@ -48,7 +47,7 @@ class Bench:
         Returns
         -------
         object
-            The bench instance.
+            The Bench instance.
 
         """
         # Calculate the cobra centers if they have not been provided
@@ -70,7 +69,8 @@ class Bench:
         self.center = np.mean(self.cobras.centers)
 
         # Calculate the bench radius
-        self.radius = np.max(np.abs(self.cobras.centers - self.center) + self.cobras.rMax)
+        self.radius = np.max(
+            np.abs(self.cobras.centers - self.center) + self.cobras.rMax)
 
         # Calculate the cobra nearest neighbors associations array
         self.calculateCobraAssociations()
@@ -82,16 +82,19 @@ class Bench:
 
         """
         # Calculate the cobras distance matrix
-        distanceMatrix = np.abs(self.cobras.centers[:, np.newaxis] - self.cobras.centers)
+        distanceMatrix = np.abs(
+            self.cobras.centers[:, np.newaxis] - self.cobras.centers)
 
         # Mask the diagonal because it contains distances to the same cobras
-        distanceMatrix[np.arange(self.cobras.nCobras), np.arange(self.cobras.nCobras)] = np.Inf
+        distanceMatrix[np.arange(self.cobras.nCobras),
+                       np.arange(self.cobras.nCobras)] = np.Inf
 
         # Calculate the median minimum distance between cobras
         medianMinDistance = np.median(np.min(distanceMatrix, axis=1))
 
         # Obtain the nearest neighbors indices
-        (cobrasIndices, nearbyCobrasIndices) = np.where(distanceMatrix < 1.5 * medianMinDistance)
+        (cobrasIndices, nearbyCobrasIndices) = np.where(
+            distanceMatrix < 1.5 * medianMinDistance)
 
         # Remove all the duplicated cobra associations
         uniqueAssociations = cobrasIndices < nearbyCobrasIndices
@@ -117,8 +120,10 @@ class Bench:
 
         """
         # Get the two cobra neighbor association possibilities
-        firstNeighborGroup = self.cobraAssociations[1][self.cobraAssociations[0] == cobraIndex]
-        secondNeighborGroup = self.cobraAssociations[0][self.cobraAssociations[1] == cobraIndex]
+        firstNeighborGroup = self.cobraAssociations[
+            1][self.cobraAssociations[0] == cobraIndex]
+        secondNeighborGroup = self.cobraAssociations[
+            0][self.cobraAssociations[1] == cobraIndex]
 
         return np.concatenate((firstNeighborGroup, secondNeighborGroup))
 
@@ -138,10 +143,13 @@ class Bench:
 
         """
         # Get the two neighbor association possibilities
-        firstNeighborGroup = self.cobraAssociations[1][np.in1d(self.cobraAssociations[0], cobraIndices)]
-        secondNeighborGroup = self.cobraAssociations[0][np.in1d(self.cobraAssociations[1], cobraIndices)]
+        firstNeighborGroup = self.cobraAssociations[
+            1][np.in1d(self.cobraAssociations[0], cobraIndices)]
+        secondNeighborGroup = self.cobraAssociations[
+            0][np.in1d(self.cobraAssociations[1], cobraIndices)]
 
-        return np.unique(np.concatenate((firstNeighborGroup, secondNeighborGroup)))
+        return np.unique(
+            np.concatenate((firstNeighborGroup, secondNeighborGroup)))
 
     def getCollisionsForCobra(self, cobraIndex, fiberPositions):
         """Calculates the total number of collisions for a given cobra.
@@ -163,9 +171,15 @@ class Bench:
         nearbyCobrasIndices = self.getCobraNeighbors(cobraIndex)
         nNearbyCobras = len(nearbyCobrasIndices)
 
+        # Set the fiber positions to the home position for cobras with problems
+        fiberPositions = fiberPositions.copy()
+        fiberPositions[self.cobras.hasProblem] = self.cobras.home0[
+            self.cobras.hasProblem]
+
         # Calculate the cobras elbow positions
         allIndices = np.append(cobraIndex, nearbyCobrasIndices)
-        elbowPositions = self.cobras.calculateElbowPositions(fiberPositions, indices=allIndices)
+        elbowPositions = self.cobras.calculateElbowPositions(
+            fiberPositions, indices=allIndices)
 
         # Calculate the distances between the cobra link and the nearby cobras
         # links
@@ -173,14 +187,18 @@ class Bench:
         endPoints1 = np.repeat(elbowPositions[0], nNearbyCobras)
         startPoints2 = fiberPositions[nearbyCobrasIndices]
         endPoints2 = elbowPositions[1:]
-        distances = Bench.distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2)
+        distances = Bench.distancesBetweenLineSegments(
+            startPoints1, endPoints1, startPoints2, endPoints2)
 
         # Get the cobra collisions for the current configuration
-        collisions = distances < (self.cobras.linkRadius[cobraIndex] + self.cobras.linkRadius[nearbyCobrasIndices])
+        collisions = distances < (
+            self.cobras.linkRadius[cobraIndex] + self.cobras.linkRadius[
+                nearbyCobrasIndices])
 
         return np.sum(collisions)
 
-    def calculateCobraAssociationCollisions(self, fiberPositions, associationIndices=None):
+    def calculateCobraAssociationCollisions(self, fiberPositions,
+                                            associationIndices=None):
         """Calculates which cobra associations are involved in a collision.
 
         Parameters
@@ -207,6 +225,11 @@ class Bench:
         if associationIndices is not None:
             cobraAssociations = cobraAssociations[:, associationIndices]
 
+        # Set the fiber positions to the home position for cobras with problems
+        fiberPositions = fiberPositions.copy()
+        fiberPositions[self.cobras.hasProblem] = self.cobras.home0[
+            self.cobras.hasProblem]
+
         # Calculate the cobras elbow positions
         elbowPositions = self.cobras.calculateElbowPositions(fiberPositions)
 
@@ -215,10 +238,12 @@ class Bench:
         endPoints1 = elbowPositions[cobraAssociations[0]]
         startPoints2 = fiberPositions[cobraAssociations[1]]
         endPoints2 = elbowPositions[cobraAssociations[1]]
-        distances = Bench.distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2)
+        distances = Bench.distancesBetweenLineSegments(
+            startPoints1, endPoints1, startPoints2, endPoints2)
 
         # Return the cobra associations collisions
-        return distances < (linkRadius[cobraAssociations[0]] + linkRadius[cobraAssociations[1]])
+        return distances < (
+            linkRadius[cobraAssociations[0]] + linkRadius[cobraAssociations[1]])
 
     def getProblematicCobraAssociations(self, fiberPositions):
         """Returns the indices of the cobra associations involved in a
@@ -262,7 +287,8 @@ class Bench:
             # The centers should follow an hexagon pattern
             cobraCenters = np.empty(7, dtype="complex")
             cobraCenters[0] = 0.0
-            cobraCenters[1:] = COBRAS_SEPARATION * np.exp(np.arange(6) * 1j * np.pi / 3)
+            cobraCenters[1:] = COBRAS_SEPARATION * np.exp(
+                np.arange(6) * 1j * np.pi / 3)
         elif layout == "line":
             # Line of cobras
             cobraCenters = COBRAS_SEPARATION * np.arange(27) + 1j
@@ -273,7 +299,9 @@ class Bench:
             # Full PFI bench (2394 cobras distributed in 3 rotated sectors)
             cobraCenters = Bench.calculatePFICenters()
         else:
-            raise Exception("{} is not a valid bench layout. Use full, hex, line or rails.".format(layout))
+            raise Exception(
+                "%s is not a valid bench layout. Use full, hex, line, rails or "
+                "calibration." % layout)
 
         return cobraCenters
 
@@ -289,13 +317,16 @@ class Bench:
         """
         # Create the cobras centers array
         cobrasPerModule = MODULE_FIRST_LINE_LENGTH + MODULE_SECOND_LINE_LENGTH
-        cobraCenters = np.empty(cobrasPerModule * MODULES_PER_SECTOR, dtype="complex")
+        cobraCenters = np.empty(
+            cobrasPerModule * MODULES_PER_SECTOR, dtype="complex")
 
         # Fill the first module
         firstModule = cobraCenters[:cobrasPerModule]
-        firstModule[:MODULE_FIRST_LINE_LENGTH] = COBRAS_SEPARATION * np.arange(MODULE_FIRST_LINE_LENGTH)
-        firstModule[MODULE_FIRST_LINE_LENGTH:] = (COBRAS_SEPARATION * np.arange(MODULE_SECOND_LINE_LENGTH) + 
-                                                  COBRAS_SEPARATION * np.exp(1j * np.pi / 3))
+        firstModule[:MODULE_FIRST_LINE_LENGTH] = COBRAS_SEPARATION * np.arange(
+            MODULE_FIRST_LINE_LENGTH)
+        firstModule[MODULE_FIRST_LINE_LENGTH:] = COBRAS_SEPARATION * np.arange(
+            MODULE_SECOND_LINE_LENGTH) + COBRAS_SEPARATION * np.exp(
+                1j * np.pi / 3)
         firstModule += COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
 
         # Order the first module centers by the x coordinate
@@ -305,7 +336,8 @@ class Bench:
         modulesOffset = 2 * COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
 
         for i in range(1, MODULES_PER_SECTOR):
-            cobraCenters[i * cobrasPerModule:(i + 1) * cobrasPerModule] = firstModule + i * modulesOffset
+            cobraCenters[i * cobrasPerModule:(i + 1) * cobrasPerModule] = (
+                firstModule + i * modulesOffset)
 
         return cobraCenters
 
@@ -331,15 +363,18 @@ class Bench:
         cobraCenters[:cobrasPerSector] = firstSector
 
         # Add the second sector rotating the first sector 120 degrees
-        cobraCenters[cobrasPerSector:-cobrasPerSector] = firstSector * np.exp(1j * 2 * np.pi / 3)
+        cobraCenters[cobrasPerSector:-cobrasPerSector] = firstSector * np.exp(
+            1j * 2 * np.pi / 3)
 
         # Add the third sector rotating the first sector 240 degrees
-        cobraCenters[-cobrasPerSector:] = firstSector * np.exp(1j * 4 * np.pi / 3)
+        cobraCenters[-cobrasPerSector:] = firstSector * np.exp(
+            1j * 4 * np.pi / 3)
 
         return cobraCenters
 
     @staticmethod
-    def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2, endPoints2):
+    def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2,
+                                     endPoints2):
         """Calculates the minimum distances between line segments.
 
         Parameters
@@ -363,10 +398,14 @@ class Bench:
 
         """
         # Calculate the minimum distances for each point to segment combination
-        distances1 = Bench.distancesToLineSegments(startPoints1, startPoints2, endPoints2)
-        distances2 = Bench.distancesToLineSegments(endPoints1, startPoints2, endPoints2)
-        distances3 = Bench.distancesToLineSegments(startPoints2, startPoints1, endPoints1)
-        distances4 = Bench.distancesToLineSegments(endPoints2, startPoints1, endPoints1)
+        distances1 = Bench.distancesToLineSegments(
+            startPoints1, startPoints2, endPoints2)
+        distances2 = Bench.distancesToLineSegments(
+            endPoints1, startPoints2, endPoints2)
+        distances3 = Bench.distancesToLineSegments(
+            startPoints2, startPoints1, endPoints1)
+        distances4 = Bench.distancesToLineSegments(
+            endPoints2, startPoints1, endPoints1)
 
         # Return the minimum distances
         return np.min((distances1, distances2, distances3, distances4), axis=0)
@@ -397,7 +436,8 @@ class Bench:
         translatedEndPoints = endPoints - startPoints
 
         # Rotate the translated points to have the line segment on the x axis
-        rotatedPoints = translatedPoints * np.exp(-1j * np.angle(translatedEndPoints))
+        rotatedPoints = translatedPoints * np.exp(-1j * np.angle(
+            translatedEndPoints))
 
         # Define 3 regions for the points: left of the origin, over the line
         # segments, and right of the line segments
@@ -411,6 +451,7 @@ class Bench:
         distances = np.empty(len(points))
         distances[region1] = np.abs(rotatedPoints[region1])
         distances[region2] = np.abs(rotatedPoints[region2].imag)
-        distances[region3] = np.abs(rotatedPoints[region3] - lineLengths[region3])
+        distances[region3] = np.abs(
+            rotatedPoints[region3] - lineLengths[region3])
 
         return distances

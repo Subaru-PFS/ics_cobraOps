@@ -1,6 +1,6 @@
 """
 
-This file demonstrates how to use the collisions simulation code.
+This example demonstrates how to use the collisions simulation code.
 
 """
 

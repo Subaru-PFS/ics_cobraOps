@@ -14,6 +14,8 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
+from ics.cobraCharmer.pfiDesign import PFIDesign
+
 from . import plotUtils
 from .AttributePrinter import AttributePrinter
 from .cobraConstants import BLACK_DOT_RADIUS
@@ -26,14 +28,12 @@ from .MotorMapGroup import MotorMapGroup
 
 
 class CobraGroup(AttributePrinter):
-    """
-
-    Class describing the properties of a group of cobras.
+    """Class describing the properties of a group of cobras.
 
     """
 
     def __init__(self, centers):
-        """Constructs a new cobra group instance with default properties.
+        """Constructs a new CobraGroup instance with default properties.
 
         Parameters
         ----------
@@ -43,30 +43,35 @@ class CobraGroup(AttributePrinter):
         Returns
         -------
         object
-            The cobra group instance.
+            The CobraGroup instance.
 
         """
         # Set the number of cobras and their central positions
         self.nCobras = len(centers)
         self.centers = centers.copy()
 
+        # Set their status to OK
+        self.status = np.full(self.nCobras, PFIDesign.COBRA_OK_MASK, dtype="u2")
+        self.hasProblem = np.full(self.nCobras, False)
+
         # Set the theta home angles randomly
         self.tht0 = 2 * np.pi * np.random.random(self.nCobras)
         self.tht1 = (self.tht0 + HOMES_THETA_DISTANCE) % (2 * np.pi)
 
         # Set the phi home angles randomly
-        self.phiOut = -PHI_SAFETY_ANGLE * (1.0 + 0.2 * np.random.random(self.nCobras))
-        self.phiIn = self.phiOut - (np.pi - 2 * PHI_SAFETY_ANGLE)
+        self.phiIn = -np.pi + PHI_SAFETY_ANGLE * (
+            1.0 + 0.2 * np.random.random(self.nCobras))
+        self.phiOut = -PHI_SAFETY_ANGLE * (
+            1.0 + 0.2 * np.random.random(self.nCobras))
 
-        # Set the default link lengths
+        # Set the default link lengths and radius
         self.L1 = np.full(self.nCobras, COBRA_LINK_LENGTH)
-        self.L2 = self.L1.copy()
-
-        # Set the default link radius
+        self.L2 = np.full(self.nCobras, COBRA_LINK_LENGTH)
         self.linkRadius = np.full(self.nCobras, COBRA_LINK_RADIUS)
 
         # Set the default black dot position and radius
-        self.blackDotPosition = np.full(self.nCobras, BLACK_DOT_RELATIVE_POSITION)
+        self.blackDotPosition = np.full(
+            self.nCobras, BLACK_DOT_RELATIVE_POSITION)
         self.blackDotRadius = np.full(self.nCobras, BLACK_DOT_RADIUS)
 
         # Set the default motor maps
@@ -75,32 +80,34 @@ class CobraGroup(AttributePrinter):
         # Calculate the patrol areas minimum and maximum radii
         self.calculatePatrolAreaRadii()
 
-        # Calculate the cobras home positions
+        # Calculate the home positions
         self.calculateHomePositions()
 
     def calculatePatrolAreaRadii(self):
         """Calculates the minimum and maximum radius that the cobras can reach.
 
         """
-        self.rMin = np.abs(self.L1 + self.L2 * np.exp(1j * self.phiIn))
-        self.rMax = np.abs(self.L1 + self.L2 * np.exp(1j * self.phiOut))
+        self.rMin = np.abs(
+            self.L1 + self.L2 * np.exp(1j * np.maximum(-np.pi, self.phiIn)))
+        self.rMax = np.abs(
+            self.L1 + self.L2 * np.exp(1j * np.minimum(self.phiOut, 0)))
 
-    def calculateHomePositions(self, phiOffset=0.5):
+    def calculateHomePositions(self, phiOffset=0.00001):
         """Calculates the cobras home positions.
 
         Parameters
         ----------
         phiOffset: float, optional
             Cobra homes phi angle offset in radians, relative to their phiIn
-            values. Default is 0.5 radians (28.6 degrees).
+            values. Default is 0.0 radians.
 
         """
         # Calculate the phi home angles
-        phiHome = self.phiIn + phiOffset
+        self.phiHome = np.maximum(-np.pi, self.phiIn) + phiOffset
 
         # Calculate the home positions (0 = same sense, 1 = opposite sense)
-        self.home0 = self.calculateFiberPositions(self.tht0, phiHome)
-        self.home1 = self.calculateFiberPositions(self.tht1, phiHome)
+        self.home0 = self.calculateFiberPositions(self.tht0, self.phiHome)
+        self.home1 = self.calculateFiberPositions(self.tht1, self.phiHome)
 
     def calculateFiberPositions(self, tht, phi, indices=None):
         """Calculates the cobras fiber positions for the given rotation angles.
@@ -113,14 +120,20 @@ class CobraGroup(AttributePrinter):
             A numpy array with the cobra phi angles in radians.
         indices: object, optional
             A numpy array with the cobra indices to use. If it is set to None,
-            all the cobras will be used. Default is None.
+            all cobras will be used. Default is None.
 
         Returns
         -------
         object
-            A complex numpy array with the fiber positions.
+            A complex numpy array with the cobra fiber positions.
 
         """
+        # Set the angles to the home position angles for cobras with problems
+        tht = tht.copy()
+        phi = phi.copy()
+        tht[self.hasProblem] = self.tht0[self.hasProblem]
+        phi[self.hasProblem] = self.phiHome[self.hasProblem]
+
         # Extract some useful information
         centers = self.centers
         L1 = self.L1
@@ -137,7 +150,8 @@ class CobraGroup(AttributePrinter):
         # Return the fiber positions
         return centers + L1 * np.exp(1j * tht) + L2 * np.exp(1j * (tht + phi))
 
-    def calculateElbowPositions(self, fiberPositions, indices=None, useNegativePhi=True):
+    def calculateElbowPositions(self, fiberPositions, indices=None,
+                                useNegativePhi=True):
         """Calculates the cobra elbow positions for the given fiber positions.
 
         The code assumes that the cobras can reach the given positions.
@@ -145,10 +159,10 @@ class CobraGroup(AttributePrinter):
         Parameters
         ----------
         fiberPositions: object
-            A complex numpy array with the fiber positions.
+            A complex numpy array with the cobra fiber positions.
         indices: object, optional
             A numpy array with the cobra indices to use. If it is set to None,
-            all the cobras will be used. Default is None.
+            all cobras will be used. Default is None.
         useNegativePhi: bool, optional
             If True the phi angle values will be negative. If False, the phi
             angles will be positive. Default is True.
@@ -156,9 +170,13 @@ class CobraGroup(AttributePrinter):
         Returns
         -------
         object
-            A complex numpy array with the elbow positions.
+            A complex numpy array with the cobra elbow positions.
 
         """
+        # Set the fiber positions to the home position for cobras with problems
+        fiberPositions = fiberPositions.copy()
+        fiberPositions[self.hasProblem] = self.home0[self.hasProblem]
+
         # Extract some useful information
         centers = self.centers
         L1 = self.L1
@@ -178,13 +196,16 @@ class CobraGroup(AttributePrinter):
         L1Sq = L1 ** 2
         L2Sq = L2 ** 2
         phiSign = -1 if useNegativePhi else +1
-        tht = np.angle(relativePositions) - phiSign * np.arccos(-(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
+        tht = np.angle(relativePositions) - phiSign * np.arccos(
+            -(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
 
         # Return the elbow positions
         return centers + L1 * np.exp(1j * tht)
 
-    def calculateMultipleElbowPositions(self, targetPositions, cobraIndices, targetIndices, useNegativePhi=True):
-        """Calculates the cobra elbow positions for a list of cobra-target associations.
+    def calculateMultipleElbowPositions(self, targetPositions, cobraIndices,
+                                        targetIndices, useNegativePhi=True):
+        """Calculates the cobra elbow positions for a list of cobra-target
+        associations.
 
         The code assumes that the cobras can reach the given target positions.
 
@@ -203,15 +224,20 @@ class CobraGroup(AttributePrinter):
         Returns
         -------
         object
-            A complex numpy array with the elbow positions.
+            A complex numpy array with the cobra elbow positions.
 
         """
         # Extract some useful information
         centers = self.centers[cobraIndices]
+        hasProblem = self.hasProblem[cobraIndices]
         L1 = self.L1[cobraIndices]
         L2 = self.L2[cobraIndices]
+        home0 = self.home0[cobraIndices]
         targetPositions = targetPositions[targetIndices]
-        
+
+        # Set the target positions to the home position for cobras with problems
+        targetPositions[hasProblem] = home0[hasProblem]
+
         # Calculate the cobras theta angles applying the law of cosines
         relativePositions = targetPositions - centers
         distance = np.abs(relativePositions)
@@ -219,13 +245,16 @@ class CobraGroup(AttributePrinter):
         L1Sq = L1 ** 2
         L2Sq = L2 ** 2
         phiSign = -1 if useNegativePhi else +1
-        tht = np.angle(relativePositions) - phiSign * np.arccos(-(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
+        tht = np.angle(relativePositions) - phiSign * np.arccos(
+            -(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
 
         # Return the elbow positions
         return centers + L1 * np.exp(1j * tht)
 
-    def calculateCobraElbowPositions(self, cobraIndex, fiberPositions, useNegativePhi=True):
-        """Calculates the elbow positions for a given cobra and a list of fiber positions.
+    def calculateCobraElbowPositions(self, cobraIndex, fiberPositions,
+                                     useNegativePhi=True):
+        """Calculates the elbow positions for a given cobra and a list of fiber
+        positions.
 
         The code assumes that the cobra can reach the given positions.
 
@@ -245,6 +274,11 @@ class CobraGroup(AttributePrinter):
             A complex numpy array with the cobra elbow positions.
 
         """
+        # Set the fiber positions to the home position if the cobra has problems
+        if self.hasProblem[cobraIndex]:
+            fiberPositions = fiberPositions.copy()
+            fiberPositions[:] = self.home0[cobraIndex]
+
         # Extract the cobra information
         center = self.centers[cobraIndex]
         L1 = self.L1[cobraIndex]
@@ -257,12 +291,14 @@ class CobraGroup(AttributePrinter):
         L1Sq = L1 ** 2
         L2Sq = L2 ** 2
         phiSign = -1 if useNegativePhi else +1
-        tht = np.angle(relativePositions) - phiSign * np.arccos(-(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
+        tht = np.angle(relativePositions) - phiSign * np.arccos(
+            -(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
 
         # Return the elbow positions
         return center + L1 * np.exp(1j * tht)
 
-    def calculateRotationAngles(self, fiberPositions, indices=None, useNegativePhi=True):
+    def calculateRotationAngles(self, fiberPositions, indices=None,
+                                useNegativePhi=True):
         """Calculates the cobra rotation angles for the given fiber positions.
 
         The code assumes that the cobras can reach the given positions.
@@ -281,9 +317,13 @@ class CobraGroup(AttributePrinter):
         Returns
         -------
         tuple
-            A python tuple with the cobras rotation angles (theta, phi).
+            A python tuple with the cobra rotation angles (theta, phi).
 
         """
+        # Set the fiber positions to the home position for cobras with problems
+        fiberPositions = fiberPositions.copy()
+        fiberPositions[self.hasProblem] = self.home0[self.hasProblem]
+
         # Extract some useful information
         centers = self.centers
         L1 = self.L1
@@ -304,14 +344,16 @@ class CobraGroup(AttributePrinter):
         L2Sq = L2 ** 2
         phiSign = -1 if useNegativePhi else +1
         phi = phiSign * np.arccos((distanceSq - L1Sq - L2Sq) / (2 * L1 * L2))
-        tht = np.angle(relativePositions) - phiSign * np.arccos(-(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
+        tht = np.angle(relativePositions) - phiSign * np.arccos(
+            -(L2Sq - L1Sq - distanceSq) / (2 * L1 * distance))
 
         # Force tht to go from -pi to pi
         tht = (tht - np.pi) % (2 * np.pi) - np.pi
 
         return (tht, phi)
 
-    def useCalibrationProduct(self, calibrationProduct, useRealLinks=True, useRealMaps=True):
+    def useCalibrationProduct(self, calibrationProduct, useRealLinks=True,
+                              useRealMaps=True):
         """Updates the cobra properties with the calibration product ones.
 
         Parameters
@@ -330,6 +372,7 @@ class CobraGroup(AttributePrinter):
         if useRealLinks:
             if calibrationProduct.nCobras == self.nCobras:
                 # Use directly the calibration product arrays
+                self.status = calibrationProduct.status.copy()
                 self.tht0 = calibrationProduct.tht0.copy()
                 self.tht1 = calibrationProduct.tht1.copy()
                 self.phiIn = calibrationProduct.phiIn.copy()
@@ -338,32 +381,39 @@ class CobraGroup(AttributePrinter):
                 self.L2 = calibrationProduct.L2.copy()
             else:
                 # Randomize the calibration cobra indices
-                indices = np.random.randint(calibrationProduct.nCobras, size=(3, self.nCobras))
+                indices = np.random.randint(
+                    calibrationProduct.nCobras, size=(4, self.nCobras))
 
                 # Assign random link properties to each cobra
-                self.tht0 = calibrationProduct.tht0[indices[0]]
-                self.tht1 = calibrationProduct.tht1[indices[0]]
-                self.phiIn = calibrationProduct.phiIn[indices[1]]
-                self.phiOut = calibrationProduct.phiOut[indices[1]]
-                self.L1 = calibrationProduct.L1[indices[2]]
-                self.L2 = calibrationProduct.L2[indices[2]]
+                self.status = calibrationProduct.status[indices[0]]
+                self.tht0 = calibrationProduct.tht0[indices[1]]
+                self.tht1 = calibrationProduct.tht1[indices[1]]
+                self.phiIn = calibrationProduct.phiIn[indices[2]]
+                self.phiOut = calibrationProduct.phiOut[indices[2]]
+                self.L1 = calibrationProduct.L1[indices[3]]
+                self.L2 = calibrationProduct.L2[indices[3]]
 
             # Add some safety range to the phi limits
-            self.phiIn += PHI_SAFETY_ANGLE
-            self.phiOut -= PHI_SAFETY_ANGLE
+            # self.phiIn += PHI_SAFETY_ANGLE
+            # self.phiOut -= PHI_SAFETY_ANGLE
+
+            # Check which cobras have problems
+            self.hasProblem = self.status != PFIDesign.COBRA_OK_MASK
 
             # Update the patrol areas minimum and maximum radii
             self.calculatePatrolAreaRadii()
 
-            # Update the cobras home positions
+            # Update the home positions
             self.calculateHomePositions()
 
         # Check if we should use the calibration product motor maps
         if useRealMaps:
             self.motorMaps.useCalibrationProduct(calibrationProduct)
 
-    def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]), indices=None, paintHardStops=True, paintBlackDots=True):
-        """Draws the cobras patrol areas on top of an existing figure.
+    def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]),
+                               indices=None, paintHardStops=True,
+                               paintBlackDots=True):
+        """Draws the cobra patrol areas on top of an existing figure.
 
         Parameters
         ----------
@@ -386,7 +436,7 @@ class CobraGroup(AttributePrinter):
         tht1 = self.tht1
         blackDotPosition = self.blackDotPosition
         blackDotRadius = self.blackDotRadius
-        
+
         # Select a subset of the cobras if necessary
         if indices is not None:
             centers = centers[indices]
@@ -405,14 +455,21 @@ class CobraGroup(AttributePrinter):
         
         # Draw the cobra black dots if necessary
         if paintBlackDots:
-            plotUtils.addCircles(centers + blackDotPosition, blackDotRadius, facecolors=np.array([0.0, 0.0, 0.0, 0.15]))
+            plotUtils.addCircles(
+                centers + blackDotPosition, blackDotRadius,
+                facecolors=np.array([0.0, 0.0, 0.0, 0.15]))
 
         # Add the theta hard stops if necessary
         if paintHardStops:
-            plotUtils.addLines(centers, centers + rMax * np.exp(1j * tht0), linewidths=1, linestyles="dashed", color="0.3")
-            plotUtils.addLines(centers, centers + rMax * np.exp(1j * tht1), linewidths=1, linestyles="dashdot", color="0.3")
+            plotUtils.addLines(
+                centers, centers + rMax * np.exp(1j * tht0),
+                linewidths=1, linestyles="dashed", color="0.3")
+            plotUtils.addLines(
+                centers, centers + rMax * np.exp(1j * tht1),
+                linewidths=1, linestyles="dashdot", color="0.3")
 
-    def addLinksToFigure(self, fiberPositions, colors=np.array([0.0, 0.0, 1.0, 0.5]), indices=None):
+    def addLinksToFigure(self, fiberPositions,
+                         colors=np.array([0.0, 0.0, 1.0, 0.5]), indices=None):
         """Draws the cobras links on top of an existing figure.
 
         Parameters
@@ -426,8 +483,13 @@ class CobraGroup(AttributePrinter):
             all the cobras will be used. Default is None.
 
         """
+        # Set the fiber positions to the home position for cobras with problems
+        fiberPositions = fiberPositions.copy()
+        fiberPositions[self.hasProblem] = self.home0[self.hasProblem]
+
         # Calculate the elbow positions
-        elbowPositions = self.calculateElbowPositions(fiberPositions, indices=indices)
+        elbowPositions = self.calculateElbowPositions(
+            fiberPositions, indices=indices)
 
         # Extract some useful information
         centers = self.centers
@@ -443,5 +505,7 @@ class CobraGroup(AttributePrinter):
                 colors = colors[indices]
 
         # Draw the cobras using a combination of thin and thick lines
-        plotUtils.addLines(centers, elbowPositions, edgecolor=colors, linewidths=2)
-        plotUtils.addThickLines(elbowPositions, fiberPositions, linkRadius, facecolors=colors)
+        plotUtils.addLines(
+            centers, elbowPositions, edgecolor=colors, linewidths=2)
+        plotUtils.addThickLines(
+            elbowPositions, fiberPositions, linkRadius, facecolors=colors)
