@@ -25,7 +25,7 @@ class CollisionSimulator():
 
     """
 
-    def __init__(self, bench, targets, trajectorySteps=170, trajectoryStepWidth=50):
+    def __init__(self, bench, targets, trajectorySteps=200, trajectoryStepWidth=50):
         """Constructs a new collision simulator instance.
 
         Parameters
@@ -34,10 +34,10 @@ class CollisionSimulator():
             The PFI bench instance.
         targets: object
             The target group instance.
-        nSteps: int, optional
+        trajectorySteps: int, optional
             The total number of steps in the cobra trajectories. Default is
-            150.
-        stepWidth: int, optional
+            200.
+        trajectoryStepWidth: int, optional
             The trajectory step width in units of motor steps. Default is 50.
 
         Returns
