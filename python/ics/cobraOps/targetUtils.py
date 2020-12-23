@@ -14,8 +14,8 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .TargetGroup import TargetGroup
 from .cobraConstants import NULL_TARGET_POSITION
+from .TargetGroup import TargetGroup
 
 
 def generateOneTargetPerCobra(bench, maximumDistance=np.Inf):

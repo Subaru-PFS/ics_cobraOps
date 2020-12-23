@@ -14,8 +14,8 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .TargetSelector import TargetSelector
 from .cobraConstants import NULL_TARGET_INDEX
+from .TargetSelector import TargetSelector
 
 
 class DistanceTargetSelector(TargetSelector):

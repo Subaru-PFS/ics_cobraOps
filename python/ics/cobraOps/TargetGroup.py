@@ -16,10 +16,10 @@ import numpy as np
 
 from . import plotUtils
 from .AttributePrinter import AttributePrinter
-from .cobraConstants import (NULL_TARGET_INDEX,
-                             NULL_TARGET_POSITION,
-                             NULL_TARGET_ID,
-                             NULL_TARGET_PRIORITY)
+from .cobraConstants import NULL_TARGET_ID
+from .cobraConstants import NULL_TARGET_INDEX
+from .cobraConstants import NULL_TARGET_POSITION
+from .cobraConstants import NULL_TARGET_PRIORITY
 
 
 class TargetGroup(AttributePrinter):
