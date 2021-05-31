@@ -50,12 +50,12 @@ def generateOneTargetPerCobra(bench, maximumDistance=np.Inf):
     ang = 2 * np.pi * np.random.random(nCobras)
     radius = np.sqrt((rMax ** 2 - rMin ** 2) * np.random.random(nCobras) + 
                      rMin ** 2)
-    targetPositions = cobraCenters + radius * np.exp(1j * ang)
+    finalPositions = cobraCenters + radius * np.exp(1j * ang)
 
     # Set to NULL those targets where the maximum distance is smaller than rMin
-    targetPositions[maximumDistance < rMin] = NULL_TARGET_POSITION
+    finalPositions[maximumDistance < rMin] = NULL_TARGET_POSITION
 
-    return  TargetGroup(targetPositions)
+    return  TargetGroup(finalPositions)
 
 
 def generateRandomTargets(density, bench):
@@ -83,6 +83,6 @@ def generateRandomTargets(density, bench):
     # Calculate the uniformly distributed target positions
     ang = 2 * np.pi * np.random.random(nTargets)
     radius = bench.radius * np.sqrt(np.random.random(nTargets))
-    targetPositions = bench.center + radius * np.exp(1j * ang)
+    finalPositions = bench.center + radius * np.exp(1j * ang)
 
-    return TargetGroup(targetPositions)
+    return TargetGroup(finalPositions)
