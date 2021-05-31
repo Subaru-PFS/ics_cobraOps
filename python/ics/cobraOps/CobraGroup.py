@@ -99,7 +99,7 @@ class CobraGroup(AttributePrinter):
         ----------
         phiOffset: float, optional
             Cobra homes phi angle offset in radians, relative to their phiIn
-            values. Default is 0.0 radians.
+            values. Default is 0.00001 radians.
 
         """
         # Calculate the phi home angles
@@ -202,7 +202,7 @@ class CobraGroup(AttributePrinter):
         # Return the elbow positions
         return centers + L1 * np.exp(1j * tht)
 
-    def calculateMultipleElbowPositions(self, targetPositions, cobraIndices,
+    def calculateMultipleElbowPositions(self, finalPositions, cobraIndices,
                                         targetIndices, useNegativePhi=True):
         """Calculates the cobra elbow positions for a list of cobra-target
         associations.
@@ -211,7 +211,7 @@ class CobraGroup(AttributePrinter):
 
         Parameters
         ----------
-        targetPositions: object
+        finalPositions: object
             A complex numpy array with the target positions.
         cobraIndices: object
             A numpy array with the cobra indices to use.
@@ -233,13 +233,13 @@ class CobraGroup(AttributePrinter):
         L1 = self.L1[cobraIndices]
         L2 = self.L2[cobraIndices]
         home0 = self.home0[cobraIndices]
-        targetPositions = targetPositions[targetIndices]
+        finalPositions = finalPositions[targetIndices]
 
         # Set the target positions to the home position for cobras with problems
-        targetPositions[hasProblem] = home0[hasProblem]
+        finalPositions[hasProblem] = home0[hasProblem]
 
         # Calculate the cobras theta angles applying the law of cosines
-        relativePositions = targetPositions - centers
+        relativePositions = finalPositions - centers
         distance = np.abs(relativePositions)
         distanceSq = distance ** 2
         L1Sq = L1 ** 2
@@ -393,10 +393,6 @@ class CobraGroup(AttributePrinter):
                 self.L1 = calibrationProduct.L1[indices[3]]
                 self.L2 = calibrationProduct.L2[indices[3]]
 
-            # Add some safety range to the phi limits
-            # self.phiIn += PHI_SAFETY_ANGLE
-            # self.phiOut -= PHI_SAFETY_ANGLE
-
             # Check which cobras have problems
             self.hasProblem = self.status != PFIDesign.COBRA_OK_MASK
 
@@ -452,7 +448,7 @@ class CobraGroup(AttributePrinter):
 
         # Draw the cobra patrol areas using ring shapes
         plotUtils.addRings(centers, rMin, rMax, facecolors=colors)
-        
+
         # Draw the cobra black dots if necessary
         if paintBlackDots:
             plotUtils.addCircles(
