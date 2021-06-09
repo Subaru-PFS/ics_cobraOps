@@ -64,8 +64,8 @@ class TestTargetSelector():
         bench = Bench(cobraCenters)
 
         # Create some random targets
-        targetPositions = 8 * np.random.random(50) + 8j * np.random.random(50)
-        targets = TargetGroup(targetPositions)
+        finalPositions = 8 * np.random.random(50) + 8j * np.random.random(50)
+        targets = TargetGroup(finalPositions)
 
         # Create a dummy TargetSelector
         selector = TargetSelectorSubclass(bench, targets)
@@ -81,7 +81,7 @@ class TestTargetSelector():
 
         # Check that it contains the expected data
         assert np.all(selector.kdTree.data == np.column_stack(
-            (targetPositions.real, targetPositions.imag)))
+            (finalPositions.real, finalPositions.imag)))
 
     def test_getTargetsInsidePatrolArea_method(self):
         # Create a basic bench with 2 cobras
@@ -89,8 +89,8 @@ class TestTargetSelector():
         bench = Bench(cobraCenters)
 
         # Create some targets
-        targetPositions = np.array([0, cobraCenters.mean(), -3, 6])
-        targets = TargetGroup(targetPositions)
+        finalPositions = np.array([0, cobraCenters.mean(), -3, 6])
+        targets = TargetGroup(finalPositions)
 
         # Create a dummy TargetSelector
         selector = TargetSelectorSubclass(bench, targets)
@@ -100,7 +100,7 @@ class TestTargetSelector():
 
         # Check that we get what we expected
         expectedIndices = np.array([1, 2])
-        expectedPositions = targetPositions[expectedIndices]
+        expectedPositions = finalPositions[expectedIndices]
         expectedDistances = np.abs(cobraCenters[0] - expectedPositions)
         assert np.all(indices == expectedIndices)
         assert np.all(positions == expectedPositions)
@@ -111,7 +111,7 @@ class TestTargetSelector():
 
         # Check that we get what we expected
         expectedIndices = np.array([3, 1])
-        expectedPositions = targetPositions[expectedIndices]
+        expectedPositions = finalPositions[expectedIndices]
         expectedDistances = np.abs(cobraCenters[1] - expectedPositions)
         assert np.all(indices == expectedIndices)
         assert np.all(positions == expectedPositions)
@@ -125,7 +125,7 @@ class TestTargetSelector():
 
         # Check that we get what we expected
         expectedIndices = np.array([3, 1])
-        expectedPositions = targetPositions[expectedIndices]
+        expectedPositions = finalPositions[expectedIndices]
         expectedDistances = np.abs(cobraCenters[1] - expectedPositions)
         assert np.all(indices == expectedIndices)
         assert np.all(positions == expectedPositions)
@@ -178,11 +178,11 @@ class TestTargetSelector():
 
         # Create some targets
         rMin = bench.cobras.rMin
-        targetPositions = np.array([cobraCenters[0] + 1.2 * rMin[0],
+        finalPositions = np.array([cobraCenters[0] + 1.2 * rMin[0],
                                     cobraCenters.mean() - 0.1,
                                     cobraCenters.mean(),
                                     cobraCenters[1] + 1.2 * rMin[1]])
-        targets = TargetGroup(targetPositions)
+        targets = TargetGroup(finalPositions)
 
         # Create a dummy TargetSelector
         selector = TargetSelectorSubclass(bench, targets)
@@ -214,8 +214,8 @@ class TestTargetSelector():
         bench = Bench(cobraCenters)
 
         # Create some targets
-        targetPositions = np.array([0, 3, NULL_TARGET_POSITION, 6])
-        targets = TargetGroup(targetPositions)
+        finalPositions = np.array([0, 3, NULL_TARGET_POSITION, 6])
+        targets = TargetGroup(finalPositions)
 
         # Create a dummy TargetSelector
         selector = TargetSelectorSubclass(bench, targets)
@@ -228,7 +228,7 @@ class TestTargetSelector():
         selectedTargers = selector.getSelectedTargets()
 
         # Check that we get the correct targets
-        assert np.all(selectedTargers.positions == targetPositions[indices])
+        assert np.all(selectedTargers.positions == finalPositions[indices])
         assert np.all(selectedTargers.ids == indices.astype(np.str))
         assert np.all(selectedTargers.priorities == 1)
 

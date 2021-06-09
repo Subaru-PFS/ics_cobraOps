@@ -26,40 +26,16 @@ calibrationProduct = PFIDesign(None)
 calibrationProduct.loadModelFiles(modules_file_names)
 """
 
-# Get the calibration product from the XML from Chi-Hung
-calibrationProduct = PFIDesign(
-    pathlib.Path("/home/jgracia/2020-10-15-theta-slow.xml"))
+# Get the calibration product from the pfs_instdata repository
+calibrationProduct = PFIDesign(pathlib.Path(
+    "/home/jgracia/github/pfs_instdata/data/pfi/modules/ALL/ALL_final.xml"))
 
-# Transform the calibration product cobra centers and link lengths units from
-# pixels to millimeters
-calibrationProduct.centers -= 5048.0 + 3597.0j
-calibrationProduct.centers *= np.exp(1j * np.deg2rad(1.0)) / 13.02
-calibrationProduct.L1 /= 13.02
-calibrationProduct.L2 /= 13.02
-
-# Update the status information for the cobras that are known to be invisible
-invisibleCobras = [(15, 1), (15, 55), (17, 37), (29, 57), (31, 14)]
-
-for moduleId, cobraId in invisibleCobras:
-    calibrationProduct.setCobraStatus(cobraId, moduleId, invisible=True)
-
-# Update the status information for the cobras that are known to be bad
-badCobras = [
-    (1, 47), (4, 22), (7, 5), (7, 19), (15, 23), (21, 10), (22, 13), (28, 41),
-    (34, 22), (37, 1), (42, 15)]
-
-for moduleId, cobraId in badCobras:
-    calibrationProduct.setCobraStatus(
-        cobraId, moduleId, brokenTheta=True, brokenPhi=True)
-
-# Update the status information for the cobras that had problems measuring the
-# link lengths because they hit fiducial fibers
-interferencingCobras = [
-    (14, 13), (27, 38), (29, 41), (33, 12), (34, 1), (42, 43)]
-
-for moduleId, cobraId in interferencingCobras:
-    calibrationProduct.setCobraStatus(
-        cobraId, moduleId, brokenTheta=True, brokenPhi=True)
+# Set some dummy center positions and phi angles for those cobras that have
+# zero centers
+zeroCenters = calibrationProduct.centers == 0
+calibrationProduct.centers[zeroCenters] = np.arange(np.sum(zeroCenters)) * 300j
+calibrationProduct.phiIn[zeroCenters] = -np.pi
+calibrationProduct.phiOut[zeroCenters] = 0
 
 # Use the median value link lengths in those cobras with zero link lengths
 zeroLinkLengths = np.logical_or(
@@ -69,10 +45,18 @@ calibrationProduct.L1[zeroLinkLengths] = np.median(
 calibrationProduct.L2[zeroLinkLengths] = np.median(
     calibrationProduct.L2[~zeroLinkLengths])
 
+# Transform the calibration product cobra centers and link lengths units from
+# pixels to millimeters
+calibrationProduct.centers -= 5048.0 + 3597.0j
+calibrationProduct.centers *= np.exp(1j * np.deg2rad(1.0)) / 13.02
+calibrationProduct.L1 /= 13.02
+calibrationProduct.L2 /= 13.02
+
 # Create the bench instance
 bench = Bench(layout="calibration", calibrationProduct=calibrationProduct)
 print("Number of cobras:", bench.cobras.nCobras)
 
+print(bench.getCobrasNeighbors(np.where(bench.cobras.hasProblem)[0]))
 # Plot the bench
 plotUtils.createNewFigure(
     "Calibration data", "x position (mm)", "y position (mm)")

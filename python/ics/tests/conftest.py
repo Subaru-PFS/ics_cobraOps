@@ -12,7 +12,7 @@ from ics.cobraOps import targetUtils
 
 
 @pytest.fixture(scope="function")
-def targetPositions():
+def finalPositions():
     return np.array([-1j, 1 + 1j, 1 - 1j, 2j])
 
 

@@ -5,24 +5,39 @@ most recent calibration data.
 
 """
 
-import pathlib
+import os
 import time
+import logging
 import numpy as np
 
-from ics.cobraCharmer.pfiDesign import PFIDesign
 from ics.cobraOps import plotUtils
 from ics.cobraOps import targetUtils
 from ics.cobraOps.Bench import Bench
-from ics.cobraOps.CollisionSimulator import CollisionSimulator
+from ics.cobraOps.CollisionSimulator2 import CollisionSimulator2
 from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
+from procedures.moduleTest.cobraCoach import CobraCoach
 
-# Define the target density to use
-targetDensity = 1.5
+# Disable the matplotlit warnings
+logging.getLogger("matplotlib.font_manager").disabled = True
 
-# Get the calibration product from the pfs_instdata repository
-calibrationProduct = PFIDesign(pathlib.Path(
-    "/home/jgracia/github/pfs_instdata/data/pfi/modules/ALL/ALL_final_20210512.xml"))
+# Initialize the cobra coach instance
+os.environ["PFS_INSTDATA_DIR"] = "/home/jgracia/github/pfs_instdata"
+cobraCoach = CobraCoach(
+    "fpga", loadModel=False, trajectoryMode=True,
+    rootDir="/home/jgracia/testPFI/")
+cobraCoach.loadModel(version="ALL", moduleVersion="final_20210512")
+
+# Get the calibration product
+calibrationProduct = cobraCoach.calibModel
+
+# Set some dummy center positions and phi angles for those cobras that have
+# zero centers
+zeroCenters = calibrationProduct.centers == 0
+calibrationProduct.centers[zeroCenters] = np.arange(np.sum(zeroCenters)) * 300j
+calibrationProduct.phiIn[zeroCenters] = -np.pi
+calibrationProduct.phiOut[zeroCenters] = 0
+print("Cobras with zero centers: %i" % np.sum(zeroCenters))
 
 # Transform the calibration product cobra centers and link lengths units from
 # pixels to millimeters
@@ -38,6 +53,7 @@ calibrationProduct.L1[zeroLinkLengths] = np.median(
     calibrationProduct.L1[~zeroLinkLengths])
 calibrationProduct.L2[zeroLinkLengths] = np.median(
     calibrationProduct.L2[~zeroLinkLengths])
+print("Cobras with zero link lenghts: %i" % np.sum(zeroLinkLengths))
 
 # Use the median value link lengths in those cobras with too long link lengths
 tooLongLinkLengths = np.logical_or(
@@ -46,12 +62,14 @@ calibrationProduct.L1[tooLongLinkLengths] = np.median(
     calibrationProduct.L1[~tooLongLinkLengths])
 calibrationProduct.L2[tooLongLinkLengths] = np.median(
     calibrationProduct.L2[~tooLongLinkLengths])
+print("Cobras with too long link lenghts: %i" % np.sum(tooLongLinkLengths))
 
 # Create the bench instance
-bench = Bench(layout="full", calibrationProduct=calibrationProduct)
+bench = Bench(layout="calibration", calibrationProduct=calibrationProduct)
 print("Number of cobras:", bench.cobras.nCobras)
 
 # Generate the targets
+targetDensity = 1.5
 targets = targetUtils.generateRandomTargets(targetDensity, bench)
 print("Number of simulated targets:", targets.nTargets)
 
@@ -62,7 +80,7 @@ selectedTargets = selector.getSelectedTargets()
 
 # Simulate an observation
 start = time.time()
-simulator = CollisionSimulator(bench, selectedTargets, trajectorySteps=450)
+simulator = CollisionSimulator2(bench, cobraCoach, selectedTargets)
 simulator.run()
 print("Number of cobras involved in collisions:", simulator.nCollisions)
 print("Number of cobras unaffected by end collisions: ",
@@ -71,13 +89,6 @@ print("Total simulation time (s):", time.time() - start)
 
 # Plot the simulation results
 simulator.plotResults(extraTargets=targets, paintFootprints=False)
-
-# Animate one of the trajectory collisions
-(problematicCobras,) = np.where(
-    np.logical_and(simulator.collisions, simulator.endPointCollisions == False))
-
-if len(problematicCobras) > 0:
-    simulator.animateCobraTrajectory(problematicCobras[0], extraTargets=targets)
 
 # Pause the execution to have time to inspect the figures
 plotUtils.pauseExecution()

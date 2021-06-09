@@ -66,11 +66,12 @@ class Bench:
             self.cobras.useCalibrationProduct(calibrationProduct)
 
         # Calculate the bench center
-        self.center = np.mean(self.cobras.centers)
+        self.center = np.mean(self.cobras.centers[~self.cobras.hasProblem])
 
         # Calculate the bench radius
-        self.radius = np.max(
-            np.abs(self.cobras.centers - self.center) + self.cobras.rMax)
+        self.radius = np.max(np.abs(
+            self.cobras.centers[~self.cobras.hasProblem] - self.center) + 
+            self.cobras.rMax[~self.cobras.hasProblem])
 
         # Calculate the cobra nearest neighbors associations array
         self.calculateCobraAssociations()
@@ -90,7 +91,8 @@ class Bench:
                        np.arange(self.cobras.nCobras)] = np.Inf
 
         # Calculate the median minimum distance between cobras
-        medianMinDistance = np.median(np.min(distanceMatrix, axis=1))
+        medianMinDistance = np.median(
+            np.min(distanceMatrix, axis=1)[~self.cobras.hasProblem])
 
         # Obtain the nearest neighbors indices
         (cobrasIndices, nearbyCobrasIndices) = np.where(
