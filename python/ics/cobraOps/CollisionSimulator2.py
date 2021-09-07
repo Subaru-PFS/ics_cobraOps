@@ -99,8 +99,8 @@ class CollisionSimulator2():
         # with the exception of bad and/or unassigned cobras, which will be
         # moved to a position where they cannot collide with other cobras
         self.finalFiberPositions = self.cobraCoach.pfi.anglesToPositions(
-            self.cobraCoach.allCobras, np.zeros(self.nCobras),
-            np.deg2rad(-150) - self.cobraCoach.calibModel.phiIn)
+            self.cobraCoach.allCobras, np.zeros(self.nCobras) - 0.00001,
+            np.deg2rad(-170) - self.cobraCoach.calibModel.phiIn)
         self.finalFiberPositions[self.movingCobras] = self.targets.positions[
             self.movingCobras]
 
