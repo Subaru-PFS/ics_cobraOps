@@ -26,7 +26,7 @@ os.environ["PFS_INSTDATA_DIR"] = "/home/jgracia/github/pfs_instdata"
 cobraCoach = CobraCoach(
     "fpga", loadModel=False, trajectoryMode=True,
     rootDir="/home/jgracia/testPFI/")
-cobraCoach.loadModel(version="ALL", moduleVersion="final_20210512")
+cobraCoach.loadModel(version="ALL", moduleVersion="final_20210920_mm")
 
 # Get the calibration product
 calibrationProduct = cobraCoach.calibModel
@@ -38,13 +38,6 @@ calibrationProduct.centers[zeroCenters] = np.arange(np.sum(zeroCenters)) * 300j
 calibrationProduct.phiIn[zeroCenters] = -np.pi
 calibrationProduct.phiOut[zeroCenters] = 0
 print("Cobras with zero centers: %i" % np.sum(zeroCenters))
-
-# Transform the calibration product cobra centers and link lengths units from
-# pixels to millimeters
-calibrationProduct.centers -= 5048.0 + 3597.0j
-calibrationProduct.centers *= np.exp(1j * np.deg2rad(1.0)) / 13.02
-calibrationProduct.L1 /= 13.02
-calibrationProduct.L2 /= 13.02
 
 # Use the median value link lengths in those cobras with zero link lengths
 zeroLinkLengths = np.logical_or(
