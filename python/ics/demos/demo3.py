@@ -31,13 +31,11 @@ cobraCoach.loadModel(version="ALL", moduleVersion="final_20210920_mm")
 # Get the calibration product
 calibrationProduct = cobraCoach.calibModel
 
-# Set some dummy center positions and phi angles for those cobras that have
-# zero centers
-zeroCenters = calibrationProduct.centers == 0
-calibrationProduct.centers[zeroCenters] = np.arange(np.sum(zeroCenters)) * 300j
-calibrationProduct.phiIn[zeroCenters] = -np.pi
-calibrationProduct.phiOut[zeroCenters] = 0
-print("Cobras with zero centers: %i" % np.sum(zeroCenters))
+# Fix the phi angles for the bad cobras
+badCobras = calibrationProduct.status != calibrationProduct.COBRA_OK_MASK
+calibrationProduct.phiIn[badCobras] = -np.pi
+calibrationProduct.phiOut[badCobras] = 0
+print("Bad cobras: %i" % np.sum(badCobras))
 
 # Use the median value link lengths in those cobras with zero link lengths
 zeroLinkLengths = np.logical_or(
@@ -50,7 +48,7 @@ print("Cobras with zero link lenghts: %i" % np.sum(zeroLinkLengths))
 
 # Use the median value link lengths in those cobras with too long link lengths
 tooLongLinkLengths = np.logical_or(
-    calibrationProduct.L1 > 100, calibrationProduct.L2 > 100)
+    calibrationProduct.L1 > 50, calibrationProduct.L2 > 50)
 calibrationProduct.L1[tooLongLinkLengths] = np.median(
     calibrationProduct.L1[~tooLongLinkLengths])
 calibrationProduct.L2[tooLongLinkLengths] = np.median(
