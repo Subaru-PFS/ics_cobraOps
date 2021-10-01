@@ -70,7 +70,7 @@ class CollisionSimulator2():
         self.nCollisions = None
         self.nEndPointCollisions = None
 
-    def run(self, timeStep=20, maxSteps=3000):
+    def run(self, timeStep=20, maxSteps=2000):
         """Runs the collisions simulator.
 
         Parameters
@@ -79,7 +79,7 @@ class CollisionSimulator2():
             The trajectories time step resolution in steps. Default is 20
             steps.
         maxSteps: int, optional
-            The trajectories maximum number of steps. Default is 3000 steps.
+            The trajectories maximum number of steps. Default is 2000 steps.
 
         """
         # Calculate the final fiber positions
