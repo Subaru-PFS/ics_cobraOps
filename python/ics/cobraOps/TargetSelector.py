@@ -187,9 +187,8 @@ class TargetSelector(ABC):
         """
         # Extract some useful information
         nCobras = self.bench.cobras.nCobras
-        cobraCenters = self.bench.cobras.centers
-        cobraBlackDotPosition = self.bench.cobras.blackDotPosition
-        cobraBlackDotRadius = self.bench.cobras.blackDotRadius
+        blackDotsPositions = self.bench.blackDots.centers
+        blackDotsRadius = self.bench.blackDots.radius
 
         # Obtain the cobra-target associations
         associations = []
@@ -200,10 +199,18 @@ class TargetSelector(ABC):
             indices, positions, distances = self.getTargetsInsidePatrolArea(
                 i, maximumDistance)
 
-            # Invalidate targets falling in the cobra black dots
+            # Invalidate all the targets if the cobra has a problem
+            if self.bench.cobras.hasProblem[i]:
+                indices = indices[[]]
+                positions = positions[[]]
+                distances = distances[[]]
+
+            # Invalidate targets falling in the nearby black dots
+            blackDotsIndices = np.append([i], self.bench.getCobraNeighbors(i))
             blackDotdistances = np.abs(
-                cobraCenters[i] + cobraBlackDotPosition[i] - positions)
-            validTargets = blackDotdistances > cobraBlackDotRadius[i]
+                positions[:, np.newaxis] - blackDotsPositions[blackDotsIndices])
+            validTargets = np.all(
+                blackDotdistances > blackDotsRadius[blackDotsIndices], axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
             distances = distances[validTargets]

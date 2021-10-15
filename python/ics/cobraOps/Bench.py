@@ -14,6 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
+from .BlackDotGroup import BlackDotGroup
 from .cobraConstants import COBRAS_SEPARATION
 from .cobraConstants import MODULE_FIRST_LINE_LENGTH
 from .cobraConstants import MODULE_SECOND_LINE_LENGTH
@@ -27,7 +28,7 @@ class Bench:
     """
 
     def __init__(self, cobraCenters=None, layout="full",
-                 calibrationProduct=None):
+                 calibrationProduct=None, blackDotsCalibrationProduct=None):
         """Constructs a new Bench instance.
 
         Parameters
@@ -43,6 +44,9 @@ class Bench:
         calibrationProduct: object, optional
             The cobras calibration product with the cobra properties to use.
             Default is None.
+        blackDotsCalibrationProduct: object, optional
+            The black dots calibration product with the black dots properties
+            to use. Default is None.
 
         Returns
         -------
@@ -75,6 +79,13 @@ class Bench:
 
         # Calculate the cobra nearest neighbors associations array
         self.calculateCobraAssociations()
+
+        # Create the black dot group instance
+        self.blackDots = BlackDotGroup(self.cobras.centers)
+
+        # Update the black dots properties if necessary
+        if blackDotsCalibrationProduct is not None:
+            self.blackDots.useCalibrationProduct(blackDotsCalibrationProduct)
 
     def calculateCobraAssociations(self):
         """Calculates the cobras nearest neighbors associations array.

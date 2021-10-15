@@ -13,6 +13,7 @@ import numpy as np
 from ics.cobraOps import plotUtils
 from ics.cobraOps import targetUtils
 from ics.cobraOps.Bench import Bench
+from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from ics.cobraOps.CollisionSimulator2 import CollisionSimulator2
 from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
@@ -55,8 +56,14 @@ calibrationProduct.L2[tooLongLinkLengths] = np.median(
     calibrationProduct.L2[~tooLongLinkLengths])
 print("Cobras with too long link lenghts: %i" % np.sum(tooLongLinkLengths))
 
+# Load the black dots calibration file
+calibrationFileName = os.path.join(
+    os.environ["PFS_INSTDATA_DIR"],"data/pfi/dot", "black_dots_mm.csv")
+blackDotsCalibrationProduct = BlackDotsCalibrationProduct(calibrationFileName)
+
 # Create the bench instance
-bench = Bench(layout="calibration", calibrationProduct=calibrationProduct)
+bench = Bench(layout="calibration", calibrationProduct=calibrationProduct,
+              blackDotsCalibrationProduct=blackDotsCalibrationProduct)
 print("Number of cobras:", bench.cobras.nCobras)
 
 # Generate the targets
