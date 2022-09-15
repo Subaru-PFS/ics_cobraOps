@@ -27,7 +27,7 @@ class Bench:
 
     """
 
-    def __init__(self, cobraCenters=None, layout="full",
+    def __init__(self, cobraCenters=None, layout="calibration",
                  calibrationProduct=None, blackDotsCalibrationProduct=None):
         """Constructs a new Bench instance.
 
@@ -40,7 +40,7 @@ class Bench:
         layout: str, optional
             The bench layout to use: full, hex, line, rails or calibration.
             This parameter is only used if the cobraCenters parameter is set to
-            None. Default is "full".
+            None. Default is "calibration".
         calibrationProduct: object, optional
             The cobras calibration product with the cobra properties to use.
             Default is None.
@@ -54,6 +54,17 @@ class Bench:
             The Bench instance.
 
         """
+        # Check that all the calibration products are provided when we use the
+        # calibration mode
+        if layout == "calibration":
+            if calibrationProduct is None:
+                raise Exception(
+                    "The cobras calibration product needs to be provided")
+
+            if blackDotsCalibrationProduct is None:
+                raise Exception(
+                    "The black dots calibration product needs to be provided")
+
         # Calculate the cobra centers if they have not been provided
         if cobraCenters is None:
             # Check if the centers from the calibration product should be used
