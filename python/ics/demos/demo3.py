@@ -27,7 +27,7 @@ os.environ["PFS_INSTDATA_DIR"] = "/home/jgracia/github/pfs_instdata"
 cobraCoach = CobraCoach(
     "fpga", loadModel=False, trajectoryMode=True,
     rootDir="/home/jgracia/testPFI/")
-cobraCoach.loadModel(version="ALL", moduleVersion="final_20210920_mm")
+cobraCoach.loadModel(version="ALL", moduleVersion=None)
 
 # Get the calibration product
 calibrationProduct = cobraCoach.calibModel
@@ -55,6 +55,9 @@ calibrationProduct.L1[tooLongLinkLengths] = np.median(
 calibrationProduct.L2[tooLongLinkLengths] = np.median(
     calibrationProduct.L2[~tooLongLinkLengths])
 print("Cobras with too long link lenghts: %i" % np.sum(tooLongLinkLengths))
+
+# Move the bad cobras to a position where they cannot collide with the good cobras
+calibrationProduct.centers[badCobras] += 500
 
 # Load the black dots calibration file
 calibrationFileName = os.path.join(
