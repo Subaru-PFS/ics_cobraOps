@@ -28,7 +28,9 @@ class Bench:
     """
 
     def __init__(self, cobraCenters=None, layout="calibration",
-                 calibrationProduct=None, blackDotsCalibrationProduct=None):
+                 calibrationProduct=None, blackDotsCalibrationProduct=None,
+                 blackDotsMargin=1.0
+                 ):
         """Constructs a new Bench instance.
 
         Parameters
@@ -47,6 +49,8 @@ class Bench:
         blackDotsCalibrationProduct: object, optional
             The black dots calibration product with the black dots properties
             to use. Default is None.
+        blackDotsMargin: real, optional
+            The margin factor in radius of the black dots to avoid in fiber allocation. Default is 1.0.
 
         Returns
         -------
@@ -97,6 +101,9 @@ class Bench:
         # Update the black dots properties if necessary
         if blackDotsCalibrationProduct is not None:
             self.blackDots.useCalibrationProduct(blackDotsCalibrationProduct)
+
+        # Apply margin factor in radius for the black dot avoidance
+        self.blackDots.radius *= blackDotsMargin
 
     def calculateCobraAssociations(self):
         """Calculates the cobras nearest neighbors associations array.
