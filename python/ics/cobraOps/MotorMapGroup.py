@@ -48,8 +48,8 @@ class MotorMapGroup():
         self.angularSteps = np.full(self.nMaps, MOTOR_MAP_ANGULAR_STEP)
 
         # Set the default step maps
-        nTht = np.int_(np.ceil(HOMES_THETA_DISTANCE / MOTOR_MAP_ANGULAR_STEP))
-        nPhi = np.int_(np.ceil(np.pi / MOTOR_MAP_ANGULAR_STEP))
+        nTht = int(np.ceil(HOMES_THETA_DISTANCE / MOTOR_MAP_ANGULAR_STEP))
+        nPhi = int(np.ceil(np.pi / MOTOR_MAP_ANGULAR_STEP))
         self.S1Pm = np.full((self.nMaps, nTht), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR1_STEP_SIZE)
         self.S1Nm = np.full((self.nMaps, nTht), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR1_STEP_SIZE)
         self.S2Pm = np.full((self.nMaps, nPhi), np.rad2deg(MOTOR_MAP_ANGULAR_STEP) / MOTOR2_STEP_SIZE)
