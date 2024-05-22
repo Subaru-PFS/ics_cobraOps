@@ -14,7 +14,11 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from procedures.moduleTest import engineer
+try:
+    from ics.cobraCharmer.cobraCoach import engineer
+except ImportError:
+    from procedures.moduleTest import engineer
+
 from . import plotUtils
 
 

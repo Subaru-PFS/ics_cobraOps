@@ -8,8 +8,13 @@ from ics.cobraOps import targetUtils
 from ics.cobraOps.Bench import Bench
 from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
-from procedures.moduleTest.cobraCoach import CobraCoach
-from procedures.moduleTest import engineer
+
+try:
+    from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
+    from ics.cobraCharmer.cobraCoach import engineer
+except ImportError:
+    from procedures.moduleTest.cobraCoach import CobraCoach
+    from procedures.moduleTest import engineer
 
 logging.getLogger('matplotlib.font_manager').disabled = True
 
@@ -68,14 +73,14 @@ cobraIdx = np.where(cond)[0]
 
 engineer.setCobraCoach(cc)
 
-#mmTheta = np.load('/home/jgracia/testPFI/SP01_mmThetaFast5.npy')
-#mmPhi = np.load('/home/jgracia/testPFI/SP01_mmPhiFast5.npy')
-#mmThetaSlow = np.load('/home/jgracia/testPFI/SP01_mmThetaSlow.npy')
-#mmPhiSlow = np.load('/home/jgracia/testPFI/SP01_mmPhiSlow.npy')
-#engineer.setConstantSpeedMaps(mmTheta, mmPhi, mmThetaSlow, mmPhiSlow)
+# mmTheta = np.load('/home/jgracia/testPFI/SP01_mmThetaFast5.npy')
+# mmPhi = np.load('/home/jgracia/testPFI/SP01_mmPhiFast5.npy')
+# mmThetaSlow = np.load('/home/jgracia/testPFI/SP01_mmThetaSlow.npy')
+# mmPhiSlow = np.load('/home/jgracia/testPFI/SP01_mmPhiSlow.npy')
+# engineer.setConstantSpeedMaps(mmTheta, mmPhi, mmThetaSlow, mmPhiSlow)
 
 engineer.setConstantOntimeMode(maxSteps=3000)
-#engineer.setConstantSpeedMode(maxSegments=10, maxSteps=100)
+# engineer.setConstantSpeedMode(maxSegments=10, maxSteps=100)
 
 traj, moves = engineer.createTrajectory(cobraIdx, thetas, phis, tries=8, twoSteps=True, threshold=20.0, timeStep=20)
 
@@ -105,11 +110,9 @@ plotUtils.addTrajectories(fiberPositions)
 plotUtils.addTrajectories(elbowPositions, colors=np.array([1.0, 0.0, 0.0, 1.0]))
 
 # Draw the targets assigned to the cobras
-#selectedTargets.addToFigure(colors=np.array([0.0, 1.0, 0.0, 1.0]))
+# selectedTargets.addToFigure(colors=np.array([0.0, 1.0, 0.0, 1.0]))
 plotUtils.addPoints(targets.positions, s=3, facecolor=np.array([0.7, 0.7, 0.7, 1.0]))
 plotUtils.addPoints(selectedTargets.positions[cond], s=3, facecolor=np.array([0.0, 1.0, 0.0, 1.0]))
 
 # Pause the execution to have time to inspect the figures
 plotUtils.pauseExecution()
-
-
