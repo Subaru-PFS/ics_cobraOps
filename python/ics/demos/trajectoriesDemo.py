@@ -12,7 +12,7 @@ from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 try:
     from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
     from ics.cobraCharmer.cobraCoach import engineer
-except ImportError:
+except ModuleNotFoundError:
     from procedures.moduleTest.cobraCoach import CobraCoach
     from procedures.moduleTest import engineer
 

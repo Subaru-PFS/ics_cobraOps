@@ -16,7 +16,7 @@ import numpy as np
 
 try:
     from ics.cobraCharmer.cobraCoach import engineer
-except ImportError:
+except ModuleNotFoundError:
     from procedures.moduleTest import engineer
 
 from . import plotUtils

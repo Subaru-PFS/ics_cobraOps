@@ -20,7 +20,7 @@ from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 
 try:
     from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
-except ImportError:
+except ModuleNotFoundError:
     from procedures.moduleTest.cobraCoach import CobraCoach
 
 # Disable the matplotlit warnings
