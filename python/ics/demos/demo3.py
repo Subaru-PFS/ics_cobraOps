@@ -17,7 +17,11 @@ from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from ics.cobraOps.CollisionSimulator2 import CollisionSimulator2
 from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
-from procedures.moduleTest.cobraCoach import CobraCoach
+
+try:
+    from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
+except ModuleNotFoundError:
+    from procedures.moduleTest.cobraCoach import CobraCoach
 
 # Disable the matplotlit warnings
 logging.getLogger("matplotlib.font_manager").disabled = True
