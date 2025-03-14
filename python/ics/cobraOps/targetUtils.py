@@ -18,7 +18,7 @@ from .cobraConstants import NULL_TARGET_POSITION
 from .TargetGroup import TargetGroup
 
 
-def generateOneTargetPerCobra(bench, maximumDistance=np.Inf):
+def generateOneTargetPerCobra(bench, maximumDistance=np.inf):
     """Generates a single target per cobra using a uniform radial distribution.
 
     Parameters

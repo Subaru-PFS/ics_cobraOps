@@ -53,7 +53,7 @@ class TargetSelector(ABC):
         self.assignedTargetIndices = None
 
     @abstractmethod
-    def run(self, maximumDistance=np.Inf, solveCollisions=True):
+    def run(self, maximumDistance=np.inf, solveCollisions=True):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
 
@@ -104,7 +104,7 @@ class TargetSelector(ABC):
                                               self.targets.positions.imag)),
                                               leafsize=leafSize)
 
-    def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.Inf):
+    def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf):
         """Calculates the targets that fall inside a given cobra patrol area.
 
         Parameters
@@ -169,7 +169,7 @@ class TargetSelector(ABC):
 
         return indices, positions, distances
 
-    def calculateAccessibleTargets(self, maximumDistance=np.Inf):
+    def calculateAccessibleTargets(self, maximumDistance=np.inf):
         """Calculates the targets that each cobra can reach.
 
         The results are saved in the accessibleTargetIndices,

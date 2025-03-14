@@ -117,7 +117,7 @@ class Bench:
 
         # Mask the diagonal because it contains distances to the same cobras
         distanceMatrix[np.arange(self.cobras.nCobras),
-                       np.arange(self.cobras.nCobras)] = np.Inf
+                       np.arange(self.cobras.nCobras)] = np.inf
 
         # Calculate the median minimum distance between cobras
         medianMinDistance = np.median(

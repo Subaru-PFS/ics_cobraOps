@@ -60,7 +60,7 @@ class TestTargetSelector():
 
     def test_constructKDTree_method(self):
         # Create a basic bench with 2 cobras
-        cobraCenters = np.array([0, 5], dtype=np.complex)
+        cobraCenters = np.array([0, 5], dtype=complex)
         bench = Bench(cobraCenters)
 
         # Create some random targets
@@ -85,7 +85,7 @@ class TestTargetSelector():
 
     def test_getTargetsInsidePatrolArea_method(self):
         # Create a basic bench with 2 cobras
-        cobraCenters = np.array([0, 5], dtype=np.complex)
+        cobraCenters = np.array([0, 5], dtype=complex)
         bench = Bench(cobraCenters)
 
         # Create some targets
@@ -173,7 +173,7 @@ class TestTargetSelector():
 
     def test_solveEndPointCollisions_method(self):
         # Create a basic bench with 2 cobras
-        cobraCenters = np.array([0, 5], dtype=np.complex)
+        cobraCenters = np.array([0, 5], dtype=complex)
         bench = Bench(cobraCenters)
 
         # Create some targets
@@ -210,7 +210,7 @@ class TestTargetSelector():
 
     def test_getSelectedTargets_method(self):
         # Create a basic bench with 2 cobras
-        cobraCenters = np.array([0, 5], dtype=np.complex)
+        cobraCenters = np.array([0, 5], dtype=complex)
         bench = Bench(cobraCenters)
 
         # Create some targets

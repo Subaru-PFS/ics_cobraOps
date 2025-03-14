@@ -25,7 +25,7 @@ class DistanceTargetSelector(TargetSelector):
 
     """
 
-    def run(self, maximumDistance=np.Inf, solveCollisions=True):
+    def run(self, maximumDistance=np.inf, solveCollisions=True):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
 
