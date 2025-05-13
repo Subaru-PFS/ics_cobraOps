@@ -79,8 +79,9 @@ targets = targetUtils.generateRandomTargets(targetDensity, bench)
 print("Number of simulated targets:", targets.nTargets)
 
 # Select the targets
+safetyMargin = 0.5
 selector = DistanceTargetSelector(bench, targets)
-selector.run()
+selector.run(safetyMargin=safetyMargin)
 selectedTargets = selector.getSelectedTargets()
 
 # Simulate an observation

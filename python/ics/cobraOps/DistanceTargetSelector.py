@@ -25,7 +25,7 @@ class DistanceTargetSelector(TargetSelector):
 
     """
 
-    def run(self, maximumDistance=np.inf, solveCollisions=True):
+    def run(self, maximumDistance=np.inf, solveCollisions=True, safetyMargin=0):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
 
@@ -38,6 +38,10 @@ class DistanceTargetSelector(TargetSelector):
         solveCollisions: bool, optional
             If True, the selector will try to solve cobra end-point collisions
             assigning them alternative targets. Default is True.
+        safetyMargin: float, optional
+            Safety margin in mm added to Rmin and subtracted from Rmax to take
+            into account possible effects that could change the effective cobra 
+            patrol area. Default is 0.
 
         """
         # Construct a KD tree if the target density is large enough
@@ -45,7 +49,7 @@ class DistanceTargetSelector(TargetSelector):
             self.constructKDTree()
 
         # Obtain the accessible targets for each cobra ordered by distance
-        self.calculateAccessibleTargets(maximumDistance)
+        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
 
         # Select a single target for each cobra
         self.selectTargets()

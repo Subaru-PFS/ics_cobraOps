@@ -53,7 +53,7 @@ class TargetSelector(ABC):
         self.assignedTargetIndices = None
 
     @abstractmethod
-    def run(self, maximumDistance=np.inf, solveCollisions=True):
+    def run(self, maximumDistance=np.inf, solveCollisions=True, safetyMargin=0):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
 
@@ -66,6 +66,10 @@ class TargetSelector(ABC):
         solveCollisions: bool, optional
             If True, the selector will try to solve cobra end-point collisions
             assigning them alternative targets. Default is True.
+        safetyMargin: float, optional
+            Safety margin in mm added to Rmin and subtracted from Rmax to take
+            into account possible effects that could change the effective cobra 
+            patrol area. Default is 0.
 
         """
         pass
@@ -104,7 +108,8 @@ class TargetSelector(ABC):
                                               self.targets.positions.imag)),
                                               leafsize=leafSize)
 
-    def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf):
+    def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf,
+                                   safetyMargin=0):
         """Calculates the targets that fall inside a given cobra patrol area.
 
         Parameters
@@ -115,6 +120,10 @@ class TargetSelector(ABC):
             The maximum radial distance allowed between the targets and the
             cobra center. Default is no limit (the maximum radius that the
             cobra can reach).
+        safetyMargin: float, optional
+            Safety margin in mm added to Rmin and subtracted from Rmax to take
+            into account possible effects that could change the effective cobra 
+            patrol area. Default is 0.
 
         Returns
         -------
@@ -127,8 +136,9 @@ class TargetSelector(ABC):
         """
         # Get the cobra center and the patrol area limits
         cobraCenter = self.bench.cobras.centers[cobraIndex]
-        rMin = self.bench.cobras.rMin[cobraIndex]
-        rMax = min(self.bench.cobras.rMax[cobraIndex], maximumDistance)
+        rMin = self.bench.cobras.rMin[cobraIndex] + safetyMargin
+        rMax = min(
+            self.bench.cobras.rMax[cobraIndex] - safetyMargin, maximumDistance)
 
         # If available, use the KD tree for the distance calculations
         if self.kdTree is not None:
@@ -169,7 +179,8 @@ class TargetSelector(ABC):
 
         return indices, positions, distances
 
-    def calculateAccessibleTargets(self, maximumDistance=np.inf):
+    def calculateAccessibleTargets(self, maximumDistance=np.inf,
+                                   safetyMargin=0):
         """Calculates the targets that each cobra can reach.
 
         The results are saved in the accessibleTargetIndices,
@@ -183,6 +194,10 @@ class TargetSelector(ABC):
             The maximum radial distance allowed between the targets and the
             cobra centers. Default is no limit (the maximum radius that the
             cobra can reach).
+        safetyMargin: float, optional
+            Safety margin in mm added to Rmin and subtracted from Rmax to take
+            into account possible effects that could change the effective cobra 
+            patrol area. Default is 0.
 
         """
         # Extract some useful information
@@ -197,7 +212,7 @@ class TargetSelector(ABC):
         for i in range(nCobras):
             # Get the targets that fall inside the cobra patrol area
             indices, positions, distances = self.getTargetsInsidePatrolArea(
-                i, maximumDistance)
+                i, maximumDistance, safetyMargin)
 
             # Invalidate all the targets if the cobra has a problem
             if self.bench.cobras.hasProblem[i]:
