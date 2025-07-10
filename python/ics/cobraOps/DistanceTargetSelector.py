@@ -25,7 +25,7 @@ class DistanceTargetSelector(TargetSelector):
 
     """
 
-    def run(self, maximumDistance=np.inf, solveCollisions=True, safetyMargin=0):
+    def run(self, maximumDistance=np.inf, safetyMargin=0):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
 
@@ -35,9 +35,6 @@ class DistanceTargetSelector(TargetSelector):
             The maximum radial distance allowed between the targets and the
             cobra centers. Default is no limit (the maximum radius that the
             cobra can reach).
-        solveCollisions: bool, optional
-            If True, the selector will try to solve cobra end-point collisions
-            assigning them alternative targets. Default is True.
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
             into account possible effects that could change the effective cobra 
@@ -53,10 +50,6 @@ class DistanceTargetSelector(TargetSelector):
 
         # Select a single target for each cobra
         self.selectTargets()
-
-        # Try to solve end-point collisions
-        if solveCollisions:
-            self.solveEndPointCollisions()
 
     def selectTargets(self):
         """Selects a single target for each cobra based on their distance to

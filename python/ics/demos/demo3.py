@@ -69,8 +69,7 @@ calibrationFileName = os.path.join(
 blackDotsCalibrationProduct = BlackDotsCalibrationProduct(calibrationFileName)
 
 # Create the bench instance
-bench = Bench(layout="calibration", calibrationProduct=calibrationProduct,
-              blackDotsCalibrationProduct=blackDotsCalibrationProduct)
+bench = Bench(calibrationProduct, blackDotsCalibrationProduct)
 print("Number of cobras:", bench.cobras.nCobras)
 
 # Generate the targets

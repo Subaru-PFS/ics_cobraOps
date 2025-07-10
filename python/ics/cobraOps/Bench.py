@@ -15,10 +15,6 @@ Consult the following papers for more detailed information:
 import numpy as np
 
 from .BlackDotGroup import BlackDotGroup
-from .cobraConstants import COBRAS_SEPARATION
-from .cobraConstants import MODULE_FIRST_LINE_LENGTH
-from .cobraConstants import MODULE_SECOND_LINE_LENGTH
-from .cobraConstants import MODULES_PER_SECTOR
 from .CobraGroup import CobraGroup
 
 
@@ -27,30 +23,20 @@ class Bench:
 
     """
 
-    def __init__(self, cobraCenters=None, layout="calibration",
-                 calibrationProduct=None, blackDotsCalibrationProduct=None,
-                 blackDotsMargin=1.0
-                 ):
+    def __init__(self, calibrationProduct, blackDotsCalibrationProduct,
+                 blackDotsMargin=1.0):
         """Constructs a new Bench instance.
 
         Parameters
         ----------
-        cobraCenters: object, optional
-            A complex numpy array with the cobras central positions. If it is
-            set to None, the cobra centers will follow the specified bench
-            layout. Default is None.
-        layout: str, optional
-            The bench layout to use: full, hex, line, rails or calibration.
-            This parameter is only used if the cobraCenters parameter is set to
-            None. Default is "calibration".
-        calibrationProduct: object, optional
+        calibrationProduct: object
             The cobras calibration product with the cobra properties to use.
-            Default is None.
-        blackDotsCalibrationProduct: object, optional
+        blackDotsCalibrationProduct: object
             The black dots calibration product with the black dots properties
-            to use. Default is None.
+            to use.
         blackDotsMargin: real, optional
-            The margin factor in radius of the black dots to avoid in fiber allocation. Default is 1.0.
+            The margin factor in radius of the black dots to avoid in fiber
+            allocation. Default is 1.0.
 
         Returns
         -------
@@ -58,49 +44,31 @@ class Bench:
             The Bench instance.
 
         """
-        # Check that all the calibration products are provided when we use the
-        # calibration mode
-        if layout == "calibration":
-            if calibrationProduct is None:
-                raise Exception(
-                    "The cobras calibration product needs to be provided")
+        # Check that all the calibration products are provided
+        if calibrationProduct is None:
+            raise Exception(
+                "The cobras calibration product needs to be provided")
 
-            if blackDotsCalibrationProduct is None:
-                raise Exception(
-                    "The black dots calibration product needs to be provided")
-
-        # Calculate the cobra centers if they have not been provided
-        if cobraCenters is None:
-            # Check if the centers from the calibration product should be used
-            if layout == "calibration":
-                cobraCenters = calibrationProduct.centers.copy()
-            else:
-                cobraCenters = Bench.calculateCobraCenters(layout)
+        if blackDotsCalibrationProduct is None:
+            raise Exception(
+                "The black dots calibration product needs to be provided")
 
         # Create the cobra group instance
-        self.cobras = CobraGroup(cobraCenters)
-
-        # Update the cobra properties if necessary
-        if calibrationProduct is not None:
-            self.cobras.useCalibrationProduct(calibrationProduct)
+        self.cobras = CobraGroup(calibrationProduct)
 
         # Calculate the bench center
         self.center = np.mean(self.cobras.centers[~self.cobras.hasProblem])
 
         # Calculate the bench radius
-        self.radius = np.max(np.abs(
-            self.cobras.centers[~self.cobras.hasProblem] - self.center) + 
+        self.radius = np.max(
+            np.abs(self.cobras.centers[~self.cobras.hasProblem] - self.center) +
             self.cobras.rMax[~self.cobras.hasProblem])
 
         # Calculate the cobra nearest neighbors associations array
         self.calculateCobraAssociations()
 
         # Create the black dot group instance
-        self.blackDots = BlackDotGroup(self.cobras.centers)
-
-        # Update the black dots properties if necessary
-        if blackDotsCalibrationProduct is not None:
-            self.blackDots.useCalibrationProduct(blackDotsCalibrationProduct)
+        self.blackDots = BlackDotGroup(blackDotsCalibrationProduct)
 
         # Apply margin factor in radius for the black dot avoidance
         self.blackDots.radius *= blackDotsMargin
@@ -298,110 +266,6 @@ class Bench:
 
         # Return the indices of the cobras involved in the collisions
         return self.cobraAssociations[:, collisions]
-
-    @staticmethod
-    def calculateCobraCenters(layout):
-        """Calculates the cobras central positions for a given bench layout.
-
-        Parameters
-        ----------
-        layout: str
-            The bench layout to use: hex, line, rails or full.
-
-        Returns
-        -------
-        object
-            Complex numpy array with the cobras central positions.
-
-        """
-        if layout == "hex":
-            # The centers should follow an hexagon pattern
-            cobraCenters = np.empty(7, dtype="complex")
-            cobraCenters[0] = 0.0
-            cobraCenters[1:] = COBRAS_SEPARATION * np.exp(
-                np.arange(6) * 1j * np.pi / 3)
-        elif layout == "line":
-            # Line of cobras
-            cobraCenters = COBRAS_SEPARATION * np.arange(27) + 1j
-        elif layout == "rails":
-            # One PFI sector with 14 cobra modules
-            cobraCenters = Bench.calculateFirstSectorCenters()
-        elif layout == "full":
-            # Full PFI bench (2394 cobras distributed in 3 rotated sectors)
-            cobraCenters = Bench.calculatePFICenters()
-        else:
-            raise Exception(
-                "%s is not a valid bench layout. Use full, hex, line, rails or "
-                "calibration." % layout)
-
-        return cobraCenters
-
-    @staticmethod
-    def calculateFirstSectorCenters():
-        """Calculates the cobras central positions for the first PFI sector.
-
-        Returns
-        -------
-        object
-            Complex numpy array with the cobras central positions.
-
-        """
-        # Create the cobras centers array
-        cobrasPerModule = MODULE_FIRST_LINE_LENGTH + MODULE_SECOND_LINE_LENGTH
-        cobraCenters = np.empty(
-            cobrasPerModule * MODULES_PER_SECTOR, dtype="complex")
-
-        # Fill the first module
-        firstModule = cobraCenters[:cobrasPerModule]
-        firstModule[:MODULE_FIRST_LINE_LENGTH] = COBRAS_SEPARATION * np.arange(
-            MODULE_FIRST_LINE_LENGTH)
-        firstModule[MODULE_FIRST_LINE_LENGTH:] = COBRAS_SEPARATION * np.arange(
-            MODULE_SECOND_LINE_LENGTH) + COBRAS_SEPARATION * np.exp(
-                1j * np.pi / 3)
-        firstModule += COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
-
-        # Order the first module centers by the x coordinate
-        firstModule.sort()
-
-        # Fill the rest of the modules
-        modulesOffset = 2 * COBRAS_SEPARATION * np.exp(1j * 2 * np.pi / 3)
-
-        for i in range(1, MODULES_PER_SECTOR):
-            cobraCenters[i * cobrasPerModule:(i + 1) * cobrasPerModule] = (
-                firstModule + i * modulesOffset)
-
-        return cobraCenters
-
-    @staticmethod
-    def calculatePFICenters():
-        """Calculates the cobras central positions for the full Prime Focus
-        Instrument.
-
-        Returns
-        -------
-        object
-            Complex numpy array with the cobras central positions.
-
-        """
-        # Get the first sector cobra centers
-        firstSector = Bench.calculateFirstSectorCenters()
-
-        # Create the cobras centers array
-        cobrasPerSector = len(firstSector)
-        cobraCenters = np.empty(3 * cobrasPerSector, dtype="complex")
-
-        # Add the first sector
-        cobraCenters[:cobrasPerSector] = firstSector
-
-        # Add the second sector rotating the first sector 120 degrees
-        cobraCenters[cobrasPerSector:-cobrasPerSector] = firstSector * np.exp(
-            1j * 2 * np.pi / 3)
-
-        # Add the third sector rotating the first sector 240 degrees
-        cobraCenters[-cobrasPerSector:] = firstSector * np.exp(
-            1j * 4 * np.pi / 3)
-
-        return cobraCenters
 
     @staticmethod
     def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2,

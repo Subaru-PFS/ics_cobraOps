@@ -18,11 +18,7 @@ from ics.cobraCharmer.pfiDesign import PFIDesign
 
 from . import plotUtils
 from .AttributePrinter import AttributePrinter
-from .cobraConstants import COBRA_LINK_LENGTH
 from .cobraConstants import COBRA_LINK_RADIUS
-from .cobraConstants import HOMES_THETA_DISTANCE
-from .cobraConstants import PHI_SAFETY_ANGLE
-from .MotorMapGroup import MotorMapGroup
 
 
 class CobraGroup(AttributePrinter):
@@ -30,13 +26,13 @@ class CobraGroup(AttributePrinter):
 
     """
 
-    def __init__(self, centers):
-        """Constructs a new CobraGroup instance with default properties.
+    def __init__(self, calibrationProduct):
+        """Constructs a new CobraGroup instance from the calibration product.
 
         Parameters
         ----------
-        centers: object
-            A complex numpy array with the cobras central positions.
+        calibrationProduct: object
+            The cobras calibration product containing the cobra properties.
 
         Returns
         -------
@@ -44,31 +40,26 @@ class CobraGroup(AttributePrinter):
             The CobraGroup instance.
 
         """
-        # Set the number of cobras and their central positions
-        self.nCobras = len(centers)
-        self.centers = centers.copy()
+        # Get the number of cobras and their central positions
+        self.nCobras = len(calibrationProduct.centers)
+        self.centers = calibrationProduct.centers.copy()
 
-        # Set their status to OK
-        self.status = np.full(self.nCobras, PFIDesign.COBRA_OK_MASK, dtype="u2")
-        self.hasProblem = np.full(self.nCobras, False)
+        # Get their status information
+        self.status = calibrationProduct.status.copy()
+        self.hasProblem = self.status != PFIDesign.COBRA_OK_MASK
 
-        # Set the theta home angles randomly
-        self.tht0 = 2 * np.pi * np.random.random(self.nCobras)
-        self.tht1 = (self.tht0 + HOMES_THETA_DISTANCE) % (2 * np.pi)
+        # Get the theta home angles
+        self.tht0 = calibrationProduct.tht0.copy()
+        self.tht1 = calibrationProduct.tht1.copy()
 
-        # Set the phi home angles randomly
-        self.phiIn = -np.pi + PHI_SAFETY_ANGLE * (
-            1.0 + 0.2 * np.random.random(self.nCobras))
-        self.phiOut = -PHI_SAFETY_ANGLE * (
-            1.0 + 0.2 * np.random.random(self.nCobras))
+        # Get the phi home angles
+        self.phiIn = calibrationProduct.phiIn.copy()
+        self.phiOut = calibrationProduct.phiOut.copy()
 
-        # Set the default link lengths and radius
-        self.L1 = np.full(self.nCobras, COBRA_LINK_LENGTH)
-        self.L2 = np.full(self.nCobras, COBRA_LINK_LENGTH)
+        # Get the link lengths and radius
+        self.L1 = calibrationProduct.L1.copy()
+        self.L2 = calibrationProduct.L2.copy()
         self.linkRadius = np.full(self.nCobras, COBRA_LINK_RADIUS)
-
-        # Set the default motor maps
-        self.motorMaps = MotorMapGroup(self.nCobras)
 
         # Calculate the patrol areas minimum and maximum radii
         self.calculatePatrolAreaRadii()
@@ -344,60 +335,6 @@ class CobraGroup(AttributePrinter):
         tht = (tht - np.pi) % (2 * np.pi) - np.pi
 
         return (tht, phi)
-
-    def useCalibrationProduct(self, calibrationProduct, useRealLinks=True,
-                              useRealMaps=True):
-        """Updates the cobra properties with the calibration product ones.
-
-        Parameters
-        ----------
-        calibrationProduct: object
-            The cobras calibration product containing the cobra properties.
-        useRealLinks: bool, optional
-            If True, the cobras link properties will be updated with the
-            calibration product values. Default is True.
-        useRealMaps: bool, optional
-            If True, the cobras motor maps will be updated with the calibration
-            product values. Default is True.
-
-        """
-        # Check if we should use the calibration product link properties
-        if useRealLinks:
-            if calibrationProduct.nCobras == self.nCobras:
-                # Use directly the calibration product arrays
-                self.status = calibrationProduct.status.copy()
-                self.tht0 = calibrationProduct.tht0.copy()
-                self.tht1 = calibrationProduct.tht1.copy()
-                self.phiIn = calibrationProduct.phiIn.copy()
-                self.phiOut = calibrationProduct.phiOut.copy()
-                self.L1 = calibrationProduct.L1.copy()
-                self.L2 = calibrationProduct.L2.copy()
-            else:
-                # Randomize the calibration cobra indices
-                indices = np.random.randint(
-                    calibrationProduct.nCobras, size=(4, self.nCobras))
-
-                # Assign random link properties to each cobra
-                self.status = calibrationProduct.status[indices[0]]
-                self.tht0 = calibrationProduct.tht0[indices[1]]
-                self.tht1 = calibrationProduct.tht1[indices[1]]
-                self.phiIn = calibrationProduct.phiIn[indices[2]]
-                self.phiOut = calibrationProduct.phiOut[indices[2]]
-                self.L1 = calibrationProduct.L1[indices[3]]
-                self.L2 = calibrationProduct.L2[indices[3]]
-
-            # Check which cobras have problems
-            self.hasProblem = self.status != PFIDesign.COBRA_OK_MASK
-
-            # Update the patrol areas minimum and maximum radii
-            self.calculatePatrolAreaRadii()
-
-            # Update the home positions
-            self.calculateHomePositions()
-
-        # Check if we should use the calibration product motor maps
-        if useRealMaps:
-            self.motorMaps.useCalibrationProduct(calibrationProduct)
 
     def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]),
                                indices=None, paintHardStops=True,

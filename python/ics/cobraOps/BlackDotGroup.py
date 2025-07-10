@@ -16,8 +16,6 @@ import numpy as np
 
 from . import plotUtils
 from .AttributePrinter import AttributePrinter
-from .cobraConstants import BLACK_DOT_RADIUS
-from .cobraConstants import BLACK_DOT_RELATIVE_POSITION
 
 
 class BlackDotGroup(AttributePrinter):
@@ -25,13 +23,14 @@ class BlackDotGroup(AttributePrinter):
 
     """
 
-    def __init__(self, cobraCenters):
+    def __init__(self, calibrationProduct):
         """Constructs a new BlackDotGroup instance with default properties.
 
         Parameters
         ----------
-        cobraCenters: object
-            A complex numpy array with the cobras central positions.
+        calibrationProduct: object
+            The black dots calibration product containing the black dots
+            properties.
 
         Returns
         -------
@@ -40,21 +39,6 @@ class BlackDotGroup(AttributePrinter):
 
         """
         # Set the number of black dots, their central positions and radius
-        self.nBlackDots = len(cobraCenters)
-        self.centers = cobraCenters + BLACK_DOT_RELATIVE_POSITION
-        self.radius = np.full(self.nBlackDots, BLACK_DOT_RADIUS)
-
-    def useCalibrationProduct(self, calibrationProduct):
-        """Updates the black dot properties with the calibration product ones.
-
-        Parameters
-        ----------
-        calibrationProduct: object
-            The black dots calibration product containing the black dots
-            properties.
-
-        """
-        # Copy the main information from the calibration product
         self.nBlackDots = calibrationProduct.nBlackDots
         self.centers = calibrationProduct.centers.copy()
         self.radius = calibrationProduct.radius.copy()

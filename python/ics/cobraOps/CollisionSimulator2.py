@@ -14,10 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-try:
-    from ics.cobraCharmer.cobraCoach import engineer
-except ModuleNotFoundError:
-    from procedures.moduleTest import engineer
+from ics.cobraCharmer.cobraCoach import engineer
 
 from . import plotUtils
 
