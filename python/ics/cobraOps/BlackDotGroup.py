@@ -24,7 +24,8 @@ class BlackDotGroup(AttributePrinter):
     """
 
     def __init__(self, calibrationProduct):
-        """Constructs a new BlackDotGroup instance with default properties.
+        """Constructs a new BlackDotGroup instance from a black dots calibration
+        product.
 
         Parameters
         ----------

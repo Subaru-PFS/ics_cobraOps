@@ -17,13 +17,9 @@ from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from ics.cobraOps.CollisionSimulator2 import CollisionSimulator2
 from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
+from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
 
-try:
-    from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
-except ModuleNotFoundError:
-    from procedures.moduleTest.cobraCoach import CobraCoach
-
-# Disable the matplotlit warnings
+# Disable the matplotlib warnings
 logging.getLogger("matplotlib.font_manager").disabled = True
 
 # Initialize the cobra coach instance
@@ -36,32 +32,28 @@ cobraCoach.loadModel(version="ALL", moduleVersion=None)
 # Get the calibration product
 calibrationProduct = cobraCoach.calibModel
 
-# Fix the phi angles for the bad cobras
+# Print the number of cobras and bad cobras
 badCobras = calibrationProduct.status != calibrationProduct.COBRA_OK_MASK
-calibrationProduct.phiIn[badCobras] = -np.pi
-calibrationProduct.phiOut[badCobras] = 0
-print("Bad cobras: %i" % np.sum(badCobras))
+print(f"Number of cobras: {calibrationProduct.nCobras}")
+print(f"Number of bad cobras: {np.sum(badCobras)}")
 
-# Use the median value link lengths in those cobras with zero link lengths
-zeroLinkLengths = np.logical_or(
-    calibrationProduct.L1 == 0, calibrationProduct.L2 == 0)
-calibrationProduct.L1[zeroLinkLengths] = np.median(
-    calibrationProduct.L1[~zeroLinkLengths])
-calibrationProduct.L2[zeroLinkLengths] = np.median(
-    calibrationProduct.L2[~zeroLinkLengths])
-print("Cobras with zero link lenghts: %i" % np.sum(zeroLinkLengths))
+# Fix the phi and tht angles for some of the cobras
+wrongAngles = calibrationProduct.phiIn == 0
+calibrationProduct.phiIn[wrongAngles] = -np.pi
+calibrationProduct.phiOut[wrongAngles] = 0
+calibrationProduct.tht0[wrongAngles] = np.median(
+    calibrationProduct.tht0[~wrongAngles])
+calibrationProduct.tht1[wrongAngles] = np.median(
+    calibrationProduct.tht1[~wrongAngles])
+print(f"Number of cobras with wrong phi and tht angles: {np.sum(wrongAngles)}")
 
-# Use the median value link lengths in those cobras with too long link lengths
-tooLongLinkLengths = np.logical_or(
-    calibrationProduct.L1 > 50, calibrationProduct.L2 > 50)
-calibrationProduct.L1[tooLongLinkLengths] = np.median(
-    calibrationProduct.L1[~tooLongLinkLengths])
-calibrationProduct.L2[tooLongLinkLengths] = np.median(
-    calibrationProduct.L2[~tooLongLinkLengths])
-print("Cobras with too long link lenghts: %i" % np.sum(tooLongLinkLengths))
-
-# Move the bad cobras to a position where they cannot collide with the good cobras
-calibrationProduct.centers[badCobras] += 500
+# Check if there is any cobra with too short or too long link lengths
+tooShortLinks = np.logical_or(
+    calibrationProduct.L1 < 1, calibrationProduct.L2 < 1)
+tooLongLinks = np.logical_or(
+    calibrationProduct.L1 > 5, calibrationProduct.L2 > 5)
+print(f"Number of cobras with too short link lenghts: {np.sum(tooShortLinks)}")
+print(f"Number of cobras with too long link lenghts: {np.sum(tooLongLinks)}")
 
 # Load the black dots calibration file
 calibrationFileName = os.path.join(
@@ -70,12 +62,11 @@ blackDotsCalibrationProduct = BlackDotsCalibrationProduct(calibrationFileName)
 
 # Create the bench instance
 bench = Bench(calibrationProduct, blackDotsCalibrationProduct)
-print("Number of cobras:", bench.cobras.nCobras)
 
 # Generate the targets
 targetDensity = 1.5
 targets = targetUtils.generateRandomTargets(targetDensity, bench)
-print("Number of simulated targets:", targets.nTargets)
+print(f"Number of simulated targets: {targets.nTargets}")
 
 # Select the targets
 safetyMargin = 0.5
@@ -87,10 +78,10 @@ selectedTargets = selector.getSelectedTargets()
 start = time.time()
 simulator = CollisionSimulator2(bench, cobraCoach, selectedTargets)
 simulator.run()
-print("Number of cobras involved in collisions:", simulator.nCollisions)
-print("Number of cobras unaffected by end collisions: ",
-      simulator.nCollisions - simulator.nEndPointCollisions)
-print("Total simulation time (s):", time.time() - start)
+nTrajectoryCollisions = simulator.nCollisions - simulator.nEndPointCollisions
+print(f"Number of cobras involved in collisions: {simulator.nCollisions}")
+print(f"Number of cobras unaffected by end collisions: {nTrajectoryCollisions}")
+print(f"Total simulation time (s): {time.time() - start}")
 
 # Plot the simulation results
 simulator.plotResults(extraTargets=targets, paintFootprints=False)

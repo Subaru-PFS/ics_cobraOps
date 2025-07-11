@@ -285,7 +285,7 @@ class CollisionSimulator2():
         patrolAreaColors = np.full((self.nCobras, 4), [0.0, 0.0, 1.0, 0.15])
         patrolAreaColors[self.collisions] = [1.0, 0.0, 0.0, 0.3]
         patrolAreaColors[self.endPointCollisions] = [0.0, 1.0, 0.0, 0.5]
-        patrolAreaColors[~self.goodCobras] = [1.0, 0.0, 1.0, 0.2]
+        patrolAreaColors[~self.goodCobras] = [0.0, 0.0, 0.0, 0.25]
         self.bench.cobras.addPatrolAreasToFigure(colors=patrolAreaColors)
 
         # Draw the black dots
@@ -294,7 +294,7 @@ class CollisionSimulator2():
         # Draw the cobra links at the final fiber positions
         linkColors = np.full(patrolAreaColors.shape, [0.0, 0.0, 1.0, 0.5])
         linkColors[~self.movingCobras] = [1.0, 0.0, 0.0, 0.25]
-        linkColors[~self.goodCobras] = [1.0, 1.0, 1.0, 0.25]
+        linkColors[~self.goodCobras] = [0.0, 0.0, 0.0, 0.25]
         self.bench.cobras.addLinksToFigure(
             self.finalFiberPositions, colors=linkColors)
 

@@ -22,6 +22,7 @@ class AttributePrinter:
         attributeList = []
 
         for attribute in sorted(self.__dict__):
-            attributeList.append("%s = %s" % (attribute, getattr(self, attribute)))
+            attributeList.append(
+                "%s = %s" % (attribute, getattr(self, attribute)))
 
         return "\n".join(attributeList)

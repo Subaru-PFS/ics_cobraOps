@@ -12,8 +12,9 @@ Consult the following papers for more detailed information:
 
 """
 
-import numpy as np
 from abc import ABC, abstractmethod
+
+import numpy as np
 from scipy.spatial import KDTree
 
 from .cobraConstants import NULL_TARGET_INDEX
