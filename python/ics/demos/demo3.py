@@ -7,7 +7,6 @@ most recent calibration data.
 
 import os
 import time
-import logging
 import numpy as np
 
 from ics.cobraOps import plotUtils
@@ -15,19 +14,13 @@ from ics.cobraOps import targetUtils
 from ics.cobraOps.Bench import Bench
 from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from ics.cobraOps.CollisionSimulator2 import CollisionSimulator2
-from ics.cobraOps.DistanceTargetSelector import DistanceTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
-
-# Disable the matplotlib warnings
-logging.getLogger("matplotlib.font_manager").disabled = True
 
 # Initialize the cobra coach instance
 os.environ["PFS_INSTDATA_DIR"] = "/home/jgracia/github/pfs_instdata"
 cobraCoach = CobraCoach(
-    "fpga", loadModel=False, trajectoryMode=True,
-    rootDir="/home/jgracia/testPFI/")
-cobraCoach.loadModel(version="ALL", moduleVersion=None)
+    loadModel=True, trajectoryMode=True, rootDir="/home/jgracia/testPFI/")
 
 # Get the calibration product
 calibrationProduct = cobraCoach.calibModel
@@ -41,10 +34,8 @@ print(f"Number of bad cobras: {np.sum(badCobras)}")
 wrongAngles = calibrationProduct.phiIn == 0
 calibrationProduct.phiIn[wrongAngles] = -np.pi
 calibrationProduct.phiOut[wrongAngles] = 0
-calibrationProduct.tht0[wrongAngles] = np.median(
-    calibrationProduct.tht0[~wrongAngles])
-calibrationProduct.tht1[wrongAngles] = np.median(
-    calibrationProduct.tht1[~wrongAngles])
+calibrationProduct.tht0[wrongAngles] = 0
+calibrationProduct.tht1[wrongAngles] = (2.1 * np.pi) % (2 * np.pi)
 print(f"Number of cobras with wrong phi and tht angles: {np.sum(wrongAngles)}")
 
 # Check if there is any cobra with too short or too long link lengths
@@ -70,7 +61,7 @@ print(f"Number of simulated targets: {targets.nTargets}")
 
 # Select the targets
 safetyMargin = 0.5
-selector = DistanceTargetSelector(bench, targets)
+selector = RandomTargetSelector(bench, targets)
 selector.run(safetyMargin=safetyMargin)
 selectedTargets = selector.getSelectedTargets()
 

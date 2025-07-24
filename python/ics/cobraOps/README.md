@@ -14,7 +14,7 @@ The class contains several methods to calculate the cobras patrol areas, the hom
 
 Defines the `Bench` class. This class is used to represent the PFI bench. It consists in a group of cobras plus some additional bench properties, like the bench center, the radius, and the cobra associations (array with the nearest cobras to a given cobra, which are those than can collide with each other).
 
-This class has several methods that are useful to deal with cobra collisions. For example, `calculateCobraAssociationCollisions()` gives you the collisions between cobra association for a given fiber configuration. The fibers could be at the target positions (end positions), but they could also be positions along the cobra trajectories.
+This class has several methods that are useful to deal with cobra collisions.
 
 ## TargetGroup.py
 
