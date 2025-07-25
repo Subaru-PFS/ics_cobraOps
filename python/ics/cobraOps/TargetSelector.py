@@ -147,8 +147,8 @@ class TargetSelector(ABC):
                 distance_upper_bound=rMax)
             indices = np.array(indices, dtype=np.int)
             distances = np.array(distances)
-            validTargets = np.logical_and(self.targets.notNull[indices],
-                                          distances > rMin)
+            validTargets = np.logical_and(
+                self.targets.notNull[indices], distances > rMin)
             indices = indices[validTargets]
             distances = distances[validTargets]
             positions = self.targets.positions[indices]
@@ -156,8 +156,8 @@ class TargetSelector(ABC):
             # Get all the targets that the cobra can reach. Remember to
             # invalidate any possible NULL targets that might exist
             xDistances = np.abs(cobraCenter.real - self.targets.positions.real)
-            (indices,) = np.where(np.logical_and(self.targets.notNull,
-                                                 xDistances < rMax))
+            (indices,) = np.where(
+                np.logical_and(self.targets.notNull, xDistances < rMax))
             positions = self.targets.positions[indices]
             yDistances = np.abs(cobraCenter.imag - positions.imag)
             validTargets = yDistances < rMax
@@ -213,7 +213,7 @@ class TargetSelector(ABC):
                 i, maximumDistance, safetyMargin)
 
             # Invalidate all the targets if the cobra has a problem
-            if self.bench.cobras.hasProblem[i]:
+            if not self.bench.cobras.isGood[i]:
                 indices = indices[[]]
                 positions = positions[[]]
                 distances = distances[[]]

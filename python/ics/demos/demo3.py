@@ -52,7 +52,7 @@ calibrationFileName = os.path.join(
 blackDotsCalibrationProduct = BlackDotsCalibrationProduct(calibrationFileName)
 
 # Create the bench instance
-bench = Bench(calibrationProduct, blackDotsCalibrationProduct)
+bench = Bench(cobraCoach, blackDotsCalibrationProduct)
 
 # Generate the targets
 targetDensity = 1.5
@@ -60,14 +60,14 @@ targets = targetUtils.generateRandomTargets(targetDensity, bench)
 print(f"Number of simulated targets: {targets.nTargets}")
 
 # Select the targets
-safetyMargin = 0.5
+safetyMargin = 0.25
 selector = RandomTargetSelector(bench, targets)
 selector.run(safetyMargin=safetyMargin)
 selectedTargets = selector.getSelectedTargets()
 
 # Simulate an observation
 start = time.time()
-simulator = CollisionSimulator2(bench, cobraCoach, selectedTargets)
+simulator = CollisionSimulator2(bench, selectedTargets)
 simulator.run()
 nTrajectoryCollisions = simulator.nCollisions - simulator.nEndPointCollisions
 print(f"Number of cobras involved in collisions: {simulator.nCollisions}")

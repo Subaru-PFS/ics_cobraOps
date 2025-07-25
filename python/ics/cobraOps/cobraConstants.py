@@ -12,9 +12,6 @@ Consult the following papers for more detailed information:
 
 """
 
-COBRA_LINK_RADIUS = 1.0
-"""The default cobra link radius in mm."""
-
 NULL_TARGET_INDEX = -1
 """Integer value used to indicate the index of a null target."""
 

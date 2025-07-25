@@ -23,7 +23,7 @@ class BlackDotGroup(AttributePrinter):
 
     """
 
-    def __init__(self, calibrationProduct):
+    def __init__(self, calibrationProduct, blackDotsMargin=1.0):
         """Constructs a new BlackDotGroup instance from a black dots calibration
         product.
 
@@ -32,6 +32,9 @@ class BlackDotGroup(AttributePrinter):
         calibrationProduct: object
             The black dots calibration product containing the black dots
             properties.
+        blackDotsMargin: real, optional
+            The margin factor in radius of the black dots to avoid in fiber
+            allocation. Default is 1.0.
 
         Returns
         -------
@@ -43,6 +46,9 @@ class BlackDotGroup(AttributePrinter):
         self.nBlackDots = calibrationProduct.nBlackDots
         self.centers = calibrationProduct.centers.copy()
         self.radius = calibrationProduct.radius.copy()
+
+        # Apply the margin factor in radius for the black dot avoidance
+        self.radius *= blackDotsMargin
 
     def addToFigure(self, colors=np.array([0.0, 0.0, 0.0, 0.15]), indices=None):
         """Draws the black dots on top of an existing figure.

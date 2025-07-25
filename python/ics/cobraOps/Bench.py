@@ -23,14 +23,14 @@ class Bench:
 
     """
 
-    def __init__(self, calibrationProduct, blackDotsCalibrationProduct,
+    def __init__(self, cobraCoach, blackDotsCalibrationProduct,
                  blackDotsMargin=1.0):
         """Constructs a new Bench instance.
 
         Parameters
         ----------
-        calibrationProduct: object
-            The cobras calibration product with the cobra properties to use.
+        cobraCoach: object
+            The cobra coach instance.
         blackDotsCalibrationProduct: object
             The black dots calibration product with the black dots properties
             to use.
@@ -44,34 +44,23 @@ class Bench:
             The Bench instance.
 
         """
-        # Check that all the calibration products are provided
-        if calibrationProduct is None:
-            raise Exception(
-                "The cobras calibration product needs to be provided")
-
-        if blackDotsCalibrationProduct is None:
-            raise Exception(
-                "The black dots calibration product needs to be provided")
-
         # Create the cobra group instance
-        self.cobras = CobraGroup(calibrationProduct)
+        self.cobras = CobraGroup(cobraCoach)
 
         # Calculate the bench center
-        self.center = np.mean(self.cobras.centers[~self.cobras.hasProblem])
+        self.center = np.mean(self.cobras.centers[self.cobras.isGood])
 
         # Calculate the bench radius
         self.radius = np.max(
-            np.abs(self.cobras.centers[~self.cobras.hasProblem] - self.center) +
-            self.cobras.rMax[~self.cobras.hasProblem])
+            np.abs(self.cobras.centers[self.cobras.isGood] - self.center) +
+            self.cobras.rMax[self.cobras.isGood])
 
         # Calculate the cobra nearest neighbors associations array
         self.calculateCobraAssociations()
 
         # Create the black dot group instance
-        self.blackDots = BlackDotGroup(blackDotsCalibrationProduct)
-
-        # Apply margin factor in radius for the black dot avoidance
-        self.blackDots.radius *= blackDotsMargin
+        self.blackDots = BlackDotGroup(
+            blackDotsCalibrationProduct, blackDotsMargin)
 
     def calculateCobraAssociations(self):
         """Calculates the cobras nearest neighbors associations array.
@@ -89,7 +78,7 @@ class Bench:
 
         # Calculate the median minimum distance between cobras
         medianMinDistance = np.median(
-            np.min(distanceMatrix, axis=1)[~self.cobras.hasProblem])
+            np.min(distanceMatrix, axis=1)[self.cobras.isGood])
 
         # Obtain the nearest neighbors indices
         (cobrasIndices, nearbyCobrasIndices) = np.where(

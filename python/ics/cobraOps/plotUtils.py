@@ -140,36 +140,6 @@ def addRings(centers, innerRadii, outerRadii, **kwargs):
     return (outerEllipseCollection, innerEllipseCollection)
 
 
-def addRingsSlow(centers, innerRadii, outerRadii, **kwargs):
-    """Adds a set of rings to an already initialized figure.
-
-    Parameters
-    ----------
-    centers: object
-        Complex numpy array with the circle central coordinates. 
-    innerRadii: object
-        Numpy array with the ring inner radii. 
-    outerRadii: object
-        Numpy array with the ring outer radii. 
-    kwargs: collections.PatchCollection properties
-        Any additional property that should be passed to the patch collection.
-
-    Returns
-    -------
-    object
-        The circles patch collection. 
-
-    """
-    # Create the ring collection
-    ringList = [patches.Wedge((c.real, c.imag), r1, 0, 360, r1 - r2) for c, r1, r2 in zip(centers, outerRadii, innerRadii)]
-    ringCollection = collections.PatchCollection(ringList, **kwargs)
-
-    # Plot the rings in the current figure
-    plt.gca().add_collection(ringCollection)
-
-    return ringCollection
-
-
 def addLine(x, y, **kwargs):
     """Adds a line to an already initialized figure.
 
@@ -402,6 +372,6 @@ def saveFigure(fileName, **kwargs):
 
 def pauseExecution():
     """Pauses the general program execution to allow figure inspection.
-    
+
     """
     plt.show()
