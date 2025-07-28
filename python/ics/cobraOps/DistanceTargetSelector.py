@@ -14,7 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .cobraConstants import NULL_TARGET_INDEX
+from .TargetGroup import TargetGroup
 from .TargetSelector import TargetSelector
 
 
@@ -61,7 +61,7 @@ class DistanceTargetSelector(TargetSelector):
         """
         # Create the array that will contain the assigned target indices
         self.assignedTargetIndices = np.full(
-            self.bench.cobras.nCobras, NULL_TARGET_INDEX)
+            self.bench.cobras.nCobras, TargetGroup.NULL_TARGET_INDEX)
 
         # Assign targets to cobras, starting from the closest to the more far
         # away ones
@@ -75,7 +75,8 @@ class DistanceTargetSelector(TargetSelector):
             uniqueIndices = np.unique(indices[freeCobras])
 
             # Remove from the list the NULL target index value if it's present
-            uniqueIndices = uniqueIndices[uniqueIndices != NULL_TARGET_INDEX]
+            uniqueIndices = uniqueIndices[
+                uniqueIndices != TargetGroup.NULL_TARGET_INDEX]
 
             # Select only those targets that are free
             uniqueIndices = uniqueIndices[freeTargets[uniqueIndices]]
@@ -94,7 +95,8 @@ class DistanceTargetSelector(TargetSelector):
                     # Select the cobras for which this is the only target
                     accessibleTargets = self.accessibleTargetIndices[
                         cobraIndices, i:]
-                    targetIsAvailable = accessibleTargets != NULL_TARGET_INDEX
+                    targetIsAvailable = (
+                        accessibleTargets != TargetGroup.NULL_TARGET_INDEX)
                     targetIsAvailable[targetIsAvailable] = freeTargets[
                         accessibleTargets[targetIsAvailable]]
                     nAvailableTargets = np.sum(targetIsAvailable, axis=1)

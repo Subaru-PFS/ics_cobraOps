@@ -14,7 +14,7 @@ from ics.cobraOps import targetUtils
 from ics.cobraOps.Bench import Bench
 from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from ics.cobraOps.CollisionSimulator import CollisionSimulator
-from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
+from ics.cobraOps.RandomTargetSelector import RandomTargetSelector as TargetSelector
 from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
 
 # Initialize the cobra coach instance
@@ -61,7 +61,7 @@ print(f"Number of simulated targets: {targets.nTargets}")
 
 # Select the targets
 safetyMargin = 0.25
-selector = RandomTargetSelector(bench, targets)
+selector = TargetSelector(bench, targets)
 selector.run(safetyMargin=safetyMargin)
 selectedTargets = selector.getSelectedTargets()
 

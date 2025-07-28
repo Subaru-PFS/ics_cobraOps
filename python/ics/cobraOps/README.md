@@ -1,9 +1,5 @@
 # Main modules
 
-## cobraConstants.py
-
-Defines some constants related with the cobras and the simulation code, like the default cobra link lengths, the number of cobras per module, or the default motor maps angular step size.
-
 ## CobraGroup.py
 
 Defines the `CobraGroup` class. This class is used to represent the properties of a given group of cobras. These properties are taken from a Cobras calibration product.
@@ -33,9 +29,9 @@ This class is meant to be extended, by implementing the `run()` and `selectTarge
 
 In the future we can have a `NetflowTargetSelector` subclass that selects targets based on the Netflow algorithm.
 
-## CollisionSimulator2.py
+## CollisionSimulator.py
 
-Defines the `CollisionSimulator2` class. This class is used to simulate a PFS observation for a given `Bench` instance and a `TargetGroup` instance (one target for each cobra, the result of running an specific `TargetSelector`).
+Defines the `CollisionSimulator` class. This class is used to simulate a PFS observation for a given `Bench` instance and a `TargetGroup` instance (one target for each cobra, the result of running an specific `TargetSelector`).
 
 
 # Utility modules

@@ -14,7 +14,6 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .cobraConstants import NULL_TARGET_POSITION
 from .TargetGroup import TargetGroup
 
 
@@ -53,7 +52,7 @@ def generateOneTargetPerCobra(bench, maximumDistance=np.inf):
     finalPositions = cobraCenters + radius * np.exp(1j * ang)
 
     # Set to NULL those targets where the maximum distance is smaller than rMin
-    finalPositions[maximumDistance < rMin] = NULL_TARGET_POSITION
+    finalPositions[maximumDistance < rMin] = TargetGroup.NULL_TARGET_POSITION
 
     return  TargetGroup(finalPositions)
 

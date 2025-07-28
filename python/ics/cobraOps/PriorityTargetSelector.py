@@ -14,7 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .cobraConstants import NULL_TARGET_INDEX
+from .TargetGroup import TargetGroup
 from .TargetSelector import TargetSelector
 
 
@@ -67,7 +67,7 @@ class PriorityTargetSelector(TargetSelector):
             indices = self.accessibleTargetIndices[i]
             distances = self.accessibleTargetDistances[i]
             elbows = self.accessibleTargetElbows[i]
-            nTargets = np.sum(indices != NULL_TARGET_INDEX)
+            nTargets = np.sum(indices != TargetGroup.NULL_TARGET_INDEX)
 
             # Randomize the targets order to remove the distance order
             randomOrder = np.random.permutation(nTargets)
@@ -95,7 +95,7 @@ class PriorityTargetSelector(TargetSelector):
         """
         # Create the array that will contain the assigned target indices
         self.assignedTargetIndices = np.full(
-            self.bench.cobras.nCobras, NULL_TARGET_INDEX)
+            self.bench.cobras.nCobras, TargetGroup.NULL_TARGET_INDEX)
 
         # Assign targets to cobras, starting from the highest priorities
         freeCobras = np.full(self.bench.cobras.nCobras, True)
@@ -108,7 +108,8 @@ class PriorityTargetSelector(TargetSelector):
             uniqueIndices = np.unique(indices[freeCobras])
 
             # Remove from the list the NULL target index value if it's present
-            uniqueIndices = uniqueIndices[uniqueIndices != NULL_TARGET_INDEX]
+            uniqueIndices = uniqueIndices[
+                uniqueIndices != TargetGroup.NULL_TARGET_INDEX]
 
             # Select only those targets that are free
             uniqueIndices = uniqueIndices[freeTargets[uniqueIndices]]
@@ -128,7 +129,8 @@ class PriorityTargetSelector(TargetSelector):
                     # Select the cobras for which this is the only target
                     accessibleTargets = self.accessibleTargetIndices[
                         cobraIndices, i:]
-                    targetIsAvailable = accessibleTargets != NULL_TARGET_INDEX
+                    targetIsAvailable = (
+                        accessibleTargets != TargetGroup.NULL_TARGET_INDEX)
                     targetIsAvailable[targetIsAvailable] = freeTargets[
                         accessibleTargets[targetIsAvailable]]
                     nAvailableTargets = np.sum(targetIsAvailable, axis=1)

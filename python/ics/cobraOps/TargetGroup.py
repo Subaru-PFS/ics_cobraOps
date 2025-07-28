@@ -16,16 +16,25 @@ import numpy as np
 
 from . import plotUtils
 from .AttributePrinter import AttributePrinter
-from .cobraConstants import NULL_TARGET_ID
-from .cobraConstants import NULL_TARGET_INDEX
-from .cobraConstants import NULL_TARGET_POSITION
-from .cobraConstants import NULL_TARGET_PRIORITY
 
 
 class TargetGroup(AttributePrinter):
     """Class describing the properties of a group of targets.
 
     """
+
+    NULL_TARGET_INDEX = -1
+    """Integer value used to indicate the index of a null target."""
+
+    NULL_TARGET_ID = "NULL"
+    """Unicode value used to indicate the id of a null target."""
+
+    NULL_TARGET_POSITION = -0.999999j
+    """Complex value used to indicate the position of a null target."""
+
+    NULL_TARGET_PRIORITY = -1
+    """Float value used to indicate the priority of a null target."""
+
 
     def __init__(self, positions, ids=None, priorities=None):
         """Constructs a new TargetGroup instance.
@@ -75,15 +84,17 @@ class TargetGroup(AttributePrinter):
             self.priorities = np.ones(self.nTargets)
 
         # Check which targets are not NULL
-        self.notNull = np.logical_and(self.ids != NULL_TARGET_ID,
-                                      self.positions != NULL_TARGET_POSITION)
-        self.notNull = np.logical_and(self.notNull,
-                                      self.priorities != NULL_TARGET_PRIORITY)
+        self.notNull = np.logical_and(
+            self.ids != TargetGroup.NULL_TARGET_ID,
+            self.positions != TargetGroup.NULL_TARGET_POSITION)
+        self.notNull = np.logical_and(
+            self.notNull,
+            self.priorities != TargetGroup.NULL_TARGET_PRIORITY)
 
         # Use the default id, position and priority values for the NULL targets
-        self.ids[~self.notNull] = NULL_TARGET_ID
-        self.positions[~self.notNull] = NULL_TARGET_POSITION
-        self.priorities[~self.notNull] = NULL_TARGET_PRIORITY
+        self.ids[~self.notNull] = TargetGroup.NULL_TARGET_ID
+        self.positions[~self.notNull] = TargetGroup.NULL_TARGET_POSITION
+        self.priorities[~self.notNull] = TargetGroup.NULL_TARGET_PRIORITY
 
     @classmethod
     def fromFile(cls, fileName):
@@ -163,14 +174,16 @@ class TargetGroup(AttributePrinter):
 
         # Initialize the selected target positions, ids and priorities arrays
         selectedPositions = np.full(
-            len(indices), NULL_TARGET_POSITION, dtype=self.positions.dtype)
+            len(indices), TargetGroup.NULL_TARGET_POSITION,
+            dtype=self.positions.dtype)
         selectedIds = np.full(
-            len(indices), NULL_TARGET_ID, dtype=self.ids.dtype)
+            len(indices), TargetGroup.NULL_TARGET_ID, dtype=self.ids.dtype)
         selectedPriorities = np.full(
-            len(indices), NULL_TARGET_PRIORITY, dtype=self.priorities.dtype)
+            len(indices), TargetGroup.NULL_TARGET_PRIORITY,
+            dtype=self.priorities.dtype)
 
         # Fill the arrays with the targets that are not NULL
-        realTargets = indices != NULL_TARGET_INDEX
+        realTargets = indices != TargetGroup.NULL_TARGET_INDEX
         realIndices = indices[realTargets]
         selectedPositions[realTargets] = self.positions[realIndices]
         selectedIds[realTargets] = self.ids[realIndices]
@@ -198,7 +211,7 @@ class TargetGroup(AttributePrinter):
         # Select a subset of the targets if necessary
         if indices is not None:
             indices = np.array(indices)
-            indices = indices[indices != NULL_TARGET_INDEX]
+            indices = indices[indices != TargetGroup.NULL_TARGET_INDEX]
             positions = positions[indices]
             priorities = priorities[indices]
             notNull = notNull[indices]

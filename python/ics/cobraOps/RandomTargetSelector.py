@@ -14,7 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .cobraConstants import NULL_TARGET_INDEX
+from .TargetGroup import TargetGroup
 from .TargetSelector import TargetSelector
 
 
@@ -63,7 +63,7 @@ class RandomTargetSelector(TargetSelector):
             indices = self.accessibleTargetIndices[i]
             distances = self.accessibleTargetDistances[i]
             elbows = self.accessibleTargetElbows[i]
-            nTargets = np.sum(indices != NULL_TARGET_INDEX)
+            nTargets = np.sum(indices != TargetGroup.NULL_TARGET_INDEX)
 
             # Randomize the targets order to remove the distance order
             randomOrder = np.random.permutation(nTargets)
@@ -80,11 +80,12 @@ class RandomTargetSelector(TargetSelector):
         """
         # Create the array that will contain the assigned target indices
         self.assignedTargetIndices = np.full(
-            self.bench.cobras.nCobras, NULL_TARGET_INDEX)
+            self.bench.cobras.nCobras, TargetGroup.NULL_TARGET_INDEX)
 
         # Calculate the number of accessible targets per cobra
         nTargetsPerCobra = np.sum(
-            self.accessibleTargetIndices != NULL_TARGET_INDEX, axis=1)
+            self.accessibleTargetIndices != TargetGroup.NULL_TARGET_INDEX,
+            axis=1)
 
         # Assign random targets to cobras, starting with those cobras with fewer
         # accessible targets
@@ -94,7 +95,7 @@ class RandomTargetSelector(TargetSelector):
         for i in cobraIndices:
             # Get the indices of the accessible targets to this cobra
             indices = self.accessibleTargetIndices[i]
-            indices = indices[indices != NULL_TARGET_INDEX]
+            indices = indices[indices != TargetGroup.NULL_TARGET_INDEX]
 
             # Select only those targets that are free
             indices = indices[freeTargets[indices]]

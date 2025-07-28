@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from scipy.spatial import KDTree
 
-from .cobraConstants import NULL_TARGET_INDEX
+from .TargetGroup import TargetGroup
 
 
 class TargetSelector(ABC):
@@ -234,7 +234,8 @@ class TargetSelector(ABC):
 
         # Create the accessible target arrays
         arrayShape = (nCobras, maxTargetsPerCobra)
-        self.accessibleTargetIndices = np.full(arrayShape, NULL_TARGET_INDEX)
+        self.accessibleTargetIndices = np.full(
+            arrayShape, TargetGroup.NULL_TARGET_INDEX)
         self.accessibleTargetDistances = np.zeros(arrayShape)
         self.accessibleTargetElbows = np.zeros(arrayShape, dtype="complex")
 
