@@ -13,7 +13,7 @@ from ics.cobraOps import plotUtils
 from ics.cobraOps import targetUtils
 from ics.cobraOps.Bench import Bench
 from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
-from ics.cobraOps.CollisionSimulator2 import CollisionSimulator2
+from ics.cobraOps.CollisionSimulator import CollisionSimulator
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
 from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
 
@@ -67,7 +67,7 @@ selectedTargets = selector.getSelectedTargets()
 
 # Simulate an observation
 start = time.time()
-simulator = CollisionSimulator2(bench, selectedTargets)
+simulator = CollisionSimulator(bench, selectedTargets)
 simulator.run()
 nTrajectoryCollisions = simulator.nCollisions - simulator.nEndPointCollisions
 print(f"Number of cobras involved in collisions: {simulator.nCollisions}")

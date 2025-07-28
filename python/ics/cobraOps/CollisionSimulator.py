@@ -19,7 +19,7 @@ from ics.cobraCharmer.cobraCoach import engineer
 from . import plotUtils
 
 
-class CollisionSimulator2():
+class CollisionSimulator():
     """Class used to simulate a PFS observation.
 
     """
@@ -137,7 +137,7 @@ class CollisionSimulator2():
         endPoints1 = self.elbowPositions[cobraAssociations[0]].ravel()
         startPoints2 = self.fiberPositions[cobraAssociations[1]].ravel()
         endPoints2 = self.elbowPositions[cobraAssociations[1]].ravel()
-        distances = self.bench.distancesBetweenLineSegments(
+        distances = CollisionSimulator.distancesBetweenLineSegments(
             startPoints1, endPoints1, startPoints2, endPoints2)
 
         # Reshape the distances array
@@ -165,6 +165,90 @@ class CollisionSimulator2():
         self.endPointCollisions = np.full(self.nCobras, False)
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = np.sum(self.endPointCollisions)
+
+    @staticmethod
+    def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2,
+                                     endPoints2):
+        """Calculates the minimum distances between line segments.
+
+        Parameters
+        ----------
+        startPoints1: object
+            A complex numpy array with the first line segments start
+            coordinates.
+        endPoints1: object
+            A complex numpy array with the first line segments end coordinates.
+        startPoints2: object
+            A complex numpy array with the second line segments start
+            coordinates.
+        endPoints2: object
+            A complex numpy array with the second line segments end
+            coordinates.
+
+        Returns
+        -------
+        object
+            A numpy array with the minimum distance between the line segments.
+
+        """
+        # Calculate the minimum distances for each point to segment combination
+        distances1 = CollisionSimulator.distancesToLineSegments(
+            startPoints1, startPoints2, endPoints2)
+        distances2 = CollisionSimulator.distancesToLineSegments(
+            endPoints1, startPoints2, endPoints2)
+        distances3 = CollisionSimulator.distancesToLineSegments(
+            startPoints2, startPoints1, endPoints1)
+        distances4 = CollisionSimulator.distancesToLineSegments(
+            endPoints2, startPoints1, endPoints1)
+
+        # Return the minimum distances
+        return np.min((distances1, distances2, distances3, distances4), axis=0)
+
+    @staticmethod
+    def distancesToLineSegments(points, startPoints, endPoints):
+        """Calculates the minimum distances between points and line segments.
+
+        Parameters
+        ----------
+        points: object
+            A complex numpy array with the point coordinates.
+        startPoints: object
+            A complex numpy array with the line segments start coordinates.
+        endPoints: object
+            A complex numpy array with the line segments end coordinates.
+
+        Returns
+        -------
+        object
+            A numpy array with the minimum distances between the points and the
+            line segments.
+
+        """
+        # Translate the points and the line segment end points to the line
+        # segment starting points
+        translatedPoints = points - startPoints
+        translatedEndPoints = endPoints - startPoints
+
+        # Rotate the translated points to have the line segment on the x axis
+        rotatedPoints = translatedPoints * np.exp(-1j * np.angle(
+            translatedEndPoints))
+
+        # Define 3 regions for the points: left of the origin, over the line
+        # segments, and right of the line segments
+        x = rotatedPoints.real
+        lineLengths = np.abs(translatedEndPoints)
+        (region1,) = np.where(x <= 0)
+        (region2,) = np.where(np.logical_and(x > 0 , x < lineLengths))
+        (region3,) = np.where(x >= lineLengths)
+
+        # Calculate the minimum distances in each region
+        distances = np.empty(len(points))
+        distances[region1] = np.abs(rotatedPoints[region1])
+        distances[region2] = np.abs(rotatedPoints[region2].imag)
+        distances[region3] = np.abs(
+            rotatedPoints[region3] - lineLengths[region3])
+
+        return distances
 
     def addTrajectories(self, colors=np.array([0.4, 0.4, 0.4, 1.0]),
                         indices=None, paintFootprints=False,

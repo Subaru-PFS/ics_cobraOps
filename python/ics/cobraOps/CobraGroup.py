@@ -113,7 +113,8 @@ class CobraGroup(AttributePrinter):
     def calculateElbowPositions(self, fiberPositions, indices=None):
         """Calculates the cobra elbow positions for the given fiber positions.
 
-        The code assumes that the cobras can reach the given positions.
+        The code assumes that the cobras can reach the given positions, and that
+        the first (theta, phi) angles solution is selected.
 
         Parameters
         ----------
@@ -150,7 +151,8 @@ class CobraGroup(AttributePrinter):
         """Calculates the elbow positions for a given cobra and a list of fiber
         positions.
 
-        The code assumes that the cobra can reach the given positions.
+        The code assumes that the cobra can reach the given positions, and that
+        the first (theta, phi) angles solution is selected.
 
         Parameters
         ----------
