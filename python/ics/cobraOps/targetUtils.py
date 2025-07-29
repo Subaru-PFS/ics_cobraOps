@@ -47,8 +47,8 @@ def generateOneTargetPerCobra(bench, maximumDistance=np.inf):
 
     # Calculate the target positions
     ang = 2 * np.pi * np.random.random(nCobras)
-    radius = np.sqrt((rMax ** 2 - rMin ** 2) * np.random.random(nCobras) + 
-                     rMin ** 2)
+    radius = np.sqrt(
+        (rMax ** 2 - rMin ** 2) * np.random.random(nCobras) + rMin ** 2)
     finalPositions = cobraCenters + radius * np.exp(1j * ang)
 
     # Set to NULL those targets where the maximum distance is smaller than rMin

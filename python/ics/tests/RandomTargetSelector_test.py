@@ -7,7 +7,7 @@ Collection of unit tests for the RandomTargetSelector class.
 import numpy as np
 
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
-from ics.cobraOps.cobraConstants import NULL_TARGET_INDEX
+from ics.cobraOps.TargetGroup import TargetGroup
 
 
 class TestRandomTargetSelector():
@@ -32,7 +32,7 @@ class TestRandomTargetSelector():
             # Get the accessible target indices and distances
             indices = selector.accessibleTargetIndices[i]
             distances = selector.accessibleTargetDistances[i]
-            validTargets = indices != NULL_TARGET_INDEX
+            validTargets = indices != TargetGroup.NULL_TARGET_INDEX
 
             # Check if the distances are ordered
             nTargets = np.sum(validTargets)

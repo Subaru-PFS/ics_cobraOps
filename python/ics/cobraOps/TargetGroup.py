@@ -65,8 +65,9 @@ class TargetGroup(AttributePrinter):
         if ids is not None:
             # Make sure the array length is correct
             if len(ids) != self.nTargets:
-                raise ValueError("The ids array should have the same length "
-                                 "as the positions array.")
+                raise ValueError(
+                    "The ids array should have the same length as the "
+                    "positions array.")
 
             self.ids = np.array(ids)
         else:
@@ -76,8 +77,9 @@ class TargetGroup(AttributePrinter):
         if priorities is not None:
             # Make sure the array length is correct
             if len(priorities) != self.nTargets:
-                raise ValueError("The priorities array should have the same "
-                                 "length as the positions array.")
+                raise ValueError(
+                    "The priorities array should have the same length as the "
+                    "positions array.")
 
             self.priorities = np.array(priorities)
         else:
@@ -88,8 +90,7 @@ class TargetGroup(AttributePrinter):
             self.ids != TargetGroup.NULL_TARGET_ID,
             self.positions != TargetGroup.NULL_TARGET_POSITION)
         self.notNull = np.logical_and(
-            self.notNull,
-            self.priorities != TargetGroup.NULL_TARGET_PRIORITY)
+            self.notNull, self.priorities != TargetGroup.NULL_TARGET_PRIORITY)
 
         # Use the default id, position and priority values for the NULL targets
         self.ids[~self.notNull] = TargetGroup.NULL_TARGET_ID
@@ -211,13 +212,14 @@ class TargetGroup(AttributePrinter):
         # Select a subset of the targets if necessary
         if indices is not None:
             indices = np.array(indices)
-            indices = indices[indices != TargetGroup.NULL_TARGET_INDEX]
+            notNullIndices = indices != TargetGroup.NULL_TARGET_INDEX
+            indices = indices[notNullIndices]
             positions = positions[indices]
             priorities = priorities[indices]
             notNull = notNull[indices]
 
             if colors.ndim == 2:
-                colors = colors[indices]
+                colors = colors[notNullIndices]
 
         # Remove the NULL targets
         positions = positions[notNull]

@@ -11,10 +11,6 @@ from ics.cobraOps.TargetSelector import TargetSelector
 from ics.cobraOps.Bench import Bench
 from ics.cobraOps.TargetGroup import TargetGroup
 from ics.cobraOps import targetUtils
-from ics.cobraOps.cobraConstants import (NULL_TARGET_INDEX,
-                                         NULL_TARGET_POSITION,
-                                         NULL_TARGET_ID,
-                                         NULL_TARGET_PRIORITY)
 
 
 class TargetSelectorSubclass(TargetSelector):
@@ -156,7 +152,7 @@ class TestTargetSelector():
         indices = selector.accessibleTargetIndices
         positions = targets.positions[indices]
         distances = np.abs(cobraCenters[:, np.newaxis] - positions)
-        validTargets = indices != NULL_TARGET_INDEX
+        validTargets = indices != TargetGroup.NULL_TARGET_INDEX
         assert np.all(
             (distances < bench.cobras.rMax[:, np.newaxis])[validTargets])
         assert np.all(
@@ -166,7 +162,7 @@ class TestTargetSelector():
         for i in range(bench.cobras.nCobras):
             indices = selector.accessibleTargetIndices[i]
             distances = selector.accessibleTargetDistances[i]
-            validTargets = indices != NULL_TARGET_INDEX
+            validTargets = indices != TargetGroup.NULL_TARGET_INDEX
             nTargets = np.sum(validTargets)
             assert np.all(
                 distances[:nTargets] == np.sort(distances[validTargets]))
@@ -214,7 +210,7 @@ class TestTargetSelector():
         bench = Bench(cobraCenters)
 
         # Create some targets
-        finalPositions = np.array([0, 3, NULL_TARGET_POSITION, 6])
+        finalPositions = np.array([0, 3, TargetGroup.NULL_TARGET_POSITION, 6])
         targets = TargetGroup(finalPositions)
 
         # Create a dummy TargetSelector
@@ -240,6 +236,6 @@ class TestTargetSelector():
         selectedTargers = selector.getSelectedTargets()
 
         # Check that we get the NULL target
-        assert selectedTargers.positions[1] == NULL_TARGET_POSITION
-        assert selectedTargers.ids[1] == NULL_TARGET_ID
-        assert selectedTargers.priorities[1] == NULL_TARGET_PRIORITY
+        assert selectedTargers.positions[1] == TargetGroup.NULL_TARGET_POSITION
+        assert selectedTargers.ids[1] == TargetGroup.NULL_TARGET_ID
+        assert selectedTargers.priorities[1] == TargetGroup.NULL_TARGET_PRIORITY

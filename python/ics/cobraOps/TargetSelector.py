@@ -66,7 +66,7 @@ class TargetSelector(ABC):
             cobra can reach).
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         """
@@ -102,9 +102,10 @@ class TargetSelector(ABC):
             leafSize = max(2, leafSize)
 
         # Construct the KD tree
-        self.kdTree = KDTree(np.column_stack((self.targets.positions.real,
-                                              self.targets.positions.imag)),
-                                              leafsize=leafSize)
+        self.kdTree = KDTree(
+            np.column_stack(
+                (self.targets.positions.real, self.targets.positions.imag)),
+            leafsize=leafSize)
 
     def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf,
                                    safetyMargin=0):
@@ -120,7 +121,7 @@ class TargetSelector(ABC):
             cobra can reach).
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         Returns
@@ -141,7 +142,7 @@ class TargetSelector(ABC):
         # If available, use the KD tree for the distance calculations
         if self.kdTree is not None:
             # Get all the targets that the cobra can reach. Remember to
-            # invalidate any possible NULL targets that might exist
+            # remove any possible NULL targets that might exist
             distances, indices = self.kdTree.query(
                 [cobraCenter.real, cobraCenter.imag], k=None,
                 distance_upper_bound=rMax)
@@ -154,7 +155,7 @@ class TargetSelector(ABC):
             positions = self.targets.positions[indices]
         else:
             # Get all the targets that the cobra can reach. Remember to
-            # invalidate any possible NULL targets that might exist
+            # remove any possible NULL targets that might exist
             xDistances = np.abs(cobraCenter.real - self.targets.positions.real)
             (indices,) = np.where(
                 np.logical_and(self.targets.notNull, xDistances < rMax))
@@ -194,7 +195,7 @@ class TargetSelector(ABC):
             cobra can reach).
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         """
@@ -218,12 +219,10 @@ class TargetSelector(ABC):
                 positions = positions[[]]
                 distances = distances[[]]
 
-            # Invalidate targets falling in the nearby black dots
-            blackDotsIndices = np.append([i], self.bench.getCobraNeighbors(i))
+            # Invalidate targets falling inside the black dots
             blackDotdistances = np.abs(
-                positions[:, np.newaxis] - blackDotsPositions[blackDotsIndices])
-            validTargets = np.all(
-                blackDotdistances > blackDotsRadius[blackDotsIndices], axis=1)
+                positions[:, np.newaxis] - blackDotsPositions)
+            validTargets = np.all(blackDotdistances > blackDotsRadius, axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
             distances = distances[validTargets]
@@ -237,7 +236,7 @@ class TargetSelector(ABC):
         self.accessibleTargetIndices = np.full(
             arrayShape, TargetGroup.NULL_TARGET_INDEX)
         self.accessibleTargetDistances = np.zeros(arrayShape)
-        self.accessibleTargetElbows = np.zeros(arrayShape, dtype="complex")
+        self.accessibleTargetElbows = np.zeros(arrayShape, dtype=complex)
 
         # Fill the arrays with the cobra-target association information
         for i, indices, positions, distances in associations:

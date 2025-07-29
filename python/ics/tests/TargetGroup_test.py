@@ -9,9 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ics.cobraOps.TargetGroup import TargetGroup
-from ics.cobraOps.cobraConstants import (NULL_TARGET_ID,
-                                         NULL_TARGET_POSITION,
-                                         NULL_TARGET_PRIORITY)
 
 
 class TestTargetGroup():
@@ -40,17 +37,19 @@ class TestTargetGroup():
         assert np.all(targets.priorities == targetPriorities)
 
         # Create a new TargetGroup instance with one NULL target
-        targetIds[1] = NULL_TARGET_ID
+        targetIds[1] = TargetGroup.NULL_TARGET_ID
         targets = TargetGroup(finalPositions, targetIds, targetPriorities)
 
         # Check that the ids, positions and priorities are correct
-        notNull = targetIds != NULL_TARGET_ID
+        notNull = targetIds != TargetGroup.NULL_TARGET_ID
         assert np.all(targets.ids[notNull] == targetIds[notNull])
         assert np.all(targets.positions[notNull] == finalPositions[notNull])
         assert np.all(targets.priorities[notNull] == targetPriorities[notNull])
-        assert np.all(targets.ids[~notNull] == NULL_TARGET_ID)
-        assert np.all(targets.positions[~notNull] == NULL_TARGET_POSITION)
-        assert np.all(targets.priorities[~notNull] == NULL_TARGET_PRIORITY)
+        assert np.all(targets.ids[~notNull] == TargetGroup.NULL_TARGET_ID)
+        assert np.all(
+            targets.positions[~notNull] == TargetGroup.NULL_TARGET_POSITION)
+        assert np.all(
+            targets.priorities[~notNull] == TargetGroup.NULL_TARGET_PRIORITY)
 
     def test_constructor_exception(self, finalPositions, targetIds,
                                    targetPriorities):
