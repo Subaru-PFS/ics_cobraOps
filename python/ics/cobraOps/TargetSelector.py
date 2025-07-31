@@ -111,6 +111,8 @@ class TargetSelector(ABC):
                                    safetyMargin=0):
         """Calculates the targets that fall inside a given cobra patrol area.
 
+        This method doesn't consider if the cobra is broken or not.
+
         Parameters
         ----------
         cobraIndex: int

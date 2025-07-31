@@ -44,21 +44,15 @@ class CollisionSimulator():
         self.bench = bench
         self.targets = targets
 
-        # Save the cobra coach instance
-        self.cobraCoach = self.bench.cobras.cobraCoach
-
-        # Check which cobras are working fine and are not bad or broken
+        # Check which cobras are working correctly and are not bad or broken
         self.nCobras = self.bench.cobras.nCobras
-        self.goodCobras = self.bench.cobras.isGood.copy()
-
-        # Check which cobras are assigned to a target
-        self.assignedCobras = self.targets.notNull.copy()
+        self.goodCobras = self.bench.cobras.isGood
 
         # Set the cobras that we are going to move
-        self.movingCobras = np.logical_and(self.goodCobras, self.assignedCobras)
+        self.movingCobras = np.logical_and(
+            self.goodCobras, self.targets.notNull)
 
         # Define some internal variables that will be filled by the run method
-        self.trajectories = None
         self.fiberPositions = None
         self.elbowPositions = None
         self.nSteps = None
@@ -75,8 +69,7 @@ class CollisionSimulator():
         Parameters
         ----------
         timeStep: int, optional
-            The trajectories time step resolution in steps. Default is 20
-            steps.
+            The trajectories time step resolution in steps. Default is 20 steps.
         maxSteps: int, optional
             The trajectories maximum number of steps. Default is 2000 steps.
 
@@ -84,8 +77,8 @@ class CollisionSimulator():
         # Calculate the cobra trajectories
         self.calculateTrajectories(timeStep, maxSteps)
 
-        # Detect cobra collisions during the trajectory
-        self.detectTrajectoryCollisions()
+        # Detect cobra collisions while they move
+        self.detectCollisions()
 
     def calculateTrajectories(self, timeStep, maxSteps):
         """Calculates the cobra trajectories.
@@ -98,9 +91,12 @@ class CollisionSimulator():
             The trajectories maximum number of steps.
 
         """
-        # Calculate the final theta and phi angles for the moving cobras
-        thetaAngles, phiAngles, _ = self.cobraCoach.pfi.positionsToAngles(
-            self.cobraCoach.allCobras[self.movingCobras],
+        # Get the cobra coach instance from the bench
+        cobraCoach = self.bench.cobras.cobraCoach
+
+        # Calculate the theta and phi angles at the target positions
+        thetaAngles, phiAngles, _ = cobraCoach.pfi.positionsToAngles(
+            cobraCoach.allCobras[self.movingCobras],
             self.targets.positions[self.movingCobras])
 
         # Select the first angles solution
@@ -108,22 +104,20 @@ class CollisionSimulator():
         phiAngles = phiAngles[:, 0]
 
         # Initialize the engineer module
-        engineer.setCobraCoach(self.cobraCoach)
+        engineer.setCobraCoach(cobraCoach)
         engineer.setConstantOntimeMode(maxSteps=maxSteps)
 
         # Calculate the cobra trajectories
-        self.trajectories, _ = engineer.createTrajectory(
+        trajectories, _ = engineer.createTrajectory(
             np.where(self.movingCobras)[0], thetaAngles, phiAngles,
             tries=8, twoSteps=True, threshold=20.0, timeStep=timeStep)
 
         # Calculate the fiber and elbow positions along the cobra trajectories
-        self.fiberPositions = self.trajectories.calculateFiberPositions(
-            self.cobraCoach)
-        self.elbowPositions = self.trajectories.calculateElbowPositions(
-            self.cobraCoach)
+        self.fiberPositions = trajectories.calculateFiberPositions(cobraCoach)
+        self.elbowPositions = trajectories.calculateElbowPositions(cobraCoach)
         self.nSteps = self.fiberPositions.shape[1]
 
-    def detectTrajectoryCollisions(self):
+    def detectCollisions(self):
         """Detects collisions in the cobra trajectories.
 
         """

@@ -36,7 +36,7 @@ class RandomTargetSelector(TargetSelector):
             cobra can reach).
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         """
