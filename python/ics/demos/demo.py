@@ -48,7 +48,7 @@ print(f"Number of cobras with too long link lenghts: {np.sum(tooLongLinks)}")
 
 # Load the black dots calibration file
 calibrationFileName = os.path.join(
-    os.environ["PFS_INSTDATA_DIR"],"data/pfi/dot", "black_dots_mm.csv")
+    os.environ["PFS_INSTDATA_DIR"], "data/pfi/dot", "black_dots_mm.csv")
 blackDotsCalibrationProduct = BlackDotsCalibrationProduct(calibrationFileName)
 
 # Create the bench instance
