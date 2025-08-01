@@ -184,9 +184,6 @@ class TargetSelector(ABC):
                                    safetyMargin=0):
         """Calculates the targets that each cobra can reach.
 
-        The results are saved in the accessibleTargetIndices,
-        accesssibleTargetDistances and accessibleTargetElbows internal arrays.
-
         This method should always be run before the selecTargets method.
 
         Parameters
@@ -251,6 +248,32 @@ class TargetSelector(ABC):
             self.accessibleTargetIndices[i, :nTargets] = indices
             self.accessibleTargetDistances[i, :nTargets] = distances
             self.accessibleTargetElbows[i, :nTargets] = elbows
+
+    def getAccessibleTargetsInformation(self, cobraIndex):
+        """Returns the indices, distances to the cobra center and cobra elbow
+        positions for those targets that can be accessed by the given cobra.
+
+        This method should not be run before the calculateAccessibleTargets
+        method.
+
+        Returns
+        -------
+        tuple
+            A python tuple with the indices, distances to the cobra centers and
+            cobra elbow positions for those targets that can be accessed by the
+            cobra. The arrays are ordered by the target distance to the cobra
+            center (closer targets appear first).
+
+        """
+        # Get the cobra accessible targets information
+        indices = self.accessibleTargetIndices[cobraIndex]
+        distances = self.accessibleTargetDistances[cobraIndex]
+        elbows = self.accessibleTargetElbows[cobraIndex]
+
+        # Return only the valid targets
+        notNull = indices != TargetGroup.NULL_TARGET_INDEX
+
+        return indices[notNull], distances[notNull], elbows[notNull]
 
     def getSelectedTargets(self):
         """Returns a new target group with the selected target for each cobra.

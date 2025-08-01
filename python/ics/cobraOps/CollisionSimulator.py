@@ -135,7 +135,7 @@ class CollisionSimulator():
             startPoints1, endPoints1, startPoints2, endPoints2)
 
         # Reshape the distances array
-        distances = distances.reshape((len(cobraAssociations[0]), self.nSteps))
+        distances = distances.reshape((cobraAssociations.shape[1], self.nSteps))
 
         # Detect trajectory collisions between cobra associations
         minimumSeparation = linkRadius[cobraAssociations[0]] + linkRadius[
@@ -148,41 +148,43 @@ class CollisionSimulator():
 
         # Check which cobras are involved in collisions
         collidingCobras = np.unique(
-            self.bench.cobraAssociations[:, self.associationCollisions])
+            cobraAssociations[:, self.associationCollisions])
         self.collisions = np.full(self.nCobras, False)
         self.collisions[collidingCobras] = True
-        self.nCollisions = np.sum(self.collisions)
+        self.nCollisions = len(collidingCobras)
 
         # Check which cobras are involved in end point collisions
         collidingCobras = np.unique(
-            self.bench.cobraAssociations[:, self.associationEndPointCollisions])
+            cobraAssociations[:, self.associationEndPointCollisions])
         self.endPointCollisions = np.full(self.nCobras, False)
         self.endPointCollisions[collidingCobras] = True
-        self.nEndPointCollisions = np.sum(self.endPointCollisions)
+        self.nEndPointCollisions = len(collidingCobras)
 
     @staticmethod
     def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2,
                                      endPoints2):
-        """Calculates the minimum distances between line segments.
+        """Calculates the minimum distances between two sets of line segments.
 
         Parameters
         ----------
         startPoints1: object
-            A complex numpy array with the first line segments start
+            A complex numpy array with the first set of line segments start
             coordinates.
         endPoints1: object
-            A complex numpy array with the first line segments end coordinates.
+            A complex numpy array with the first set of line segments end
+            coordinates.
         startPoints2: object
-            A complex numpy array with the second line segments start
+            A complex numpy array with the second set of line segments start
             coordinates.
         endPoints2: object
-            A complex numpy array with the second line segments end
+            A complex numpy array with the second set of line segments end
             coordinates.
 
         Returns
         -------
         object
-            A numpy array with the minimum distance between the line segments.
+            A numpy array with the minimum distance between the two sets of line
+            segments.
 
         """
         # Calculate the minimum distances for each point to segment combination
@@ -200,7 +202,8 @@ class CollisionSimulator():
 
     @staticmethod
     def distancesToLineSegments(points, startPoints, endPoints):
-        """Calculates the minimum distances between points and line segments.
+        """Calculates the minimum distances between a set of points and a set of
+        line segments.
 
         Parameters
         ----------
@@ -214,8 +217,8 @@ class CollisionSimulator():
         Returns
         -------
         object
-            A numpy array with the minimum distances between the points and the
-            line segments.
+            A numpy array with the minimum distances between the set of points
+            and the set of line segments.
 
         """
         # Translate the points and the line segment end points to the line
@@ -244,9 +247,9 @@ class CollisionSimulator():
 
         return distances
 
-    def addTrajectories(self, colors=np.array([0.4, 0.4, 0.4, 1.0]),
-                        indices=None, paintFootprints=False,
-                        footprintColors=np.array([0.0, 0.0, 1.0, 0.05])):
+    def addTrajectoriesToFigure(self, colors=np.array([0.4, 0.4, 0.4, 1.0]),
+                                indices=None, paintFootprints=False,
+                                footprintColors=np.array([0.0, 0.0, 1.0, 0.05])):
         """Draws the cobra trajectories on top of an existing figure.
 
         Parameters
@@ -262,15 +265,15 @@ class CollisionSimulator():
             The cobra footprints colors. Default is very light blue.
 
         """
-        # Calculate some useful information
-        fiberPositions = self.fiberPositions.copy()
-        elbowPositions = self.elbowPositions.copy()
+        # Extract some useful information
+        fiberPositions = self.fiberPositions
+        elbowPositions = self.elbowPositions
         linkRadius = self.bench.cobras.linkRadius
 
         # Select a subset of the trajectories if necessary
         if indices is not None:
-            elbowPositions = elbowPositions[indices]
             fiberPositions = fiberPositions[indices]
+            elbowPositions = elbowPositions[indices]
             linkRadius = linkRadius[indices]
 
             if colors.ndim >= 2:
@@ -281,21 +284,22 @@ class CollisionSimulator():
 
         # Plot the elbow and fiber trajectories as continuous lines
         plotUtils.addTrajectories(
-            np.vstack((elbowPositions, fiberPositions)),
+            np.vstack((fiberPositions, elbowPositions)),
             color=np.vstack((colors, colors)), linewidth=1)
 
         # Paint the cobra trajectory footprints if necessary
         if paintFootprints:
             # Calculate the line thicknesses
-            thiknesses = np.empty(elbowPositions.shape)
+            thiknesses = np.empty(fiberPositions.shape)
             thiknesses[:] = linkRadius[:, np.newaxis]
 
             # Only use the elbow and fiber positions where the cobra is moving
-            isMoving = np.empty(elbowPositions.shape, dtype="bool")
-            isMoving[:, :-1] = (fiberPositions[:, 1:] - fiberPositions[:, :-1]) != 0
+            isMoving = np.empty(fiberPositions.shape, dtype="bool")
+            isMoving[:, :-1] = (
+                fiberPositions[:, 1:] - fiberPositions[:, :-1]) != 0
             isMoving[:, -1] = isMoving[:, -2]
-            elbowPositions = elbowPositions[isMoving]
             fiberPositions = fiberPositions[isMoving]
+            elbowPositions = elbowPositions[isMoving]
             thiknesses = thiknesses[isMoving]
 
             # Update the colors if necessary
@@ -304,11 +308,11 @@ class CollisionSimulator():
                 footprintColors = footprintColors[isMoving]
 
                 # Only use positions where the alpha color is not exactly zero
-                visible = footprintColors[:, 3] != 0
-                elbowPositions = elbowPositions[visible]
-                fiberPositions = fiberPositions[visible]
-                thiknesses = thiknesses[visible]
-                footprintColors = footprintColors[visible]
+                isVisible = footprintColors[:, 3] != 0
+                fiberPositions = fiberPositions[isVisible]
+                elbowPositions = elbowPositions[isVisible]
+                thiknesses = thiknesses[isVisible]
+                footprintColors = footprintColors[isVisible]
 
             # Represent the trajectory footprint as a combination of thick
             # lines
@@ -352,7 +356,7 @@ class CollisionSimulator():
         self.bench.blackDots.addToFigure(colors=[0.0, 0.0, 0.0, 0.15])
 
         # Draw the cobra links at the final fiber positions
-        linkColors = np.full(patrolAreaColors.shape, [0.0, 0.0, 1.0, 0.5])
+        linkColors = np.full((self.nCobras, 4), [0.0, 0.0, 1.0, 0.5])
         linkColors[~self.movingCobras] = [1.0, 0.0, 0.0, 0.25]
         linkColors[~self.goodCobras] = [0.0, 0.0, 0.0, 0.25]
         self.bench.cobras.addLinksToFigure(
@@ -363,7 +367,7 @@ class CollisionSimulator():
         # that have a collision
         footprintColors = np.zeros((self.nCobras, self.nSteps, 4))
         footprintColors[self.collisions, :] = [0.0, 0.0, 1.0, 0.05]
-        self.addTrajectories(
+        self.addTrajectoriesToFigure(
             paintFootprints=paintFootprints, footprintColors=footprintColors)
 
         # Draw the targets assigned to the cobras
@@ -372,6 +376,5 @@ class CollisionSimulator():
         # Draw the extra targets if necessary
         if extraTargets is not None:
             # Draw only those targets that are not part of the simulation
-            unusedTargets = np.logical_not(
-                np.in1d(extraTargets.ids, self.targets.ids))
+            unusedTargets = ~np.in1d(extraTargets.ids, self.targets.ids)
             extraTargets.addToFigure(indices=unusedTargets)
