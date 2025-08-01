@@ -45,18 +45,26 @@ class TargetSelector(ABC):
         self.bench = bench
         self.targets = targets
 
+        # Construct a KD tree if the target density is large enough
+        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
+            self.kdTree = self.constructKDTree()
+        else:
+            self.kdTree = None
+
         # Define some internal variables that will be used by the
-        # computeAccessibleTargets and selectTargets methods
-        self.kdTree = None
+        # calculateAccessibleTargets and selectTargets methods
         self.accessibleTargetIndices = None
         self.accessibleTargetDistances = None
         self.accessibleTargetElbows = None
+        self.accessibleTargetPriorities = None
         self.assignedTargetIndices = None
 
     @abstractmethod
-    def run(self, maximumDistance=np.inf, safetyMargin=0):
-        """Runs the whole target selection process assigning a single target to
-        each cobra in the bench.
+    def calculateAccessibleTargets(self, maximumDistance=np.inf,
+                                   safetyMargin=0):
+        """Calculates the targets that each cobra can reach.
+
+        This method should always be run before the selecTargets method.
 
         Parameters
         ----------
@@ -82,6 +90,28 @@ class TargetSelector(ABC):
         """
         pass
 
+    def run(self, maximumDistance=np.inf, safetyMargin=0):
+        """Runs the whole target selection process assigning a single target to
+        each cobra in the bench.
+
+        Parameters
+        ----------
+        maximumDistance: float, optional
+            The maximum radial distance allowed between the targets and the
+            cobra centers. Default is no limit (the maximum radius that the
+            cobra can reach).
+        safetyMargin: float, optional
+            Safety margin in mm added to Rmin and subtracted from Rmax to take
+            into account possible effects that could change the effective cobra
+            patrol area. Default is 0.
+
+        """
+        # Obtain the accessible targets for each cobra
+        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
+
+        # Select a single target for each cobra
+        self.selectTargets()
+
     def constructKDTree(self, leafSize=None):
         """Constructs a K-dimensional tree using the target positions.
 
@@ -95,20 +125,25 @@ class TargetSelector(ABC):
             The KD tree leaf size. If None, an optimal leaf size value will be
             used. Default is None.
 
+        Returns
+        -------
+        object
+            K-dimensional tree constructed using the target positions.
+
         """
         # Calculate the KD tree leaf size if it is not provided
         if leafSize is None:
             leafSize = 3 * self.targets.nTargets // self.bench.cobras.nCobras
             leafSize = max(2, leafSize)
 
-        # Construct the KD tree
-        self.kdTree = KDTree(
+        # Return the KD tree
+        return KDTree(
             np.column_stack(
                 (self.targets.positions.real, self.targets.positions.imag)),
             leafsize=leafSize)
 
-    def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf,
-                                   safetyMargin=0):
+    def _getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf,
+                                    safetyMargin=0):
         """Calculates the targets that fall inside a given cobra patrol area.
 
         This method doesn't consider if the cobra is broken or not.
@@ -180,22 +215,30 @@ class TargetSelector(ABC):
 
         return indices, positions, distances
 
-    def calculateAccessibleTargets(self, maximumDistance=np.inf,
-                                   safetyMargin=0):
+    def _calculateAccessibleTargets(self, maximumDistance, safetyMargin,
+                                    orderRandomly=False, orderByPriority=False):
         """Calculates the targets that each cobra can reach.
 
-        This method should always be run before the selecTargets method.
+        By default accessible targets are ordered by their distance to the cobra
+        center, unless orderRandomly or orderByPriority are set to True.
 
         Parameters
         ----------
-        maximumDistance: float, optional
+        maximumDistance: float
             The maximum radial distance allowed between the targets and the
-            cobra centers. Default is no limit (the maximum radius that the
-            cobra can reach).
-        safetyMargin: float, optional
+            cobra centers.
+        safetyMargin: float
             Safety margin in mm added to Rmin and subtracted from Rmax to take
             into account possible effects that could change the effective cobra
-            patrol area. Default is 0.
+            patrol area.
+        orderRandomly: bool, optional
+            If True, accessible targets will be ordered randomly. Default is
+            False, which means that the targets will be ordered by their
+            distance to the cobra center.
+        orderByPriority: bool, optional
+            If True, accessible targets will be ordered by their priority.
+            Default is False, which means that the targets will be ordered
+            by their distance to the cobra center.
 
         """
         # Extract some useful information
@@ -209,7 +252,7 @@ class TargetSelector(ABC):
 
         for i in range(nCobras):
             # Get the targets that fall inside the cobra patrol area
-            indices, positions, distances = self.getTargetsInsidePatrolArea(
+            indices, positions, distances = self._getTargetsInsidePatrolArea(
                 i, maximumDistance, safetyMargin)
 
             # Invalidate all the targets if the cobra has a problem
@@ -236,18 +279,43 @@ class TargetSelector(ABC):
             arrayShape, TargetGroup.NULL_TARGET_INDEX)
         self.accessibleTargetDistances = np.zeros(arrayShape)
         self.accessibleTargetElbows = np.zeros(arrayShape, dtype=complex)
+        self.accessibleTargetPriorities = np.zeros(arrayShape)
 
         # Fill the arrays with the cobra-target association information
         for i, indices, positions, distances in associations:
+            # Get the total number of accessible targets for this cobra
+            nTargets = len(indices)
+
             # Calculate the elbow positions at the target positions
             elbows = self.bench.cobras.calculateCobraElbowPositions(
                 i, positions)
 
+            # Get the target priorities
+            priorities = self.targets.priorities[indices]
+
+            # Check if we need to order the accessible targets randomly
+            if orderRandomly or orderByPriority:
+                # Randomize the targets order to remove the distance order
+                randomOrder = np.random.permutation(nTargets)
+                indices = indices[randomOrder]
+                distances = distances[randomOrder]
+                elbows = elbows[randomOrder]
+                priorities = priorities[randomOrder]
+
+            # Check if we need to order the accessible targets by their priority
+            if orderByPriority:
+                # Order the targets by their priority
+                priorityOrder = np.argsort(priorities)[::-1]
+                indices = indices[priorityOrder]
+                distances = distances[priorityOrder]
+                elbows = elbows[priorityOrder]
+                priorities = priorities[priorityOrder]
+
             # Fill the arrays
-            nTargets = len(indices)
             self.accessibleTargetIndices[i, :nTargets] = indices
             self.accessibleTargetDistances[i, :nTargets] = distances
             self.accessibleTargetElbows[i, :nTargets] = elbows
+            self.accessibleTargetPriorities[i, :nTargets] = priorities
 
     def getAccessibleTargetsInformation(self, cobraIndex):
         """Returns the indices, distances to the cobra center and cobra elbow

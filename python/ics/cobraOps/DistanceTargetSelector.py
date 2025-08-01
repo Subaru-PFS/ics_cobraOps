@@ -25,9 +25,14 @@ class DistanceTargetSelector(TargetSelector):
 
     """
 
-    def run(self, maximumDistance=np.inf, safetyMargin=0):
-        """Runs the whole target selection process assigning a single target to
-        each cobra in the bench.
+    def calculateAccessibleTargets(self, maximumDistance=np.inf,
+                                   safetyMargin=0):
+        """Calculates the targets that each cobra can reach.
+
+        The accessible targets are ordered by their distance to the cobra
+        center.
+
+        This method should always be run before the selecTargets method.
 
         Parameters
         ----------
@@ -41,15 +46,7 @@ class DistanceTargetSelector(TargetSelector):
             patrol area. Default is 0.
 
         """
-        # Construct a KD tree if the target density is large enough
-        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
-            self.constructKDTree()
-
-        # Obtain the accessible targets for each cobra ordered by distance
-        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
-
-        # Select a single target for each cobra
-        self.selectTargets()
+        self._calculateAccessibleTargets(maximumDistance, safetyMargin)
 
     def selectTargets(self):
         """Selects a single target for each cobra based on their distance to

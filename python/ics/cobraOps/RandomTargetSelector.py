@@ -24,9 +24,13 @@ class RandomTargetSelector(TargetSelector):
 
     """
 
-    def run(self, maximumDistance=np.inf, safetyMargin=0):
-        """Runs the whole target selection process assigning a single target to
-        each cobra in the bench.
+    def calculateAccessibleTargets(self, maximumDistance=np.inf,
+                                   safetyMargin=0):
+        """Calculates the targets that each cobra can reach.
+
+        The accessible targets are ordered randomly.
+
+        This method should always be run before the selecTargets method.
 
         Parameters
         ----------
@@ -40,36 +44,8 @@ class RandomTargetSelector(TargetSelector):
             patrol area. Default is 0.
 
         """
-        # Construct a KD tree if the target density is large enough
-        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
-            self.constructKDTree()
-
-        # Obtain the accessible targets for each cobra ordered by distance
-        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
-
-        # Order the accessible targets randomly
-        self.orderAccessibleTargetsRandomly()
-
-        # Select a single target for each cobra
-        self.selectTargets()
-
-    def orderAccessibleTargetsRandomly(self):
-        """Orders the accessible targets arrays randomly.
-
-        """
-        # Loop over the cobras
-        for i in range(self.bench.cobras.nCobras):
-            # Get the accessible target indices, distances and elbow positions
-            indices = self.accessibleTargetIndices[i]
-            distances = self.accessibleTargetDistances[i]
-            elbows = self.accessibleTargetElbows[i]
-            nTargets = np.sum(indices != TargetGroup.NULL_TARGET_INDEX)
-
-            # Randomize the targets order to remove the distance order
-            randomOrder = np.random.permutation(nTargets)
-            indices[:nTargets] = indices[randomOrder]
-            distances[:nTargets] = distances[randomOrder]
-            elbows[:nTargets] = elbows[randomOrder]
+        self._calculateAccessibleTargets(
+            maximumDistance, safetyMargin, orderRandomly=True)
 
     def selectTargets(self):
         """Selects a single random target for each cobra.
