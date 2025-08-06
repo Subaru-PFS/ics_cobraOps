@@ -1,7 +1,8 @@
 from setuptools import setup, find_packages
+from python.ics.cobraOps._version import __version__
 
 setup(name="ics.cobraOps",
-      version="1.0.0",
+      version=__version__,
       author="Javier Gracia Carpio",
       author_email="jgracia@mpe.mpg.de",
       description="A pacakage that simulates the movements of cobras and calculates their possible collisions.",
