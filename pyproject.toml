@@ -9,7 +9,9 @@ description = "A pacakage that simulates the movements of cobras and calculates 
 license = "GPL-3.0"
 dependencies = [
   "numpy",
+  "scipy",
   "matplotlib",
+#  "ics.cobraCharmer",   # we probably need to specify a minimum version
 ]
 dynamic = ["version"]
 
