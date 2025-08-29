@@ -7,7 +7,7 @@ Collection of unit tests for the targetUtils module.
 import numpy as np
 
 from ics.cobraOps import targetUtils
-from ics.cobraOps.cobraConstants import NULL_TARGET_ID
+from ics.cobraOps.TargetGroup import TargetGroup
 
 
 class TestTargetUtils():
@@ -47,7 +47,7 @@ class TestTargetUtils():
         targets = targetUtils.generateOneTargetPerCobra(bench, maximumDistance)
 
         # Check that all the targets are NULL targets
-        assert np.all(targets.ids == NULL_TARGET_ID)
+        assert np.all(targets.ids == TargetGroup.NULL_TARGET_ID)
 
     def test_generateRandomTargets_method(self, bench):
         # Generate the targets

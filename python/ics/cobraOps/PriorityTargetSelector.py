@@ -14,7 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .cobraConstants import NULL_TARGET_INDEX
+from .TargetGroup import TargetGroup
 from .TargetSelector import TargetSelector
 
 
@@ -24,9 +24,13 @@ class PriorityTargetSelector(TargetSelector):
 
     """
 
-    def run(self, maximumDistance=np.inf, solveCollisions=True, safetyMargin=0):
-        """Runs the whole target selection process assigning a single target to
-        each cobra in the bench.
+    def calculateAccessibleTargets(self, maximumDistance=np.inf,
+                                   safetyMargin=0):
+        """Calculates the targets that each cobra can reach.
+
+        The accessible targets are ordered by their priority.
+
+        This method should always be run before the selecTargets method.
 
         Parameters
         ----------
@@ -34,64 +38,14 @@ class PriorityTargetSelector(TargetSelector):
             The maximum radial distance allowed between the targets and the
             cobra centers. Default is no limit (the maximum radius that the
             cobra can reach).
-        solveCollisions: bool, optional
-            If True, the selector will try to solve cobra end-point collisions
-            assigning them alternative targets. Default is True.
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         """
-        # Construct a KD tree if the target density is large enough
-        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
-            self.constructKDTree()
-
-        # Obtain the accessible targets for each cobra ordered by distance
-        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
-
-        # Order the accessible targets by their priority
-        self.orderAccessibleTargetsByPriority()
-
-        # Select a single target for each cobra
-        self.selectTargets()
-
-        # Try to solve end-point collisions
-        if solveCollisions:
-            self.solveEndPointCollisions()
-
-    def orderAccessibleTargetsByPriority(self):
-        """Orders the accessible targets arrays by decreasing target priority.
-
-        """
-        # Create the array that will contain the accessible target priorities
-        arrayShape = self.accessibleTargetIndices.shape
-        self.accessibleTargetPriorities = np.zeros(arrayShape)
-
-        # Loop over the cobras
-        for i in range(self.bench.cobras.nCobras):
-            # Get the accessible target indices, distances and elbow positions
-            indices = self.accessibleTargetIndices[i]
-            distances = self.accessibleTargetDistances[i]
-            elbows = self.accessibleTargetElbows[i]
-            nTargets = np.sum(indices != NULL_TARGET_INDEX)
-
-            # Randomize the targets order to remove the distance order
-            randomOrder = np.random.permutation(nTargets)
-            indices[:nTargets] = indices[randomOrder]
-            distances[:nTargets] = distances[randomOrder]
-            elbows[:nTargets] = elbows[randomOrder]
-
-            # Order the targets by their priority
-            priorities = self.targets.priorities[indices[:nTargets]]
-            priorityOrder = np.argsort(priorities)[::-1]
-            indices[:nTargets] = indices[priorityOrder]
-            distances[:nTargets] = distances[priorityOrder]
-            elbows[:nTargets] = elbows[priorityOrder]
-
-            # Save the targets priorities
-            self.accessibleTargetPriorities[i, :nTargets] = priorities[
-                priorityOrder]
+        self._calculateAccessibleTargets(
+            maximumDistance, safetyMargin, orderByPriority=True)
 
     def selectTargets(self):
         """Selects a single target for each cobra based on their priorities.
@@ -102,7 +56,7 @@ class PriorityTargetSelector(TargetSelector):
         """
         # Create the array that will contain the assigned target indices
         self.assignedTargetIndices = np.full(
-            self.bench.cobras.nCobras, NULL_TARGET_INDEX)
+            self.bench.cobras.nCobras, TargetGroup.NULL_TARGET_INDEX)
 
         # Assign targets to cobras, starting from the highest priorities
         freeCobras = np.full(self.bench.cobras.nCobras, True)
@@ -115,7 +69,8 @@ class PriorityTargetSelector(TargetSelector):
             uniqueIndices = np.unique(indices[freeCobras])
 
             # Remove from the list the NULL target index value if it's present
-            uniqueIndices = uniqueIndices[uniqueIndices != NULL_TARGET_INDEX]
+            uniqueIndices = uniqueIndices[
+                uniqueIndices != TargetGroup.NULL_TARGET_INDEX]
 
             # Select only those targets that are free
             uniqueIndices = uniqueIndices[freeTargets[uniqueIndices]]
@@ -135,7 +90,8 @@ class PriorityTargetSelector(TargetSelector):
                     # Select the cobras for which this is the only target
                     accessibleTargets = self.accessibleTargetIndices[
                         cobraIndices, i:]
-                    targetIsAvailable = accessibleTargets != NULL_TARGET_INDEX
+                    targetIsAvailable = (
+                        accessibleTargets != TargetGroup.NULL_TARGET_INDEX)
                     targetIsAvailable[targetIsAvailable] = freeTargets[
                         accessibleTargets[targetIsAvailable]]
                     nAvailableTargets = np.sum(targetIsAvailable, axis=1)

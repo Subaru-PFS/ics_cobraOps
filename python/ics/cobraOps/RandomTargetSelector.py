@@ -14,7 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
-from .cobraConstants import NULL_TARGET_INDEX
+from .TargetGroup import TargetGroup
 from .TargetSelector import TargetSelector
 
 
@@ -24,9 +24,13 @@ class RandomTargetSelector(TargetSelector):
 
     """
 
-    def run(self, maximumDistance=np.inf, solveCollisions=True, safetyMargin=0):
-        """Runs the whole target selection process assigning a single target to
-        each cobra in the bench.
+    def calculateAccessibleTargets(self, maximumDistance=np.inf,
+                                   safetyMargin=0):
+        """Calculates the targets that each cobra can reach.
+
+        The accessible targets are ordered randomly.
+
+        This method should always be run before the selecTargets method.
 
         Parameters
         ----------
@@ -34,49 +38,14 @@ class RandomTargetSelector(TargetSelector):
             The maximum radial distance allowed between the targets and the
             cobra centers. Default is no limit (the maximum radius that the
             cobra can reach).
-        solveCollisions: bool, optional
-            If True, the selector will try to solve cobra end-point collisions
-            assigning them alternative targets. Default is True.
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         """
-        # Construct a KD tree if the target density is large enough
-        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
-            self.constructKDTree()
-
-        # Obtain the accessible targets for each cobra ordered by distance
-        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
-
-        # Order the accessible targets randomly
-        self.orderAccessibleTargetsRandomly()
-
-        # Select a single target for each cobra
-        self.selectTargets()
-
-        # Try to solve end-point collisions
-        if solveCollisions:
-            self.solveEndPointCollisions()
-
-    def orderAccessibleTargetsRandomly(self):
-        """Orders the accessible targets arrays randomly.
-
-        """
-        # Loop over the cobras
-        for i in range(self.bench.cobras.nCobras):
-            # Get the accessible target indices, distances and elbow positions
-            indices = self.accessibleTargetIndices[i]
-            distances = self.accessibleTargetDistances[i]
-            elbows = self.accessibleTargetElbows[i]
-            nTargets = np.sum(indices != NULL_TARGET_INDEX)
-
-            # Randomize the targets order to remove the distance order
-            randomOrder = np.random.permutation(nTargets)
-            indices[:nTargets] = indices[randomOrder]
-            distances[:nTargets] = distances[randomOrder]
-            elbows[:nTargets] = elbows[randomOrder]
+        self._calculateAccessibleTargets(
+            maximumDistance, safetyMargin, orderRandomly=True)
 
     def selectTargets(self):
         """Selects a single random target for each cobra.
@@ -87,11 +56,12 @@ class RandomTargetSelector(TargetSelector):
         """
         # Create the array that will contain the assigned target indices
         self.assignedTargetIndices = np.full(
-            self.bench.cobras.nCobras, NULL_TARGET_INDEX)
+            self.bench.cobras.nCobras, TargetGroup.NULL_TARGET_INDEX)
 
         # Calculate the number of accessible targets per cobra
         nTargetsPerCobra = np.sum(
-            self.accessibleTargetIndices != NULL_TARGET_INDEX, axis=1)
+            self.accessibleTargetIndices != TargetGroup.NULL_TARGET_INDEX,
+            axis=1)
 
         # Assign random targets to cobras, starting with those cobras with fewer
         # accessible targets
@@ -101,7 +71,7 @@ class RandomTargetSelector(TargetSelector):
         for i in cobraIndices:
             # Get the indices of the accessible targets to this cobra
             indices = self.accessibleTargetIndices[i]
-            indices = indices[indices != NULL_TARGET_INDEX]
+            indices = indices[indices != TargetGroup.NULL_TARGET_INDEX]
 
             # Select only those targets that are free
             indices = indices[freeTargets[indices]]

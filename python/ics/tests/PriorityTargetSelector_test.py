@@ -8,8 +8,7 @@ import numpy as np
 
 from ics.cobraOps.PriorityTargetSelector import PriorityTargetSelector
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector
-from ics.cobraOps.cobraConstants import (NULL_TARGET_INDEX,
-                                         NULL_TARGET_PRIORITY)
+from ics.cobraOps.TargetGroup import TargetGroup
 
 
 class TestPriorityTargetSelector():
@@ -37,7 +36,7 @@ class TestPriorityTargetSelector():
             indices = selector.accessibleTargetIndices[i]
             distances = selector.accessibleTargetDistances[i]
             priorities = selector.accessibleTargetPriorities[i]
-            validTargets = indices != NULL_TARGET_INDEX
+            validTargets = indices != TargetGroup.NULL_TARGET_INDEX
 
             # Check if the distances and the priorities are ordered
             nTargets = np.sum(validTargets)
@@ -66,7 +65,7 @@ class TestPriorityTargetSelector():
     def test_compare_with_random_selection(self, bench, targets):
         # Add some random priorities
         targets.priorities = 1 + 9 * np.random.random(targets.nTargets)
-        targets.priorities[~targets.notNull] = NULL_TARGET_PRIORITY
+        targets.priorities[~targets.notNull] = TargetGroup.NULL_TARGET_PRIORITY
 
         # Create a PriorityTargetSelector
         selector = PriorityTargetSelector(bench, targets)

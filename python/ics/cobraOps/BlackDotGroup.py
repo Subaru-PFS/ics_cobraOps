@@ -16,8 +16,6 @@ import numpy as np
 
 from . import plotUtils
 from .AttributePrinter import AttributePrinter
-from .cobraConstants import BLACK_DOT_RADIUS
-from .cobraConstants import BLACK_DOT_RELATIVE_POSITION
 
 
 class BlackDotGroup(AttributePrinter):
@@ -25,13 +23,18 @@ class BlackDotGroup(AttributePrinter):
 
     """
 
-    def __init__(self, cobraCenters):
-        """Constructs a new BlackDotGroup instance with default properties.
+    def __init__(self, calibrationProduct, blackDotsMargin=1.0):
+        """Constructs a new BlackDotGroup instance from a black dots calibration
+        product.
 
         Parameters
         ----------
-        cobraCenters: object
-            A complex numpy array with the cobras central positions.
+        calibrationProduct: object
+            The black dots calibration product containing the black dots
+            properties.
+        blackDotsMargin: real, optional
+            The margin factor in radius of the black dots to avoid in fiber
+            allocation. Default is 1.0.
 
         Returns
         -------
@@ -40,24 +43,12 @@ class BlackDotGroup(AttributePrinter):
 
         """
         # Set the number of black dots, their central positions and radius
-        self.nBlackDots = len(cobraCenters)
-        self.centers = cobraCenters + BLACK_DOT_RELATIVE_POSITION
-        self.radius = np.full(self.nBlackDots, BLACK_DOT_RADIUS)
-
-    def useCalibrationProduct(self, calibrationProduct):
-        """Updates the black dot properties with the calibration product ones.
-
-        Parameters
-        ----------
-        calibrationProduct: object
-            The black dots calibration product containing the black dots
-            properties.
-
-        """
-        # Copy the main information from the calibration product
         self.nBlackDots = calibrationProduct.nBlackDots
         self.centers = calibrationProduct.centers.copy()
         self.radius = calibrationProduct.radius.copy()
+
+        # Apply the margin factor in radius for the black dot avoidance
+        self.radius *= blackDotsMargin
 
     def addToFigure(self, colors=np.array([0.0, 0.0, 0.0, 0.15]), indices=None):
         """Draws the black dots on top of an existing figure.

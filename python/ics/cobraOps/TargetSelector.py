@@ -12,11 +12,12 @@ Consult the following papers for more detailed information:
 
 """
 
-import numpy as np
 from abc import ABC, abstractmethod
+
+import numpy as np
 from scipy.spatial import KDTree
 
-from .cobraConstants import NULL_TARGET_INDEX
+from .TargetGroup import TargetGroup
 
 
 class TargetSelector(ABC):
@@ -44,18 +45,26 @@ class TargetSelector(ABC):
         self.bench = bench
         self.targets = targets
 
+        # Construct a KD tree if the target density is large enough
+        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
+            self.kdTree = self.constructKDTree()
+        else:
+            self.kdTree = None
+
         # Define some internal variables that will be used by the
-        # computeAccessibleTargets and selectTargets methods
-        self.kdTree = None
+        # calculateAccessibleTargets and selectTargets methods
         self.accessibleTargetIndices = None
         self.accessibleTargetDistances = None
         self.accessibleTargetElbows = None
+        self.accessibleTargetPriorities = None
         self.assignedTargetIndices = None
 
     @abstractmethod
-    def run(self, maximumDistance=np.inf, solveCollisions=True, safetyMargin=0):
-        """Runs the whole target selection process assigning a single target to
-        each cobra in the bench.
+    def calculateAccessibleTargets(self, maximumDistance=np.inf,
+                                   safetyMargin=0):
+        """Calculates the targets that each cobra can reach.
+
+        This method should always be run before the selecTargets method.
 
         Parameters
         ----------
@@ -63,12 +72,9 @@ class TargetSelector(ABC):
             The maximum radial distance allowed between the targets and the
             cobra centers. Default is no limit (the maximum radius that the
             cobra can reach).
-        solveCollisions: bool, optional
-            If True, the selector will try to solve cobra end-point collisions
-            assigning them alternative targets. Default is True.
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         """
@@ -84,6 +90,28 @@ class TargetSelector(ABC):
         """
         pass
 
+    def run(self, maximumDistance=np.inf, safetyMargin=0):
+        """Runs the whole target selection process assigning a single target to
+        each cobra in the bench.
+
+        Parameters
+        ----------
+        maximumDistance: float, optional
+            The maximum radial distance allowed between the targets and the
+            cobra centers. Default is no limit (the maximum radius that the
+            cobra can reach).
+        safetyMargin: float, optional
+            Safety margin in mm added to Rmin and subtracted from Rmax to take
+            into account possible effects that could change the effective cobra
+            patrol area. Default is 0.
+
+        """
+        # Obtain the accessible targets for each cobra
+        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
+
+        # Select a single target for each cobra
+        self.selectTargets()
+
     def constructKDTree(self, leafSize=None):
         """Constructs a K-dimensional tree using the target positions.
 
@@ -97,20 +125,28 @@ class TargetSelector(ABC):
             The KD tree leaf size. If None, an optimal leaf size value will be
             used. Default is None.
 
+        Returns
+        -------
+        object
+            K-dimensional tree constructed using the target positions.
+
         """
         # Calculate the KD tree leaf size if it is not provided
         if leafSize is None:
             leafSize = 3 * self.targets.nTargets // self.bench.cobras.nCobras
             leafSize = max(2, leafSize)
 
-        # Construct the KD tree
-        self.kdTree = KDTree(np.column_stack((self.targets.positions.real,
-                                              self.targets.positions.imag)),
-                                              leafsize=leafSize)
+        # Return the KD tree
+        return KDTree(
+            np.column_stack(
+                (self.targets.positions.real, self.targets.positions.imag)),
+            leafsize=leafSize)
 
-    def getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf,
-                                   safetyMargin=0):
+    def _getTargetsInsidePatrolArea(self, cobraIndex, maximumDistance=np.inf,
+                                    safetyMargin=0):
         """Calculates the targets that fall inside a given cobra patrol area.
+
+        This method doesn't consider if the cobra is broken or not.
 
         Parameters
         ----------
@@ -122,7 +158,7 @@ class TargetSelector(ABC):
             cobra can reach).
         safetyMargin: float, optional
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
+            into account possible effects that could change the effective cobra
             patrol area. Default is 0.
 
         Returns
@@ -143,23 +179,23 @@ class TargetSelector(ABC):
         # If available, use the KD tree for the distance calculations
         if self.kdTree is not None:
             # Get all the targets that the cobra can reach. Remember to
-            # invalidate any possible NULL targets that might exist
+            # remove any possible NULL targets that might exist
             distances, indices = self.kdTree.query(
                 [cobraCenter.real, cobraCenter.imag], k=None,
                 distance_upper_bound=rMax)
             indices = np.array(indices, dtype=np.int)
             distances = np.array(distances)
-            validTargets = np.logical_and(self.targets.notNull[indices],
-                                          distances > rMin)
+            validTargets = np.logical_and(
+                self.targets.notNull[indices], distances > rMin)
             indices = indices[validTargets]
             distances = distances[validTargets]
             positions = self.targets.positions[indices]
         else:
             # Get all the targets that the cobra can reach. Remember to
-            # invalidate any possible NULL targets that might exist
+            # remove any possible NULL targets that might exist
             xDistances = np.abs(cobraCenter.real - self.targets.positions.real)
-            (indices,) = np.where(np.logical_and(self.targets.notNull,
-                                                 xDistances < rMax))
+            (indices,) = np.where(
+                np.logical_and(self.targets.notNull, xDistances < rMax))
             positions = self.targets.positions[indices]
             yDistances = np.abs(cobraCenter.imag - positions.imag)
             validTargets = yDistances < rMax
@@ -179,25 +215,30 @@ class TargetSelector(ABC):
 
         return indices, positions, distances
 
-    def calculateAccessibleTargets(self, maximumDistance=np.inf,
-                                   safetyMargin=0):
+    def _calculateAccessibleTargets(self, maximumDistance, safetyMargin,
+                                    orderRandomly=False, orderByPriority=False):
         """Calculates the targets that each cobra can reach.
 
-        The results are saved in the accessibleTargetIndices,
-        accesssibleTargetDistances and accessibleTargetElbows internal arrays.
-
-        This method should always be run before the selecTargets method.
+        By default accessible targets are ordered by their distance to the cobra
+        center, unless orderRandomly or orderByPriority are set to True.
 
         Parameters
         ----------
-        maximumDistance: float, optional
+        maximumDistance: float
             The maximum radial distance allowed between the targets and the
-            cobra centers. Default is no limit (the maximum radius that the
-            cobra can reach).
-        safetyMargin: float, optional
+            cobra centers.
+        safetyMargin: float
             Safety margin in mm added to Rmin and subtracted from Rmax to take
-            into account possible effects that could change the effective cobra 
-            patrol area. Default is 0.
+            into account possible effects that could change the effective cobra
+            patrol area.
+        orderRandomly: bool, optional
+            If True, accessible targets will be ordered randomly. Default is
+            False, which means that the targets will be ordered by their
+            distance to the cobra center.
+        orderByPriority: bool, optional
+            If True, accessible targets will be ordered by their priority.
+            Default is False, which means that the targets will be ordered
+            by their distance to the cobra center.
 
         """
         # Extract some useful information
@@ -211,21 +252,19 @@ class TargetSelector(ABC):
 
         for i in range(nCobras):
             # Get the targets that fall inside the cobra patrol area
-            indices, positions, distances = self.getTargetsInsidePatrolArea(
+            indices, positions, distances = self._getTargetsInsidePatrolArea(
                 i, maximumDistance, safetyMargin)
 
             # Invalidate all the targets if the cobra has a problem
-            if self.bench.cobras.hasProblem[i]:
+            if not self.bench.cobras.isGood[i]:
                 indices = indices[[]]
                 positions = positions[[]]
                 distances = distances[[]]
 
-            # Invalidate targets falling in the nearby black dots
-            blackDotsIndices = np.append([i], self.bench.getCobraNeighbors(i))
+            # Invalidate targets falling inside the black dots
             blackDotdistances = np.abs(
-                positions[:, np.newaxis] - blackDotsPositions[blackDotsIndices])
-            validTargets = np.all(
-                blackDotdistances > blackDotsRadius[blackDotsIndices], axis=1)
+                positions[:, np.newaxis] - blackDotsPositions)
+            validTargets = np.all(blackDotdistances > blackDotsRadius, axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
             distances = distances[validTargets]
@@ -236,174 +275,73 @@ class TargetSelector(ABC):
 
         # Create the accessible target arrays
         arrayShape = (nCobras, maxTargetsPerCobra)
-        self.accessibleTargetIndices = np.full(arrayShape, NULL_TARGET_INDEX)
+        self.accessibleTargetIndices = np.full(
+            arrayShape, TargetGroup.NULL_TARGET_INDEX)
         self.accessibleTargetDistances = np.zeros(arrayShape)
-        self.accessibleTargetElbows = np.zeros(arrayShape, dtype="complex")
+        self.accessibleTargetElbows = np.zeros(arrayShape, dtype=complex)
+        self.accessibleTargetPriorities = np.zeros(arrayShape)
 
         # Fill the arrays with the cobra-target association information
         for i, indices, positions, distances in associations:
+            # Get the total number of accessible targets for this cobra
+            nTargets = len(indices)
+
             # Calculate the elbow positions at the target positions
             elbows = self.bench.cobras.calculateCobraElbowPositions(
                 i, positions)
 
+            # Get the target priorities
+            priorities = self.targets.priorities[indices]
+
+            # Check if we need to order the accessible targets randomly
+            if orderRandomly or orderByPriority:
+                # Randomize the targets order to remove the distance order
+                randomOrder = np.random.permutation(nTargets)
+                indices = indices[randomOrder]
+                distances = distances[randomOrder]
+                elbows = elbows[randomOrder]
+                priorities = priorities[randomOrder]
+
+            # Check if we need to order the accessible targets by their priority
+            if orderByPriority:
+                # Order the targets by their priority
+                priorityOrder = np.argsort(priorities)[::-1]
+                indices = indices[priorityOrder]
+                distances = distances[priorityOrder]
+                elbows = elbows[priorityOrder]
+                priorities = priorities[priorityOrder]
+
             # Fill the arrays
-            nTargets = len(indices)
             self.accessibleTargetIndices[i, :nTargets] = indices
             self.accessibleTargetDistances[i, :nTargets] = distances
             self.accessibleTargetElbows[i, :nTargets] = elbows
+            self.accessibleTargetPriorities[i, :nTargets] = priorities
 
-    def solveEndPointCollisions(self):
-        """Detects and solves cobra end-point collisions assigning them
-        alternative targets.
+    def getAccessibleTargetsInformation(self, cobraIndex):
+        """Returns the indices, distances to the cobra center and cobra elbow
+        positions for those targets that can be accessed by the given cobra.
 
-        This method should always be run after the selectTargets method.
+        This method should not be run before the calculateAccessibleTargets
+        method.
+
+        Returns
+        -------
+        tuple
+            A python tuple with the indices, distances to the cobra centers and
+            cobra elbow positions for those targets that can be accessed by the
+            cobra. The arrays are ordered by the target distance to the cobra
+            center (closer targets appear first).
 
         """
-        # Get the indices of the targets that are currently assigned to cobras
-        indices = self.assignedTargetIndices
+        # Get the cobra accessible targets information
+        indices = self.accessibleTargetIndices[cobraIndex]
+        distances = self.accessibleTargetDistances[cobraIndex]
+        elbows = self.accessibleTargetElbows[cobraIndex]
 
-        # Check which cobras are used (i.e. have a target assigned)
-        usedCobras = indices != NULL_TARGET_INDEX
+        # Return only the valid targets
+        notNull = indices != TargetGroup.NULL_TARGET_INDEX
 
-        # Check which targets are currently free (i.e. not assigned to a cobra)
-        freeTargets = np.full(self.targets.nTargets, True)
-        freeTargets[indices[usedCobras]] = False
-
-        # Set the cobra fiber positions to the assigned target positions,
-        # leaving unused cobras at their home positions
-        positions = self.bench.cobras.home0.copy()
-        positions[usedCobras] = self.targets.positions[indices[usedCobras]]
-
-        # Get the cobra associations where we have an end-point collision
-        problematicAssociations = self.bench.getProblematicCobraAssociations(
-            positions).T
-
-        # Try to solve the cobra collisions one by one
-        for c, nc in problematicAssociations:
-            # Check if one of the colliding cobras is not used
-            if not usedCobras[c] or not usedCobras[nc]:
-                # The unused cobra is the cobra that we are going to move
-                cobraToMove = c if not usedCobras[c] else nc
-
-                # Calculate the initial number of collisions for that cobra
-                initialCollisions = self.bench.getCollisionsForCobra(
-                    cobraToMove, positions)
-
-                # Move to the next association if the number of collisions is
-                # already zero (it could have been solved in a previous step)
-                if initialCollisions == 0:
-                    continue
-
-                # Move the cobra until we find the position with the minimum
-                # number of collisions
-                cobraCenter = self.bench.cobras.centers[cobraToMove]
-                initialPosition = positions[cobraToMove]
-                bestPosition = initialPosition
-                bestCollisions = initialCollisions
-
-                for ang in np.linspace(0, 2 * np.pi, 7)[1:-1]:
-                    # Rotate the cobra around its center
-                    positions[cobraToMove] = cobraCenter + (
-                        initialPosition - cobraCenter) * np.exp(1j * ang)
-
-                    # Calculate the number of collisions at the rotated position
-                    collisions = self.bench.getCollisionsForCobra(
-                        cobraToMove, positions)
-
-                    # Check if the number of collisions decreased
-                    if collisions < bestCollisions:
-                        # Save the information from this cobra position
-                        bestPosition = positions[cobraToMove]
-                        bestCollisions = collisions
-
-                        # Exit the loop if the number of collisions is zero
-                        if collisions == 0:
-                            break
-
-                # Use the best fiber position
-                positions[cobraToMove] = bestPosition
-            else:
-                # Calculate the initial number of collisions associated with
-                # the two cobras
-                initialCollisions = self.bench.getCollisionsForCobra(
-                    c, positions)
-                initialCollisions += self.bench.getCollisionsForCobra(
-                    nc, positions)
-
-                # Free the current targets
-                initialTarget1 = indices[c]
-                initialTarget2 = indices[nc]
-                freeTargets[initialTarget1] = True
-                freeTargets[initialTarget2] = True
-
-                # Get the targets that can be reached by each cobra
-                targets1 = self.accessibleTargetIndices[c]
-                targets1 = targets1[targets1 != NULL_TARGET_INDEX]
-                targets2 = self.accessibleTargetIndices[nc]
-                targets2 = targets2[targets2 != NULL_TARGET_INDEX]
-
-                # Select only the free targets
-                targets1 = targets1[freeTargets[targets1]]
-                targets2 = targets2[freeTargets[targets2]]
-
-                # Create an array with all the possible target combinations
-                combinations = np.column_stack((
-                    np.repeat(targets1, len(targets2)),
-                    np.tile(targets2, len(targets1))))
-
-                # Exclude the current target combination and combinations that
-                # use the same target for the two cobras
-                validCombinations = np.logical_or(
-                    combinations[:, 0] != initialTarget1,
-                    combinations[:, 1] != initialTarget2)
-                validCombinations = np.logical_and(
-                    validCombinations,
-                    combinations[:, 0] != combinations[:, 1])
-                combinations = combinations[validCombinations]
-
-                # Loop over all the possible combinations until we find the
-                # minimum number of collisions
-                bestTarget1 = initialTarget1
-                bestTarget2 = initialTarget2
-                bestCollisions = initialCollisions
-
-                for newTarget1, newTarget2 in combinations:
-                    # Assign the new fiber positions
-                    positions[c] = self.targets.positions[newTarget1]
-                    positions[nc] = self.targets.positions[newTarget2]
-
-                    # Calculate the number of collisions at the new positions
-                    collisions = self.bench.getCollisionsForCobra(
-                        c, positions)
-                    collisions += self.bench.getCollisionsForCobra(
-                        nc, positions)
-
-                    # Check if the number of collisions decreased
-                    if collisions < bestCollisions:
-                        # Save the information from this target combination
-                        bestTarget1 = newTarget1
-                        bestTarget2 = newTarget2
-                        bestCollisions = collisions
-
-                        # Exit the loop if the number of collisions is zero
-                        if bestCollisions == 0:
-                            break
-
-                # Do not use the best target combination if the decrease in the
-                # number of collisions is only 1, because this means that we
-                # solved the current collision, but we created a new collision
-                # with another nearby cobra
-                if (initialCollisions - bestCollisions) == 1:
-                    bestTarget1 = initialTarget1
-                    bestTarget2 = initialTarget2
-
-                # Use the target combination where we had less collisions
-                indices[c] = bestTarget1
-                indices[nc] = bestTarget2
-                positions[c] = self.targets.positions[bestTarget1]
-                positions[nc] = self.targets.positions[bestTarget2]
-                freeTargets[bestTarget1] = False
-                freeTargets[bestTarget2] = False
+        return indices[notNull], distances[notNull], elbows[notNull]
 
     def getSelectedTargets(self):
         """Returns a new target group with the selected target for each cobra.

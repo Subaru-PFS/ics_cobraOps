@@ -42,7 +42,7 @@ class BlackDotsCalibrationProduct(AttributePrinter):
         with open(fileName, newline="") as csvFile:
             blackDotsData = list(csv.reader(csvFile, delimiter=","))
 
-        # Remove the firt line because it contains the column names
+        # Remove the first line because it contains the column names
         blackDotsData = blackDotsData[1:]
 
         # Get the total number of black dots
