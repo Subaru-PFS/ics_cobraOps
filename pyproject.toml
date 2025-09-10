@@ -11,8 +11,8 @@ dependencies = [
   "numpy",
   "scipy",
   "matplotlib",
-#  "ics.cobraCharmer",   # we probably need to specify a minimum version
-]
+  "ics.cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git@1.4.18",
+  "psf.instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git@1.8.44",]
 dynamic = ["version"]
 
 [project.urls]
