@@ -1,5 +1,5 @@
 [project]
-name = "ics.cobraOps"
+name = "ics_cobraOps"
 readme = "README.md"
 authors = [
   {name = "Javier Gracia Carpio", email = "jgracia@mpe.mpg.de"},
@@ -11,15 +11,18 @@ dependencies = [
   "numpy",
   "scipy",
   "matplotlib",
-  "ics.cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git@1.4.18",
-  "psf.instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git@1.8.44",]
+  "ics_cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git@1.4.18",
+  "pfs_instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git@1.8.44",]
 dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/Subaru-PFS/ics_cobraOps/"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.setuptools]
-packages = ["ics.cobraOps"]
+packages = ["ics_cobraOps"]
 package-dir = {"" = "python"}
 
 [tool.setuptools.dynamic]
