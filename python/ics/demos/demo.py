@@ -18,7 +18,7 @@ from ics.cobraOps.RandomTargetSelector import RandomTargetSelector as TargetSele
 from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
 
 # Initialize the cobra coach instance
-os.environ["PFS_INSTDATA_DIR"] = "/home/jgracia/github/pfs_instdata"
+os.environ.setdefault("PFS_INSTDATA_DIR", "/home/jgracia/github/pfs_instdata")
 cobraCoach = CobraCoach(
     loadModel=True, trajectoryMode=True, rootDir="/home/jgracia/testPFI/")
 
