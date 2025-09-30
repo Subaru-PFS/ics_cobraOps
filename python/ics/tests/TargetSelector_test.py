@@ -66,15 +66,6 @@ class TestTargetSelector():
         # Create a dummy TargetSelector
         selector = TargetSelectorSubclass(bench, targets)
 
-        # Check that the KD tree is not available
-        assert selector.kdTree is None
-
-        # Construct the KD tree
-        selector.constructKDTree()
-
-        # Check that the KD tree is available
-        assert selector.kdTree is not None
-
         # Check that it contains the expected data
         assert np.all(selector.kdTree.data == np.column_stack(
             (finalPositions.real, finalPositions.imag)))

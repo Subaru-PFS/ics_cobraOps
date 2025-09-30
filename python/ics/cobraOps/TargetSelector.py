@@ -45,11 +45,8 @@ class TargetSelector(ABC):
         self.bench = bench
         self.targets = targets
 
-        # Construct a KD tree if the target density is large enough
-        if self.targets.nTargets / self.bench.cobras.nCobras > 50:
-            self.kdTree = self.constructKDTree()
-        else:
-            self.kdTree = None
+        # Construct a KD tree
+        self.kdTree = self.constructKDTree()
 
         # Define some internal variables that will be used by the
         # calculateAccessibleTargets and selectTargets methods
@@ -176,42 +173,24 @@ class TargetSelector(ABC):
         rMax = min(
             self.bench.cobras.rMax[cobraIndex] - safetyMargin, maximumDistance)
 
-        # If available, use the KD tree for the distance calculations
-        if self.kdTree is not None:
-            # Get all the targets that the cobra can reach. Remember to
-            # remove any possible NULL targets that might exist
-            distances, indices = self.kdTree.query(
-                [cobraCenter.real, cobraCenter.imag], k=None,
-                distance_upper_bound=rMax)
-            indices = np.array(indices, dtype=np.int)
-            distances = np.array(distances)
-            validTargets = np.logical_and(
-                self.targets.notNull[indices], distances > rMin)
-            indices = indices[validTargets]
-            distances = distances[validTargets]
-            positions = self.targets.positions[indices]
-        else:
-            # Get all the targets that the cobra can reach. Remember to
-            # remove any possible NULL targets that might exist
-            xDistances = np.abs(cobraCenter.real - self.targets.positions.real)
-            (indices,) = np.where(
-                np.logical_and(self.targets.notNull, xDistances < rMax))
-            positions = self.targets.positions[indices]
-            yDistances = np.abs(cobraCenter.imag - positions.imag)
-            validTargets = yDistances < rMax
-            indices = indices[validTargets]
-            positions = positions[validTargets]
-            distances = np.abs(cobraCenter - positions)
-            validTargets = np.logical_and(distances > rMin, distances < rMax)
-            indices = indices[validTargets]
-            positions = positions[validTargets]
-            distances = distances[validTargets]
+        # Get all the targets that the cobra can reach. Remember to
+        # remove any possible NULL targets that might exist
+        indices = self.kdTree.query_ball_point(
+            [cobraCenter.real, cobraCenter.imag], rMax)
+        indices = np.array(indices, dtype=int)
+        positions = self.targets.positions[indices]
+        distances = np.abs(cobraCenter - positions)
+        validTargets = np.logical_and(
+            self.targets.notNull[indices], distances > rMin)
+        indices = indices[validTargets]
+        positions = positions[validTargets]
+        distances = distances[validTargets]
 
-            # Sort the targets by their distance to the cobra center
-            sortedIndices = distances.argsort()
-            indices = indices[sortedIndices]
-            positions = positions[sortedIndices]
-            distances = distances[sortedIndices]
+        # Sort the targets by their distance to the cobra center
+        sortedIndices = distances.argsort()
+        indices = indices[sortedIndices]
+        positions = positions[sortedIndices]
+        distances = distances[sortedIndices]
 
         return indices, positions, distances
 
