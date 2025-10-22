@@ -9,8 +9,8 @@ dependencies = [
   "numpy",
   "scipy",
   "matplotlib",
-  "ics-cobraCharmer @ git+https://github.com/Subaru-PFS/ics-cobraCharmer.git",
-  "pfs-instdata @ git+https://github.com/Subaru-PFS/pfs-instdata.git@tickets/INSTRM-2729",
+  "ics-cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git",
+  "pfs-instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git@tickets/INSTRM-2729",
 ]
 dynamic = ["version"]
 
