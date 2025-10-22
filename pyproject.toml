@@ -36,6 +36,9 @@ dynamic = ["version"]
 Homepage = "https://github.com/Subaru-PFS/ics_cobraOps/"
 Repository = "https://github.com/Subaru-PFS/ics_cobraOps.git"
 
+[tool.lsst_versions]
+write_to = "python/ics/cobraOps/version.py"
+
 [tool.setuptools]
 package-dir = { "" = "python" }
 
@@ -45,6 +48,15 @@ namespaces = true
 
 [tool.setuptools.dynamic]
 version = { attr = "ics.cobraOps.__version__" }
+
+[tool.black]
+line-length = 110
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 110
+known_first_party = ["ics"]
 
 [tool.ruff.lint]
 ignore = ["N802", "N803", "N806", "N815", "N816", "EM101", "TRY003"]
