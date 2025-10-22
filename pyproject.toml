@@ -10,7 +10,9 @@ dependencies = [
   "scipy",
   "matplotlib",
   "ics-cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git",
+  "ics-utils @ git+https://github.com/Subaru-PFS/ics_utils.git",
   "pfs-instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git",
+  "pfs-utils @ git+https://github.com/Subaru-PFS/pfs_utils.git",
 ]
 dynamic = ["version"]
 
