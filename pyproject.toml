@@ -31,10 +31,13 @@ dependencies = [
 
 dynamic = ["version"]
 
-
 [project.urls]
 Homepage = "https://github.com/Subaru-PFS/ics_cobraOps/"
 Repository = "https://github.com/Subaru-PFS/ics_cobraOps.git"
+
+# Optional: Development dependencies
+[project.optional-dependencies]
+dev = ["black", "isort", "ruff", "pytest"]
 
 [tool.lsst_versions]
 write_to = "python/ics/cobraOps/version.py"
@@ -57,6 +60,10 @@ target-version = ["py312"]
 profile = "black"
 line_length = 110
 known_first_party = ["ics"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
 
 [tool.ruff.lint]
 ignore = ["N802", "N803", "N806", "N815", "N816", "EM101", "TRY003"]
