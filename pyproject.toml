@@ -1,9 +1,7 @@
 [project]
 name = "ics_cobraOps"
 readme = "README.md"
-authors = [
-  {name = "Javier Gracia Carpio", email = "jgracia@mpe.mpg.de"},
-]
+authors = [{ name = "Javier Gracia Carpio", email = "jgracia@mpe.mpg.de" }]
 requires-python = ">=3.9"
 description = "A pacakage that simulates the movements of cobras and calculates their possible collisions"
 license = "GPL-3.0"
@@ -11,8 +9,9 @@ dependencies = [
   "numpy",
   "scipy",
   "matplotlib",
-  "ics_cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git@1.4.18",
-  "pfs_instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git@1.8.44",]
+  "ics_cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git",
+  "pfs_instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git@tickets/INSTRM-2729",
+]
 dynamic = ["version"]
 
 [project.urls]
@@ -22,8 +21,11 @@ Homepage = "https://github.com/Subaru-PFS/ics_cobraOps/"
 allow-direct-references = true
 
 [tool.setuptools]
-packages = ["ics_cobraOps"]
-package-dir = {"" = "python"}
+package-dir = { "" = "python" }
+
+[tool.setuptools.packages.find]
+where = ["python"]
+namespaces = true
 
 [tool.setuptools.dynamic]
-version = {attr = "ics.cobraOps.__version__"}
+version = { attr = "ics.cobraOps.__version__" }
