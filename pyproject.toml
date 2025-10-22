@@ -1,10 +1,24 @@
+[build-system]
+requires = ["setuptools>=61", "wheel", "lsst-versions"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ics-cobraOps"
 readme = "README.md"
 authors = [{ name = "Javier Gracia Carpio", email = "jgracia@mpe.mpg.de" }]
-requires-python = ">=3.9"
-description = "A pacakage that simulates the movements of cobras and calculates their possible collisions"
+description = "A package that simulates the movements of cobras and calculates their possible collisions"
 license = "GPL-3.0"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering",
+]
+
+requires-python = ">=3.12"
+
 dependencies = [
   "numpy",
   "scipy",
@@ -14,13 +28,13 @@ dependencies = [
   "pfs-instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git",
   "pfs-utils @ git+https://github.com/Subaru-PFS/pfs_utils.git",
 ]
+
 dynamic = ["version"]
+
 
 [project.urls]
 Homepage = "https://github.com/Subaru-PFS/ics_cobraOps/"
-
-[tool.hatch.metadata]
-allow-direct-references = true
+Repository = "https://github.com/Subaru-PFS/ics_cobraOps.git"
 
 [tool.setuptools]
 package-dir = { "" = "python" }
@@ -31,3 +45,9 @@ namespaces = true
 
 [tool.setuptools.dynamic]
 version = { attr = "ics.cobraOps.__version__" }
+
+[tool.ruff.lint]
+ignore = ["N802", "N803", "N806", "N815", "N816", "EM101", "TRY003"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
