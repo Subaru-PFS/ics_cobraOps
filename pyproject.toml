@@ -48,8 +48,8 @@ package-dir = { "" = "python" }
 where = ["python"]
 namespaces = true
 
-[tool.setuptools.dynamic]
-version = { attr = "ics.cobraOps.__version__" }
+# [tool.setuptools.dynamic]
+# version = { attr = "ics.cobraOps.__version__" }
 
 [tool.black]
 line-length = 110
