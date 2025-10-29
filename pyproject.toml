@@ -1,29 +1,71 @@
+[build-system]
+requires = ["setuptools>=61", "wheel", "lsst-versions"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "ics_cobraOps"
+name = "ics-cobraOps"
 readme = "README.md"
-authors = [
-  {name = "Javier Gracia Carpio", email = "jgracia@mpe.mpg.de"},
-]
-requires-python = ">=3.9"
-description = "A pacakage that simulates the movements of cobras and calculates their possible collisions"
+authors = [{ name = "Javier Gracia Carpio", email = "jgracia@mpe.mpg.de" }]
+description = "A package that simulates the movements of cobras and calculates their possible collisions"
 license = "GPL-3.0"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering",
+]
+
+requires-python = ">=3.12"
+
 dependencies = [
   "numpy",
   "scipy",
   "matplotlib",
-  "ics_cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git@1.4.18",
-  "pfs_instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git@1.8.44",]
+  "ics-cobraCharmer @ git+https://github.com/Subaru-PFS/ics_cobraCharmer.git",
+  "ics-utils @ git+https://github.com/Subaru-PFS/ics_utils.git",
+  "pfs-instdata @ git+https://github.com/Subaru-PFS/pfs_instdata.git",
+  "pfs-utils @ git+https://github.com/Subaru-PFS/pfs_utils.git",
+]
+
 dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/Subaru-PFS/ics_cobraOps/"
+Repository = "https://github.com/Subaru-PFS/ics_cobraOps.git"
+
+# Optional: Development dependencies
+[project.optional-dependencies]
+dev = ["black", "isort", "ruff", "pytest"]
+
+[tool.lsst_versions]
+write_to = "python/ics/cobraOps/version.py"
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+
+[tool.setuptools.packages.find]
+where = ["python"]
+namespaces = true
+
+[tool.setuptools.dynamic]
+version = { attr = "ics.cobraOps.__version__" }
+
+[tool.black]
+line-length = 110
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 110
+known_first_party = ["ics"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = ["N802", "N803", "N806", "N815", "N816", "EM101", "TRY003"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
-
-[tool.setuptools]
-packages = ["ics_cobraOps"]
-package-dir = {"" = "python"}
-
-[tool.setuptools.dynamic]
-version = {attr = "ics.cobraOps.__version__"}
