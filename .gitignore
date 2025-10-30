@@ -1,3 +1,6 @@
+python/ics/cobraCharmer/version.py
+python/ics/cobraCharmer/_version.py
+
 .fuse*
 *~
 .DS_Store
@@ -31,3 +34,4 @@ config.log
 .project
 .pydevproject
 .settings/
+build/
