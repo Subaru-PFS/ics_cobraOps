@@ -73,6 +73,12 @@ class TargetSelector(ABC):
             Safety margin in mm added to Rmin and subtracted from Rmax to take
             into account possible effects that could change the effective cobra
             patrol area. Default is 0.
+        brokenCobrasMargin: float, optional
+            Safety margin to avoid possible collions with broken cobras for
+            which we don't know their exact position. Sources falling at a 
+            distance to the broken cobras smaller than 
+            brokenCobrasMargin * brokenCobrasRmax will not be selected.
+            Default is 0.
 
         """
         pass
@@ -87,7 +93,7 @@ class TargetSelector(ABC):
         """
         pass
 
-    def run(self, maximumDistance=np.inf, safetyMargin=0):
+    def run(self, maximumDistance=np.inf, safetyMargin=0, brokenCobrasMargin=0):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
 
@@ -101,10 +107,17 @@ class TargetSelector(ABC):
             Safety margin in mm added to Rmin and subtracted from Rmax to take
             into account possible effects that could change the effective cobra
             patrol area. Default is 0.
+        brokenCobrasMargin: float, optional
+            Safety margin to avoid possible collions with broken cobras for
+            which we don't know their exact position. Sources falling at a 
+            distance to the broken cobras smaller than 
+            brokenCobrasMargin * brokenCobrasRmax will not be selected.
+            Default is 0.
 
         """
         # Obtain the accessible targets for each cobra
-        self.calculateAccessibleTargets(maximumDistance, safetyMargin)
+        self.calculateAccessibleTargets(
+            maximumDistance, safetyMargin, brokenCobrasMargin)
 
         # Select a single target for each cobra
         self.selectTargets()
@@ -195,7 +208,8 @@ class TargetSelector(ABC):
         return indices, positions, distances
 
     def _calculateAccessibleTargets(self, maximumDistance, safetyMargin,
-                                    orderRandomly=False, orderByPriority=False):
+                                    brokenCobrasMargin, orderRandomly=False,
+                                    orderByPriority=False):
         """Calculates the targets that each cobra can reach.
 
         By default accessible targets are ordered by their distance to the cobra
@@ -210,6 +224,11 @@ class TargetSelector(ABC):
             Safety margin in mm added to Rmin and subtracted from Rmax to take
             into account possible effects that could change the effective cobra
             patrol area.
+        brokenCobrasMargin: float
+            Safety margin to avoid possible collions with broken cobras for
+            which we don't know their exact position. Sources falling at a 
+            distance to the broken cobras smaller than 
+            brokenCobrasMargin * brokenCobrasRmax will not be selected.
         orderRandomly: bool, optional
             If True, accessible targets will be ordered randomly. Default is
             False, which means that the targets will be ordered by their
@@ -224,6 +243,10 @@ class TargetSelector(ABC):
         nCobras = self.bench.cobras.nCobras
         blackDotsPositions = self.bench.blackDots.centers
         blackDotsRadius = self.bench.blackDots.radius
+        brokenCobrasPositions = self.bench.cobras.centers[
+            ~self.bench.cobras.isGood]
+        brokenCobrasRmax = self.bench.cobras.rMax[
+            ~self.bench.cobras.isGood]
 
         # Obtain the cobra-target associations
         associations = []
@@ -241,9 +264,18 @@ class TargetSelector(ABC):
                 distances = distances[[]]
 
             # Invalidate targets falling inside the black dots
-            blackDotdistances = np.abs(
+            blackDotDistances = np.abs(
                 positions[:, np.newaxis] - blackDotsPositions)
-            validTargets = np.all(blackDotdistances > blackDotsRadius, axis=1)
+            validTargets = np.all(blackDotDistances > blackDotsRadius, axis=1)
+            indices = indices[validTargets]
+            positions = positions[validTargets]
+            distances = distances[validTargets]
+
+            # Invalidate targets falling inside the broken cobras patrol areas
+            brokenCobrasDistances = np.abs(
+                positions[:, np.newaxis] - brokenCobrasPositions)
+            validTargets = np.all(
+                brokenCobrasDistances > (brokenCobrasMargin * brokenCobrasRmax), axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
             distances = distances[validTargets]

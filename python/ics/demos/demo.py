@@ -61,8 +61,9 @@ print(f"Number of simulated targets: {targets.nTargets}")
 
 # Select the targets
 safetyMargin = 0.25
+brokenCobrasMargin = 1.0
 selector = TargetSelector(bench, targets)
-selector.run(safetyMargin=safetyMargin)
+selector.run(safetyMargin=safetyMargin, brokenCobrasMargin=brokenCobrasMargin)
 selectedTargets = selector.getSelectedTargets()
 
 # Simulate an observation

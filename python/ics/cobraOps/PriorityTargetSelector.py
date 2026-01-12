@@ -25,7 +25,7 @@ class PriorityTargetSelector(TargetSelector):
     """
 
     def calculateAccessibleTargets(self, maximumDistance=np.inf,
-                                   safetyMargin=0):
+                                   safetyMargin=0, brokenCobrasMargin=0):
         """Calculates the targets that each cobra can reach.
 
         The accessible targets are ordered by their priority.
@@ -42,10 +42,17 @@ class PriorityTargetSelector(TargetSelector):
             Safety margin in mm added to Rmin and subtracted from Rmax to take
             into account possible effects that could change the effective cobra
             patrol area. Default is 0.
+        brokenCobrasMargin: float, optional
+            Safety margin to avoid possible collions with broken cobras for
+            which we don't know their exact position. Sources falling at a 
+            distance to the broken cobras smaller than 
+            brokenCobrasMargin * brokenCobrasRmax will not be selected.
+            Default is 0.
 
         """
         self._calculateAccessibleTargets(
-            maximumDistance, safetyMargin, orderByPriority=True)
+            maximumDistance, safetyMargin, brokenCobrasMargin,
+            orderByPriority=True)
 
     def selectTargets(self):
         """Selects a single target for each cobra based on their priorities.
