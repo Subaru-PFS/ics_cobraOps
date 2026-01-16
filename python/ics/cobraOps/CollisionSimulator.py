@@ -62,8 +62,8 @@ class CollisionSimulator():
         self.endPointCollisions = None
         self.nCollisions = None
         self.nEndPointCollisions = None
-        #self.interferences = None
-        #self.nInterferences = None
+        self.interferences = None
+        self.nInterferences = None
 
     def run(self, timeStep=20, maxSteps=2000):
         """Runs the collisions simulator.
@@ -162,17 +162,18 @@ class CollisionSimulator():
         self.endPointCollisions[collidingCobras] = True
         self.nEndPointCollisions = len(collidingCobras)
 
-        # Check which cobras could collide with fiducial fibers
-        #cobraCoach = self.bench.cobras.cobraCoach
-        #thetaAngles, phiAngles, _ = cobraCoach.pfi.positionsToAngles(
-        #    cobraCoach.allCobras, self.fiberPositions[:, -1])
-        #thetaAngles = thetaAngles[:, 0]
-        #phiAngles = phiAngles[:, 0]
-        #interferenceCobras = np.array(cobraCoach.checkFiducialInterference(
-        #    thetaAngles, phiAngles), dtype=int)
-        #self.interferences = np.full(self.nCobras, False)
-        #self.interferences[interferenceCobras] = True
-        #self.nInterferences = len(interferenceCobras)
+        # Check which good cobras could collide with fiducial fibers
+        cobraCoach = self.bench.cobras.cobraCoach
+        thetaAngles, phiAngles, _ = cobraCoach.pfi.positionsToAngles(
+            cobraCoach.goodCobras, self.fiberPositions[self.goodCobras, -1])
+        thetaAngles = thetaAngles[:, 0]
+        phiAngles = phiAngles[:, 0]
+        interferenceCobrasIndices = np.array(
+            cobraCoach.checkFiducialInterference(
+                thetaAngles, phiAngles), dtype=int)
+        self.interferences = np.full(self.nCobras, False)
+        self.interferences[interferenceCobrasIndices] = True
+        self.nInterferences = self.interferences.sum()
 
     @staticmethod
     def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2,
@@ -364,6 +365,7 @@ class CollisionSimulator():
         patrolAreaColors[self.collisions] = [1.0, 0.0, 0.0, 0.3]
         patrolAreaColors[self.endPointCollisions] = [0.0, 1.0, 0.0, 0.5]
         patrolAreaColors[~self.goodCobras] = [0.0, 0.0, 0.0, 0.25]
+        patrolAreaColors[self.interferences] = [0.0, 0.0, 0.0, 0.5]
         self.bench.cobras.addPatrolAreasToFigure(colors=patrolAreaColors)
 
         # Draw the black dots

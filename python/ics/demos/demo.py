@@ -73,6 +73,7 @@ simulator.run()
 nTrajectoryCollisions = simulator.nCollisions - simulator.nEndPointCollisions
 print(f"Number of cobras involved in collisions: {simulator.nCollisions}")
 print(f"Number of cobras unaffected by end collisions: {nTrajectoryCollisions}")
+print(f"Number of cobras interfering with fiducial fibers: {simulator.nInterferences}")
 print(f"Total simulation time: {np.round(time.time() - start, 2)} seconds")
 
 # Plot the simulation results
