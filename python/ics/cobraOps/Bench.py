@@ -24,7 +24,7 @@ class Bench:
     """
 
     def __init__(self, cobraCoach, blackDotsCalibrationProduct,
-                 blackDotsMargin=1.0):
+                 blackDotsMargin=1.0, fiducials=None):
         """Constructs a new Bench instance.
 
         Parameters
@@ -37,6 +37,8 @@ class Bench:
         blackDotsMargin: real, optional
             The margin factor in radius of the black dots to avoid in fiber
             allocation. Default is 1.0.
+        fiducials: object, optional
+            A pandas DataFrame with the fiducials data. Default is None.
 
         Returns
         -------
@@ -50,6 +52,9 @@ class Bench:
         # Create the black dot group instance
         self.blackDots = BlackDotGroup(
             blackDotsCalibrationProduct, blackDotsMargin)
+
+        # Save the fiducials data
+        self.fiducials = fiducials
 
         # Calculate the bench center
         self.center = np.mean(self.cobras.centers)

@@ -8,6 +8,7 @@ most recent calibration data.
 import os
 import time
 import numpy as np
+import pandas as pd
 
 from ics.cobraOps import plotUtils
 from ics.cobraOps import targetUtils
@@ -51,8 +52,13 @@ calibrationFileName = os.path.join(
     os.environ["PFS_INSTDATA_DIR"], "data/pfi/dot", "black_dots_mm.csv")
 blackDotsCalibrationProduct = BlackDotsCalibrationProduct(calibrationFileName)
 
+# Load the fiducial fibers positions file
+fiducialsFileName = os.path.join(
+    os.environ["PFS_INSTDATA_DIR"], "data/pfi/fiducials", "fiducial_positions.csv")
+fiducials = pd.read_csv(fiducialsFileName, comment="#")
+
 # Create the bench instance
-bench = Bench(cobraCoach, blackDotsCalibrationProduct)
+bench = Bench(cobraCoach, blackDotsCalibrationProduct, fiducials=fiducials)
 
 # Generate the targets
 targetDensity = 1.5

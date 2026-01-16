@@ -360,6 +360,17 @@ class CollisionSimulator():
         yLim = self.bench.center.imag + limRange
         plotUtils.setAxesLimits(xLim, yLim)
 
+        # Draw the fiducial fibers if necessary
+        if self.bench.fiducials is not None:
+            fiducials = self.bench.fiducials
+            nFiducials = len(fiducials)
+            fiducialPositions = (
+                fiducials["x_mm"] + 1j * fiducials["y_mm"]).to_numpy()
+            rMin = np.full(nFiducials, 1)
+            rMax = np.full(nFiducials, 2)
+            plotUtils.addRings(
+                fiducialPositions, rMin, rMax, facecolors=[1.0, 0.0, 0.0, 0.75])
+
         # Draw the cobra patrol areas
         patrolAreaColors = np.full((self.nCobras, 4), [0.0, 0.0, 1.0, 0.15])
         patrolAreaColors[self.collisions] = [1.0, 0.0, 0.0, 0.3]
