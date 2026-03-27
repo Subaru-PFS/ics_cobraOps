@@ -14,6 +14,7 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
+from .BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from .BlackDotGroup import BlackDotGroup
 from .CobraGroup import CobraGroup
 
@@ -23,7 +24,7 @@ class Bench:
 
     """
 
-    def __init__(self, cobraCoach, blackDotsCalibrationProduct,
+    def __init__(self, cobraCoach, blackDotsCalibrationProduct=None,
                  blackDotsMargin=1.0, fiducials=None):
         """Constructs a new Bench instance.
 
@@ -33,12 +34,15 @@ class Bench:
             The cobra coach instance.
         blackDotsCalibrationProduct: object
             The black dots calibration product with the black dots properties
-            to use.
+            to use. Default is None, in which case the black dots calibration
+            product will be created using the information stored in cobra coach.
         blackDotsMargin: real, optional
             The margin factor in radius of the black dots to avoid in fiber
             allocation. Default is 1.0.
         fiducials: object, optional
-            A pandas DataFrame with the fiducials data. Default is None.
+            A pandas DataFrame with the fiducials data. Default is None, in
+            which case the fiducials data will be created using the information
+            stored in cobra coach.
 
         Returns
         -------
@@ -50,11 +54,18 @@ class Bench:
         self.cobras = CobraGroup(cobraCoach)
 
         # Create the black dot group instance
+        if blackDotsCalibrationProduct is None:
+            blackDotsCalibrationProduct = BlackDotsCalibrationProduct.from_pandas(
+                cobraCoach.blackdotModel)
+
         self.blackDots = BlackDotGroup(
             blackDotsCalibrationProduct, blackDotsMargin)
 
         # Save the fiducials data
-        self.fiducials = fiducials
+        if fiducials is None:
+            self.fiducials = cobraCoach.fiducialsModel
+        else:
+            self.fiducials = fiducials
 
         # Calculate the bench center
         self.center = np.mean(self.cobras.centers)

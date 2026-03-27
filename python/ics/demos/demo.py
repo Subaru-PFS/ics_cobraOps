@@ -38,6 +38,7 @@ calibrationProduct.phiOut[wrongAngles] = 0
 calibrationProduct.tht0[wrongAngles] = 0
 calibrationProduct.tht1[wrongAngles] = (2.1 * np.pi) % (2 * np.pi)
 print(f"Number of cobras with wrong phi and tht angles: {np.sum(wrongAngles)}")
+print(f"Number of cobras with wrong phi and tht angles that are not bad cobras: {np.sum(wrongAngles & (~badCobras))}")
 
 # Check if there is any cobra with too short or too long link lengths
 tooShortLinks = np.logical_or(
@@ -48,14 +49,19 @@ print(f"Number of cobras with too short link lenghts: {np.sum(tooShortLinks)}")
 print(f"Number of cobras with too long link lenghts: {np.sum(tooLongLinks)}")
 
 # Load the black dots calibration file
-calibrationFileName = os.path.join(
-    os.environ["PFS_INSTDATA_DIR"], "data/pfi/dot", "black_dots_mm.csv")
-blackDotsCalibrationProduct = BlackDotsCalibrationProduct(calibrationFileName)
+#calibrationFileName = os.path.join(
+#    os.environ["PFS_INSTDATA_DIR"], "data/pfi/dot", "black_dots_mm.csv")
+#blackDotsCalibrationProduct = BlackDotsCalibrationProduct.from_file(
+# calibrationFileName)
+#blackDotsCalibrationProduct = BlackDotsCalibrationProduct.from_pandas(
+# cobraCoach.blackdotModel)
+blackDotsCalibrationProduct = None
 
 # Load the fiducial fibers positions file
-fiducialsFileName = os.path.join(
-    os.environ["PFS_INSTDATA_DIR"], "data/pfi/fiducials", "fiducial_positions.csv")
-fiducials = pd.read_csv(fiducialsFileName, comment="#")
+#fiducialsFileName = os.path.join(
+#    os.environ["PFS_INSTDATA_DIR"], "data/pfi/fiducials", "fiducial_positions.csv")
+#fiducials = pd.read_csv(fiducialsFileName, comment="#")
+fiducials = None
 
 # Create the bench instance
 bench = Bench(cobraCoach, blackDotsCalibrationProduct, fiducials=fiducials)

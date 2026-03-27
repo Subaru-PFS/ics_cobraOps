@@ -23,7 +23,31 @@ class BlackDotsCalibrationProduct(AttributePrinter):
 
     """
 
-    def __init__(self, fileName):
+    def __init__(self, ids, centers, radius):
+        """Constructs a new BlackDotsCalibrationProduct instance.
+
+        Parameters
+        ----------
+        ids: object
+            A numpy array with the black dots ids.
+        centers: object
+            A numpy complex array with the black dots centers.
+        radius: object
+            A numpy array with with the black dots radii in mm.
+
+        Returns
+        -------
+        object
+            The BlackDotsCalibrationProduct instance.
+
+        """
+        self.nBlackDots = len(ids)
+        self.ids = ids.astype("int")
+        self.centers = centers.astype("complex")
+        self.radius = radius.astype("float")
+
+    @classmethod
+    def from_file(cls, fileName):
         """Constructs a new BlackDotsCalibrationProduct instance using the
         information contained in a csv file.
 
@@ -46,16 +70,40 @@ class BlackDotsCalibrationProduct(AttributePrinter):
         blackDotsData = blackDotsData[1:]
 
         # Get the total number of black dots
-        self.nBlackDots = len(blackDotsData)
+        nBlackDots = len(blackDotsData)
 
         # Create the calibration data arrays
-        self.id = np.empty(self.nBlackDots, dtype="int")
-        self.centers = np.empty(self.nBlackDots, dtype="complex")
-        self.radius = np.empty(self.nBlackDots)
+        ids = np.empty(nBlackDots, dtype="int")
+        centers = np.empty(nBlackDots, dtype="complex")
+        radius = np.empty(nBlackDots)
 
         # Fill the arrays
         for i, blackDotData in enumerate(blackDotsData):
-            self.id[i] = int(blackDotData[0])
-            self.centers[i] = complex(
-                float(blackDotData[1]), float(blackDotData[2]))
-            self.radius[i] = float(blackDotData[3])
+            ids[i] = int(blackDotData[0])
+            centers[i] = complex(float(blackDotData[1]), float(blackDotData[2]))
+            radius[i] = float(blackDotData[3])
+
+        return cls(ids, centers, radius)
+
+    @classmethod
+    def from_pandas(cls, blackDotsData):
+        """Constructs a new BlackDotsCalibrationProduct instance using the
+        information contained in a pandas DataFrame.
+
+        Parameters
+        ----------
+        blackDotsData: object
+            A pandas DataFrame with the black dots data. It must contain the
+            following columns: 'spotId', 'x', 'y' and 'r'.
+
+        Returns
+        -------
+        object
+            The BlackDotsCalibrationProduct instance.
+
+        """
+        ids = blackDotsData["spotId"].values
+        centers = blackDotsData["x"].values + 1j * blackDotsData["y"].values
+        radius = blackDotsData["r"].values
+
+        return cls(ids, centers, radius)
