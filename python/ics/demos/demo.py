@@ -4,7 +4,6 @@ This example demonstrates how to use the collisions simulation code with the
 most recent calibration data.
 
 """
-
 import os
 import time
 import numpy as np
@@ -17,9 +16,12 @@ from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from ics.cobraOps.CollisionSimulator import CollisionSimulator
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector as TargetSelector
 from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
+from pfs.instdata import setup_envvar
+
+# Set the PFS_INSTDATA_DIR environment variable
+env = setup_envvar()
 
 # Initialize the cobra coach instance
-os.environ.setdefault("PFS_INSTDATA_DIR", "/home/jgracia/github/pfs_instdata")
 cobraCoach = CobraCoach(
     loadModel=True, trajectoryMode=True, rootDir="/home/jgracia/testPFI/")
 
@@ -38,7 +40,8 @@ calibrationProduct.phiOut[wrongAngles] = 0
 calibrationProduct.tht0[wrongAngles] = 0
 calibrationProduct.tht1[wrongAngles] = (2.1 * np.pi) % (2 * np.pi)
 print(f"Number of cobras with wrong phi and tht angles: {np.sum(wrongAngles)}")
-print(f"Number of cobras with wrong phi and tht angles that are not bad cobras: {np.sum(wrongAngles & (~badCobras))}")
+print(f"Number of good cobras with wrong phi and tht angles: {
+    np.sum(wrongAngles & (~badCobras))}")
 
 # Check if there is any cobra with too short or too long link lengths
 tooShortLinks = np.logical_or(
@@ -50,16 +53,14 @@ print(f"Number of cobras with too long link lenghts: {np.sum(tooLongLinks)}")
 
 # Load the black dots calibration file
 #calibrationFileName = os.path.join(
-#    os.environ["PFS_INSTDATA_DIR"], "data/pfi/dot", "black_dots_mm.csv")
+#    env["PFS_INSTDATA_DIR"], "data/pfi/dot", "black_dots_mm.csv")
 #blackDotsCalibrationProduct = BlackDotsCalibrationProduct.from_file(
 # calibrationFileName)
-#blackDotsCalibrationProduct = BlackDotsCalibrationProduct.from_pandas(
-# cobraCoach.blackdotModel)
 blackDotsCalibrationProduct = None
 
 # Load the fiducial fibers positions file
 #fiducialsFileName = os.path.join(
-#    os.environ["PFS_INSTDATA_DIR"], "data/pfi/fiducials", "fiducial_positions.csv")
+#    env["PFS_INSTDATA_DIR"], "data/pfi/fiducials", "fiducial_positions.csv")
 #fiducials = pd.read_csv(fiducialsFileName, comment="#")
 fiducials = None
 
