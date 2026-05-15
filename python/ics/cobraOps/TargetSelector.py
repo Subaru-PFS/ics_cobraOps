@@ -58,7 +58,8 @@ class TargetSelector(ABC):
 
     @abstractmethod
     def calculateAccessibleTargets(self, maximumDistance=np.inf,
-                                   safetyMargin=0):
+                                   safetyMargin=0, brokenCobrasMargin=0,
+                                   fiducialsAvoidDistance=0):
         """Calculates the targets that each cobra can reach.
 
         This method should always be run before the selecTargets method.
@@ -79,6 +80,10 @@ class TargetSelector(ABC):
             distance to the broken cobras smaller than 
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
             Default is 0.
+        fiducialsAvoidDistance: float, optional
+            The distance in mm to use to avoid collisions with the fiducial
+            fibers. Default is 0, which means that targets will not be
+            invalidated based on their distance to the fiducials.
 
         """
         pass
@@ -93,7 +98,8 @@ class TargetSelector(ABC):
         """
         pass
 
-    def run(self, maximumDistance=np.inf, safetyMargin=0, brokenCobrasMargin=0):
+    def run(self, maximumDistance=np.inf, safetyMargin=0, brokenCobrasMargin=0,
+            fiducialsAvoidDistance=0):
         """Runs the whole target selection process assigning a single target to
         each cobra in the bench.
 
@@ -113,11 +119,16 @@ class TargetSelector(ABC):
             distance to the broken cobras smaller than 
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
             Default is 0.
+        fiducialsAvoidDistance: float, optional
+            The distance in mm to use to avoid collisions with the fiducial
+            fibers. Default is 0, which means that targets will not be
+            invalidated based on their distance to the fiducials.
 
         """
         # Obtain the accessible targets for each cobra
         self.calculateAccessibleTargets(
-            maximumDistance, safetyMargin, brokenCobrasMargin)
+            maximumDistance, safetyMargin, brokenCobrasMargin,
+            fiducialsAvoidDistance)
 
         # Select a single target for each cobra
         self.selectTargets()
@@ -208,7 +219,8 @@ class TargetSelector(ABC):
         return indices, positions, distances
 
     def _calculateAccessibleTargets(self, maximumDistance, safetyMargin,
-                                    brokenCobrasMargin, orderRandomly=False,
+                                    brokenCobrasMargin, fiducialsAvoidDistance,
+                                    orderRandomly=False,
                                     orderByPriority=False):
         """Calculates the targets that each cobra can reach.
 
@@ -229,11 +241,14 @@ class TargetSelector(ABC):
             which we don't know their exact position. Sources falling at a 
             distance to the broken cobras smaller than 
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
-        orderRandomly: bool, optional
+        fiducialsAvoidDistance: float
+            The distance in mm to use to avoid collisions with the fiducial
+            fibers.
+        orderRandomly: bool
             If True, accessible targets will be ordered randomly. Default is
             False, which means that the targets will be ordered by their
             distance to the cobra center.
-        orderByPriority: bool, optional
+        orderByPriority: bool
             If True, accessible targets will be ordered by their priority.
             Default is False, which means that the targets will be ordered
             by their distance to the cobra center.
@@ -247,6 +262,10 @@ class TargetSelector(ABC):
             ~self.bench.cobras.isGood]
         brokenCobrasRmax = self.bench.cobras.rMax[
             ~self.bench.cobras.isGood]
+        fiducials = self.bench.fiducials
+        fiducialPositions = (
+            fiducials["x_mm"] + 1j * fiducials["y_mm"]).to_numpy()
+        fiducialPositions = fiducialPositions[np.isfinite(fiducialPositions)]
 
         # Obtain the cobra-target associations
         associations = []
@@ -275,7 +294,17 @@ class TargetSelector(ABC):
             brokenCobrasDistances = np.abs(
                 positions[:, np.newaxis] - brokenCobrasPositions)
             validTargets = np.all(
-                brokenCobrasDistances > (brokenCobrasMargin * brokenCobrasRmax), axis=1)
+                brokenCobrasDistances > (brokenCobrasMargin * brokenCobrasRmax),
+                axis=1)
+            indices = indices[validTargets]
+            positions = positions[validTargets]
+            distances = distances[validTargets]
+
+            # Invalidate targets falling too close to fiducial fibers
+            fiducialDistances = np.abs(
+                positions[:, np.newaxis] - fiducialPositions)
+            validTargets = np.all(
+                fiducialDistances > fiducialsAvoidDistance, axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
             distances = distances[validTargets]

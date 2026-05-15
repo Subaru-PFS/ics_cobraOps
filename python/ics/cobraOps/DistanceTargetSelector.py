@@ -26,7 +26,8 @@ class DistanceTargetSelector(TargetSelector):
     """
 
     def calculateAccessibleTargets(self, maximumDistance=np.inf,
-                                   safetyMargin=0, brokenCobrasMargin=0):
+                                   safetyMargin=0, brokenCobrasMargin=0,
+                                   fiducialsAvoidDistance=0):
         """Calculates the targets that each cobra can reach.
 
         The accessible targets are ordered by their distance to the cobra
@@ -50,10 +51,15 @@ class DistanceTargetSelector(TargetSelector):
             distance to the broken cobras smaller than 
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
             Default is 0.
-    
+        fiducialsAvoidDistance: float, optional
+            The distance in mm to use to avoid collisions with the fiducial
+            fibers. Default is 0, which means that targets will not be
+            invalidated based on their distance to the fiducials.
+
         """
         self._calculateAccessibleTargets(
-            maximumDistance, safetyMargin, brokenCobrasMargin)
+            maximumDistance, safetyMargin, brokenCobrasMargin,
+            fiducialsAvoidDistance)
 
     def selectTargets(self):
         """Selects a single target for each cobra based on their distance to
