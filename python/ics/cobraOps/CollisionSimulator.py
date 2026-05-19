@@ -163,17 +163,20 @@ class CollisionSimulator():
         self.nEndPointCollisions = len(collidingCobras)
 
         # Check which good cobras could collide with fiducial fibers
-        #cobraCoach = self.bench.cobras.cobraCoach
-        #thetaAngles, phiAngles, _ = cobraCoach.pfi.positionsToAngles(
-        #    cobraCoach.goodCobras, self.fiberPositions[self.goodCobras, -1])
-        #thetaAngles = thetaAngles[:, 0]
-        #phiAngles = phiAngles[:, 0]
-        #interferenceCobrasIndices = np.array(
-        #    cobraCoach.checkFiducialInterference(
-        #        thetaAngles, phiAngles), dtype=int)
-        #self.interferences = np.full(self.nCobras, False)
-        #self.interferences[interferenceCobrasIndices] = True
-        #self.nInterferences = self.interferences.sum()
+        cobraCoach = self.bench.cobras.cobraCoach
+        thetaAngles, phiAngles, _ = cobraCoach.pfi.positionsToAngles(
+            cobraCoach.allCobras, self.fiberPositions[:, -1])
+        
+        thetaAngles = thetaAngles[:, 0][cobraCoach.goodIdx]
+        phiAngles = phiAngles[:, 0][cobraCoach.goodIdx]
+        
+        unasigned_cobra_indices = np.where(~self.movingCobras)[0]
+        interferenceCobrasIndices = np.array(
+            cobraCoach.checkFiducialInterference(
+                thetaAngles, phiAngles, unasigned_cobra_indices), dtype=int)
+        self.interferences = np.full(self.nCobras, False)
+        self.interferences[interferenceCobrasIndices] = True
+        self.nInterferences = self.interferences.sum()
 
     @staticmethod
     def distancesBetweenLineSegments(startPoints1, endPoints1, startPoints2,
