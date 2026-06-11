@@ -13,6 +13,7 @@ Consult the following papers for more detailed information:
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from ics.cobraCharmer.cobraCoach import engineer
 
@@ -338,7 +339,7 @@ class CollisionSimulator():
                 fiberPositions, elbowPositions, thiknesses,
                 facecolor=footprintColors)
 
-    def plotResults(self, extraTargets=None, paintFootprints=False):
+    def plotResults(self, extraTargets=None, paintFootprints=False, markInterferences=True):
         """Plots the collision simulator results in a new figure.
 
         Parameters
@@ -350,6 +351,8 @@ class CollisionSimulator():
         paintFootprints: bool, optional
             If True, the cobra trajectory footprints will be painted. Default
             is False.
+        markInterferences: bool, optional
+            If True, the cobra indices that interfere with the fiducial fibers will be marked. Default is True.
 
         """
         # Create a new figure
@@ -385,6 +388,18 @@ class CollisionSimulator():
 
         self.bench.cobras.addPatrolAreasToFigure(colors=patrolAreaColors)
 
+        # Label the cobra indices that interfere with the fiducial fibers.
+        if markInterferences:
+            if self.interferences is not None and np.any(self.interferences):
+                interferingIdx = np.where(self.interferences)[0]
+                interferencePositions = self.fiberPositions[interferingIdx, -1]
+                for idx, position in zip(interferingIdx, interferencePositions):
+                    plt.text(
+                        position.real, position.imag, f"{idx}",
+                        color="white", fontsize=8, fontweight="bold",
+                        ha="center", va="center", zorder=20,
+                        bbox=dict(facecolor="black", alpha=0.65, edgecolor="none", pad=0.8))
+        
         # Draw the black dots
         self.bench.blackDots.addToFigure(colors=[0.0, 0.0, 0.0, 0.15])
 
