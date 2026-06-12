@@ -357,6 +357,67 @@ class TargetSelector(ABC):
             self.accessibleTargetElbows[i, :nTargets] = elbows
             self.accessibleTargetPriorities[i, :nTargets] = priorities
 
+        # Detect those targets interferering with fiducial fibers
+        cobraCoach = self.bench.cobras.cobraCoach
+        fiducialInterferences = np.full(arrayShape, False)
+
+        for i in range(maxTargetsPerCobra):
+            # Calculate the cobra angles at the target positions
+            targetIndices = self.accessibleTargetIndices[:, i]
+            validTargets = targetIndices != TargetGroup.NULL_TARGET_INDEX
+            thetaAngles, phiAngles, _ = cobraCoach.pfi.positionsToAngles(
+                cobraCoach.allCobras[validTargets],
+                self.targets.positions[targetIndices[validTargets]])
+            thetaAngles = thetaAngles[:, 0]
+            phiAngles = phiAngles[:, 0]
+
+            # Fill the angles for all cobras using some dummy values for those
+            # without valid targets
+            allCobrasThetaAngles = np.full(nCobras, 0.0)
+            allCobrasPhiAngles = np.full(nCobras, 0.0)
+            allCobrasThetaAngles[validTargets] = thetaAngles
+            allCobrasPhiAngles[validTargets] = phiAngles
+
+            # Check for possible interferences with the fiducial fibers
+            unasignedCobraIndices = np.where(~validTargets)[0]
+            interferenceCobrasIndices = np.array(
+                cobraCoach.checkFiducialInterference(
+                    allCobrasThetaAngles[cobraCoach.goodIdx],
+                    allCobrasPhiAngles[cobraCoach.goodIdx],
+                    unasignedCobraIndices), dtype=int)
+
+            # Save the interferences information
+            fiducialInterferences[interferenceCobrasIndices, i] = True
+
+        # Remove the targets that interfer with the fiducial fibers
+        maxTargetsPerCobra = 0
+
+        for i in range(nCobras):
+            # Get the valid targets for this cobra
+            validTargets = (
+                self.accessibleTargetIndices[i] != TargetGroup.NULL_TARGET_INDEX)
+            validTargets &= ~fiducialInterferences[i]
+            nValidTargets = validTargets.sum()
+
+            if nValidTargets > maxTargetsPerCobra:
+                maxTargetsPerCobra = nValidTargets
+
+            # Move the valid targets to the first positions of the arrays
+            self.accessibleTargetIndices[i, :nValidTargets] = self.accessibleTargetIndices[i, validTargets]
+            self.accessibleTargetIndices[i, nValidTargets:] = TargetGroup.NULL_TARGET_INDEX
+            self.accessibleTargetDistances[i, :nValidTargets] = self.accessibleTargetDistances[i, validTargets]
+            self.accessibleTargetDistances[i, nValidTargets:] = 0
+            self.accessibleTargetElbows[i, :nValidTargets] = self.accessibleTargetElbows[i, validTargets]
+            self.accessibleTargetElbows[i, nValidTargets:] = 0
+            self.accessibleTargetPriorities[i, :nValidTargets] = self.accessibleTargetPriorities[i, validTargets]
+            self.accessibleTargetPriorities[i, nValidTargets:] = 0
+
+        # Remove empty columns in the accessible target arrays
+        self.accessibleTargetIndices = self.accessibleTargetIndices[:, :maxTargetsPerCobra]
+        self.accessibleTargetDistances = self.accessibleTargetDistances[:, :maxTargetsPerCobra]
+        self.accessibleTargetElbows = self.accessibleTargetElbows[:, :maxTargetsPerCobra]
+        self.accessibleTargetPriorities = self.accessibleTargetPriorities[:, :maxTargetsPerCobra]
+
     def getAccessibleTargetsInformation(self, cobraIndex):
         """Returns the indices, distances to the cobra center and cobra elbow
         positions for those targets that can be accessed by the given cobra.

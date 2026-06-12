@@ -168,10 +168,10 @@ class CollisionSimulator():
             cobraCoach.goodCobras, self.fiberPositions[cobraCoach.goodIdx, -1])
         thetaAngles = thetaAngles[:, 0]
         phiAngles = phiAngles[:, 0]
-        unasigned_cobra_indices = np.where(~self.movingCobras)[0]
+        unasignedCobraIndices = np.where(~self.movingCobras)[0]
         interferenceCobrasIndices = np.array(
             cobraCoach.checkFiducialInterference(
-                thetaAngles, phiAngles, unasigned_cobra_indices), dtype=int)
+                thetaAngles, phiAngles, unasignedCobraIndices), dtype=int)
         self.interferences = np.full(self.nCobras, False)
         self.interferences[interferenceCobrasIndices] = True
         self.nInterferences = self.interferences.sum()
