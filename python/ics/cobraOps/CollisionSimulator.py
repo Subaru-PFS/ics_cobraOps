@@ -402,7 +402,7 @@ class CollisionSimulator():
             paintFootprints=paintFootprints, footprintColors=footprintColors)
 
         # Draw the targets assigned to the cobras
-        self.targets.addToFigure(colors=np.array([1.0, 0.0, 0.0, 1.0]))
+        self.targets.addToFigure(colors=np.array([0.4, 1.0, 0.4, 1.0]))
 
         # Draw the extra targets if necessary
         if extraTargets is not None:

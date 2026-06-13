@@ -15,6 +15,7 @@ from ics.cobraOps.Bench import Bench
 from ics.cobraOps.BlackDotsCalibrationProduct import BlackDotsCalibrationProduct
 from ics.cobraOps.CollisionSimulator import CollisionSimulator
 from ics.cobraOps.RandomTargetSelector import RandomTargetSelector as TargetSelector
+from ics.cobraOps.TargetGroup import TargetGroup
 from ics.cobraCharmer.cobraCoach.cobraCoach import CobraCoach
 from pfs.instdata import setup_envvar
 
@@ -92,7 +93,18 @@ print(f"Number of cobras interfering with fiducial fibers: {simulator.nInterfere
 print(f"Total simulation time: {np.round(time.time() - start, 2)} seconds")
 
 # Plot the simulation results
-simulator.plotResults(extraTargets=targets, paintFootprints=False)
+simulator.plotResults(paintFootprints=False)
+
+# Draw only those targets that are not part of the simulation
+usedTargets = np.in1d(targets.ids, selectedTargets.ids)
+accessibleTargetIndices = np.unique(selector.accessibleTargetIndices)
+accessibleTargetIndices = accessibleTargetIndices[
+    accessibleTargetIndices != TargetGroup.NULL_TARGET_INDEX]
+accessibleTargets = np.in1d(targets.ids, targets.ids[accessibleTargetIndices])
+targets.addToFigure(indices=accessibleTargets & ~usedTargets,
+                    colors=np.array([0.4, 0.4, 0.4, 1.0]))
+targets.addToFigure(indices=~accessibleTargets,
+                    colors=np.array([1.0, 0.4, 0.4, 1.0]))
 
 # Pause the execution to have time to inspect the figures
 plotUtils.pauseExecution()
