@@ -77,9 +77,11 @@ print(f"Number of simulated targets: {targets.nTargets}")
 safetyMargin = 0.25
 brokenCobrasMargin = 1.0
 fiducialsAvoidDistance = 0.0
+avoidFiducials = True
 selector = TargetSelector(bench, targets)
 selector.run(safetyMargin=safetyMargin, brokenCobrasMargin=brokenCobrasMargin,
-             fiducialsAvoidDistance=fiducialsAvoidDistance)
+             fiducialsAvoidDistance=fiducialsAvoidDistance,
+             avoidFiducials=avoidFiducials)
 selectedTargets = selector.getSelectedTargets()
 
 # Simulate an observation

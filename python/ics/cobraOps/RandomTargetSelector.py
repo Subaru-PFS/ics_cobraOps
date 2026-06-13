@@ -26,7 +26,8 @@ class RandomTargetSelector(TargetSelector):
 
     def calculateAccessibleTargets(self, maximumDistance=np.inf,
                                    safetyMargin=0, brokenCobrasMargin=0,
-                                   fiducialsAvoidDistance=0):
+                                   fiducialsAvoidDistance=0,
+                                   avoidFiducials=True):
         """Calculates the targets that each cobra can reach.
 
         The accessible targets are ordered randomly.
@@ -53,11 +54,14 @@ class RandomTargetSelector(TargetSelector):
             The distance in mm to use to avoid collisions with the fiducial
             fibers. Default is 0, which means that targets will not be
             invalidated based on their distance to the fiducials.
+        avoidFiducials: bool, optional
+            Excludes targets that could interfere with fiducial fibers. Default
+            is True.
 
         """
         self._calculateAccessibleTargets(
             maximumDistance, safetyMargin, brokenCobrasMargin,
-            fiducialsAvoidDistance, orderRandomly=True)
+            fiducialsAvoidDistance, avoidFiducials, orderRandomly=True)
 
     def selectTargets(self):
         """Selects a single random target for each cobra.
