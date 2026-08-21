@@ -14,6 +14,8 @@ Consult the following papers for more detailed information:
 
 import numpy as np
 
+from ics.cobraCharmer import targetValidation
+
 from . import plotUtils
 from .AttributePrinter import AttributePrinter
 
@@ -69,11 +71,12 @@ class CobraGroup(AttributePrinter):
         self.L2 = calibrationProduct.L2.copy()
         self.linkRadius = np.full(self.nCobras, CobraGroup.COBRA_LINK_RADIUS)
 
-        # Calculate the patrol areas minimum and maximum radii
-        self.rMin = np.abs(
-            self.L1 + self.L2 * np.exp(1j * np.maximum(-np.pi, self.phiIn)))
-        self.rMax = np.abs(
-            self.L1 + self.L2 * np.exp(1j * np.minimum(self.phiOut, 0)))
+        # Calculate the patrol areas minimum and maximum radii.  Deferred to
+        # cobraCharmer.targetValidation so targeting and fps share one definition
+        # structurally rather than by having copied the same expression
+        # (INSTRM-2978).  A reach test that differs between the two is how a design
+        # passes upstream and then gets masked at the telescope.
+        self.rMin, self.rMax = targetValidation.reachAnnulus(calibrationProduct)
 
     def calculateFiberPositions(self, tht, phi, indices=None):
         """Calculates the cobras fiber positions for the given rotation angles.

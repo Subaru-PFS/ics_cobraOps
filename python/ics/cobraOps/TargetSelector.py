@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from scipy.spatial import KDTree
 
+from ics.cobraCharmer import targetValidation
 from .TargetGroup import TargetGroup
 
 
@@ -200,9 +201,9 @@ class TargetSelector(ABC):
         """
         # Get the cobra center and the patrol area limits
         cobraCenter = self.bench.cobras.centers[cobraIndex]
-        rMin = self.bench.cobras.rMin[cobraIndex] + safetyMargin
-        rMax = min(
-            self.bench.cobras.rMax[cobraIndex] - safetyMargin, maximumDistance)
+        rMin, rMax = targetValidation.applySafetyMargin(
+            self.bench.cobras.rMin[cobraIndex], self.bench.cobras.rMax[cobraIndex],
+            safetyMargin, maximumDistance=maximumDistance)
 
         # Get all the targets that the cobra can reach. Remember to
         # remove any possible NULL targets that might exist
@@ -374,33 +375,22 @@ class TargetSelector(ABC):
         cobraCoach = self.bench.cobras.cobraCoach
         fiducialInterferences = np.full(arrayShape, False)
 
+        fidAvoidance = targetValidation.loadFidAvoidance()
+
         for i in range(maxTargetsPerCobra):
-            # Calculate the cobra angles at the target positions
             targetIndices = self.accessibleTargetIndices[:, i]
             validTargets = targetIndices != TargetGroup.NULL_TARGET_INDEX
-            thetaAngles, phiAngles, _ = cobraCoach.pfi.positionsToAngles(
-                cobraCoach.allCobras[validTargets],
-                self.targets.positions[targetIndices[validTargets]])
-            thetaAngles = thetaAngles[:, 0]
-            phiAngles = phiAngles[:, 0]
 
-            # Fill the angles for all cobras using some dummy values for those
-            # without valid targets
-            allCobrasThetaAngles = np.full(nCobras, 0.0)
-            allCobrasPhiAngles = np.full(nCobras, 0.0)
-            allCobrasThetaAngles[validTargets] = thetaAngles
-            allCobrasPhiAngles[validTargets] = phiAngles
+            positions = np.full(nCobras, np.nan + 0j)
+            positions[validTargets] = self.targets.positions[
+                targetIndices[validTargets]]
 
-            # Check for possible interferences with the fiducial fibers
-            unasignedCobraIndices = np.where(~validTargets)[0]
-            interferenceCobrasIndices = np.array(
-                cobraCoach.checkFiducialInterference(
-                    allCobrasThetaAngles[cobraCoach.goodIdx],
-                    allCobrasPhiAngles[cobraCoach.goodIdx],
-                    unasignedCobraIndices), dtype=int)
-
-            # Save the interferences information
-            fiducialInterferences[interferenceCobrasIndices, i] = True
+            # One implementation of the fiducial geometry, shared with fps at move
+            # time (INSTRM-2978).  It takes and returns (nCobras,) and reads NaN as
+            # "no target", so there is no subsetting to goodIdx, no padding of
+            # unassigned cobras, and no mapping indices back onto the fleet.
+            fiducialInterferences[:, i] = targetValidation.fiducialInterference(
+                cobraCoach.calibModel, positions, fidAvoidance)
 
         # Remove the targets that interfer with the fiducial fibers
         maxTargetsPerCobra = 0
