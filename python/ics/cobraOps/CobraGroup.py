@@ -53,6 +53,13 @@ class CobraGroup(AttributePrinter):
         self.nCobras = len(calibrationProduct.centers)
         self.centers = calibrationProduct.centers.copy()
 
+        # Get the bad cobras measured fiber positions
+        if hasattr(calibrationProduct, "geoCenters"):
+            self.badCobrasPositions = calibrationProduct.geoCenters.copy()
+        else:
+            self.badCobrasPositions = np.full(
+                self.nCobras, np.nan, dtype=complex)
+
         # Get their status information
         self.status = calibrationProduct.status.copy()
         self.isGood = np.full(self.nCobras, False)
@@ -277,3 +284,42 @@ class CobraGroup(AttributePrinter):
             centers, elbowPositions, edgecolor=colors, linewidths=2)
         plotUtils.addThickLines(
             elbowPositions, fiberPositions, linkRadius, facecolors=colors)
+
+    def addBadCobrasPositionsToFigure(self,
+                                      colors=np.array([1.0, 0.3, 1.0, 0.75]),
+                                      indices=None):
+        """Draws the bad crobras measured fiber postions on top of an existing
+        figure.
+
+        Parameters
+        ----------
+        colors: object, optional
+            The bad cobras measured fiber positions colors. Default is magenta.
+        indices: object, optional
+            A numpy array with the cobra indices to use. If it is set to None,
+            all the cobras will be used. Default is None.
+
+        """
+        # Extract some useful information
+        badCobrasPositions = self.badCobrasPositions
+        linkRadius = self.linkRadius
+
+        # Select a subset of the cobras if necessary
+        if indices is not None:
+            badCobrasPositions = badCobrasPositions[indices]
+            linkRadius = linkRadius[indices]
+
+            if colors.ndim == 2:
+                colors = colors[indices]
+
+        # Select only valid values
+        isValid = np.isfinite(badCobrasPositions)
+        badCobrasPositions = badCobrasPositions[isValid]
+        linkRadius = linkRadius[isValid]
+
+        if colors.ndim == 2:
+            colors = colors[isValid]
+
+        # Draw the bad cobras measured fiber positions using ring shapes
+        plotUtils.addRings(
+            badCobrasPositions, 0.25*linkRadius, linkRadius, facecolors=colors)

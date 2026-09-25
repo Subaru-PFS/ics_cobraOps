@@ -337,7 +337,8 @@ class CollisionSimulator():
                 fiberPositions, elbowPositions, thiknesses,
                 facecolor=footprintColors)
 
-    def plotResults(self, extraTargets=None, paintFootprints=False, markInterferences=True):
+    def plotResults(self, extraTargets=None, paintFootprints=False,
+                    markInterferences=True):
         """Plots the collision simulator results in a new figure.
 
         Parameters
@@ -350,7 +351,8 @@ class CollisionSimulator():
             If True, the cobra trajectory footprints will be painted. Default
             is False.
         markInterferences: bool, optional
-            If True, the cobra indices that interfere with the fiducial fibers will be marked. Default is True.
+            If True, the cobra indices that interfere with the fiducial fibers
+            will be marked. Default is True.
 
         """
         # Create a new figure
@@ -375,6 +377,9 @@ class CollisionSimulator():
             plotUtils.addRings(
                 fiducialPositions, rMin, rMax, facecolors=[1.0, 0.0, 0.0, 0.75])
 
+        # Draw the bad cobras measured fiber positions
+        self.bench.cobras.addBadCobrasPositionsToFigure()
+
         # Draw the cobra patrol areas
         patrolAreaColors = np.full((self.nCobras, 4), [0.0, 0.0, 1.0, 0.15])
         patrolAreaColors[self.collisions] = [1.0, 0.0, 0.0, 0.3]
@@ -391,13 +396,15 @@ class CollisionSimulator():
             if self.interferences is not None and np.any(self.interferences):
                 interferingIdx = np.where(self.interferences)[0]
                 interferencePositions = self.fiberPositions[interferingIdx, -1]
+
                 for idx, position in zip(interferingIdx, interferencePositions):
                     plt.text(
                         position.real, position.imag, f"{idx}",
                         color="white", fontsize=8, fontweight="bold",
                         ha="center", va="center", zorder=20,
-                        bbox=dict(facecolor="black", alpha=0.65, edgecolor="none", pad=0.8))
-        
+                        bbox=dict(facecolor="black", alpha=0.65,
+                                  edgecolor="none", pad=0.8))
+
         # Draw the black dots
         self.bench.blackDots.addToFigure(colors=[0.0, 0.0, 0.0, 0.15])
 

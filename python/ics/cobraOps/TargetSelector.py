@@ -268,20 +268,30 @@ class TargetSelector(ABC):
         nCobras = self.bench.cobras.nCobras
         blackDotsPositions = self.bench.blackDots.centers
         blackDotsRadius = self.bench.blackDots.radius
-        brokenCobrasPositions = self.bench.cobras.centers[
+        brokenCobrasCenters = self.bench.cobras.centers[
             ~self.bench.cobras.isGood]
-        brokenCobrasRmax = self.bench.cobras.rMax[
+        brokenCobrasRmax = self.bench.cobras.rMax[~self.bench.cobras.isGood]
+        brokenCobrasLinkRadius = self.bench.cobras.linkRadius[
             ~self.bench.cobras.isGood]
         fiducials = self.bench.fiducials
         fiducialPositions = (
             fiducials["x_mm"] + 1j * fiducials["y_mm"]).to_numpy()
         fiducialPositions = fiducialPositions[np.isfinite(fiducialPositions)]
+        hasBadCobrasPositions = np.isfinite(
+            self.bench.cobras.badCobrasPositions)
+        badCobrasPositions = self.bench.cobras.badCobrasPositions[
+            hasBadCobrasPositions]
+        badCobrasLinkRadius = self.bench.cobras.linkRadius[
+            hasBadCobrasPositions]
 
         # Obtain the cobra-target associations
         associations = []
         maxTargetsPerCobra = 0
 
         for i in range(nCobras):
+            # Get the cobra link radius
+            cobraLinkRadius = self.bench.cobras.linkRadius[i]
+
             # Get the targets that fall inside the cobra patrol area
             indices, positions, distances = self._getTargetsInsidePatrolArea(
                 i, maximumDistance, safetyMargin)
@@ -301,11 +311,12 @@ class TargetSelector(ABC):
             distances = distances[validTargets]
 
             # Invalidate targets falling inside the broken cobras patrol areas
+            brokenCobrasAvoidDistance =  (
+                brokenCobrasRmax + brokenCobrasLinkRadius + cobraLinkRadius)
             brokenCobrasDistances = np.abs(
-                positions[:, np.newaxis] - brokenCobrasPositions)
-            validTargets = np.all(
-                brokenCobrasDistances > (brokenCobrasMargin * brokenCobrasRmax),
-                axis=1)
+                positions[:, np.newaxis] - brokenCobrasCenters)
+            validTargets = np.all(brokenCobrasDistances > 
+                brokenCobrasMargin * brokenCobrasAvoidDistance, axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
             distances = distances[validTargets]
@@ -315,6 +326,16 @@ class TargetSelector(ABC):
                 positions[:, np.newaxis] - fiducialPositions)
             validTargets = np.all(
                 fiducialDistances > fiducialsAvoidDistance, axis=1)
+            indices = indices[validTargets]
+            positions = positions[validTargets]
+            distances = distances[validTargets]
+
+            # Invalidate targets falling too close to bad cobras positions
+            badCobrasAvoidDistance = badCobrasLinkRadius + cobraLinkRadius
+            badCobrasDistances = np.abs(
+                positions[:, np.newaxis] - badCobrasPositions)
+            validTargets = np.all(
+                badCobrasDistances > badCobrasAvoidDistance, axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
             distances = distances[validTargets]
