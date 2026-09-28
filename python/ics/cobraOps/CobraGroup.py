@@ -177,25 +177,23 @@ class CobraGroup(AttributePrinter):
             A complex numpy array with the cobra elbow positions.
 
         """
-        # Select the cobra
+        # Select the cobra, and batch its fiber positions as a single (1, n) row
         cobra = self.cobraCoach.allCobras[[cobraIndex]]
+        batchedFiberPositions = np.asarray(fiberPositions, dtype=complex)[np.newaxis]
 
-        # Calculate the cobra elbow positions at each fiber position
-        elbowPositions = np.empty(fiberPositions.shape, dtype=complex)
+        # Calculate the cobra theta angles at every fiber position at once
+        thetaAngles, _, _ = self.cobraCoach.pfi.positionsToAngles(
+            cobra, batchedFiberPositions)
 
-        for i, fiberPosition in enumerate(fiberPositions):
-            # Calculate the cobra theta angles at the fiber position
-            thetaAngles, _, _ = self.cobraCoach.pfi.positionsToAngles(
-                cobra, np.array([fiberPosition], dtype=complex))
+        # Select the first angle solution
+        thetaAngles = thetaAngles[:, :, 0]
 
-            # Select the first angle solution
-            thetaAngles = thetaAngles[:, 0]
+        # Calculate the elbow positions, (1, n) like the batched fiber positions
+        batchedElbowPositions = self.cobraCoach.pfi.anglesToElbowPositions(
+            cobra, thetaAngles)
 
-            # Calculate the elbow position
-            elbowPositions[i] = self.cobraCoach.pfi.anglesToElbowPositions(
-                cobra, thetaAngles)[0]
-
-        return elbowPositions
+        # Return the elbow positions of the single cobra row
+        return batchedElbowPositions[0]
 
     def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]),
                                indices=None, paintHardStops=True):
