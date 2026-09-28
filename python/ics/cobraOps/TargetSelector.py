@@ -352,14 +352,22 @@ class TargetSelector(ABC):
         self.accessibleTargetElbows = np.zeros(arrayShape, dtype=complex)
         self.accessibleTargetPriorities = np.zeros(arrayShape)
 
+        # Calculate the elbow positions of every cobra-target association in
+        # one call, and split them back per cobra
+        nTargetsPerCobra = [len(indices) for _, indices, _, _ in associations]
+        pairCobraIndices = np.repeat(
+            [i for i, _, _, _ in associations], nTargetsPerCobra)
+        pairPositions = np.concatenate(
+            [positions for _, _, positions, _ in associations])
+        pairElbows = self.bench.cobras.calculatePairElbowPositions(
+            pairCobraIndices, pairPositions)
+        elbowsPerCobra = np.split(pairElbows, np.cumsum(nTargetsPerCobra)[:-1])
+
         # Fill the arrays with the cobra-target association information
-        for i, indices, positions, distances in associations:
+        for (i, indices, positions, distances), elbows in zip(
+                associations, elbowsPerCobra):
             # Get the total number of accessible targets for this cobra
             nTargets = len(indices)
-
-            # Calculate the elbow positions at the target positions
-            elbows = self.bench.cobras.calculateCobraElbowPositions(
-                i, positions)
 
             # Get the target priorities
             priorities = self.targets.priorities[indices]
