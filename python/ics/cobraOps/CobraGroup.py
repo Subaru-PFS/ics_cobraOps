@@ -152,41 +152,10 @@ class CobraGroup(AttributePrinter):
             cobras, fiberPositions)
 
         # Select the first angle solution
-        thetaAngles = thetaAngles[:, 0]
+        thetaAngles = thetaAngles[..., 0]
 
         # Return the cobras elbow positions
         return self.cobraCoach.pfi.anglesToElbowPositions(cobras, thetaAngles)
-
-    def calculateCobraElbowPositions(self, cobraIndex, fiberPositions):
-        """Calculates the elbow positions for a given cobra and a list of fiber
-        positions.
-
-        The code assumes that the cobra can reach the given positions, and that
-        the first (theta, phi) angles solution is selected.
-
-        Parameters
-        ----------
-        cobraIndex: int
-            The cobra index
-        fiberPositions: object
-            A complex numpy array with the fiber positions for the given cobra.
-
-        Returns
-        -------
-        object
-            A complex numpy array with the cobra elbow positions.
-
-        """
-        if len(fiberPositions) == 0:  # shortcut
-            return np.zeros((0,), dtype=complex)
-
-        cobras = [self.cobraCoach.allCobras[cobraIndex]]
-
-        thetaAngles, _, _ = self.cobraCoach.pfi.positionsToAngles(
-                cobras, fiberPositions.reshape((1,-1)))
-        elbowPositions = self.cobraCoach.pfi.anglesToElbowPositions(
-                cobras, thetaAngles[:, :, 0])[0]
-        return elbowPositions
 
     def addPatrolAreasToFigure(self, colors=np.array([0.0, 0.0, 1.0, 0.15]),
                                indices=None, paintHardStops=True):
