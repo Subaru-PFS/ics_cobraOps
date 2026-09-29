@@ -286,7 +286,7 @@ class TargetSelector(ABC):
 
         # Obtain the cobra-target associations
         associations = []
-        maxTargetsPerCobra = 0
+        targetsPerCobra = np.zeros(nCobras, dtype=int)
 
         for i in range(nCobras):
             # Get the cobra link radius
@@ -342,9 +342,10 @@ class TargetSelector(ABC):
 
             # Save the cobra-target association information
             associations.append((i, indices, positions, distances))
-            maxTargetsPerCobra = max(maxTargetsPerCobra, len(indices))
+            targetsPerCobra[i] = len(indices)
 
         # Create the accessible target arrays
+        maxTargetsPerCobra = targetsPerCobra.max()
         arrayShape = (nCobras, maxTargetsPerCobra)
         self.accessibleTargetIndices = np.full(
             arrayShape, TargetGroup.NULL_TARGET_INDEX)
@@ -354,8 +355,6 @@ class TargetSelector(ABC):
 
         # Calculate the elbow positions by groups of cobras with the same number
         # of accessible targets
-        targetsPerCobra = np.array(
-            [len(indices) for _, indices, _, _ in associations])
         targetPositions = [positions for _, _, positions, _ in associations]
 
         for nTargets in np.unique(targetsPerCobra[targetsPerCobra > 0]):
@@ -365,7 +364,6 @@ class TargetSelector(ABC):
             # selects the group rows, so the other rows are left as NaN
             positions = np.full((nCobras, nTargets), np.nan, dtype=complex)
             positions[cobraIndices] = [targetPositions[i] for i in cobraIndices]
-
             elbows = self.bench.cobras.calculateElbowPositions(
                 positions, indices=cobraIndices)
             self.accessibleTargetElbows[cobraIndices, :nTargets] = elbows
