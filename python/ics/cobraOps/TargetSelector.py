@@ -78,8 +78,8 @@ class TargetSelector(ABC):
             patrol area. Default is 0.
         brokenCobrasMargin: float, optional
             Safety margin to avoid possible collions with broken cobras for
-            which we don't know their exact position. Sources falling at a 
-            distance to the broken cobras smaller than 
+            which we don't know their exact position. Sources falling at a
+            distance to the broken cobras smaller than
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
             Default is 0.
         fiducialsAvoidDistance: float, optional
@@ -120,8 +120,8 @@ class TargetSelector(ABC):
             patrol area. Default is 0.
         brokenCobrasMargin: float, optional
             Safety margin to avoid possible collions with broken cobras for
-            which we don't know their exact position. Sources falling at a 
-            distance to the broken cobras smaller than 
+            which we don't know their exact position. Sources falling at a
+            distance to the broken cobras smaller than
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
             Default is 0.
         fiducialsAvoidDistance: float, optional
@@ -246,8 +246,8 @@ class TargetSelector(ABC):
             patrol area.
         brokenCobrasMargin: float
             Safety margin to avoid possible collions with broken cobras for
-            which we don't know their exact position. Sources falling at a 
-            distance to the broken cobras smaller than 
+            which we don't know their exact position. Sources falling at a
+            distance to the broken cobras smaller than
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
         fiducialsAvoidDistance: float
             The distance in mm to use to avoid collisions with the fiducial
@@ -315,7 +315,7 @@ class TargetSelector(ABC):
                 brokenCobrasRmax + brokenCobrasLinkRadius + cobraLinkRadius)
             brokenCobrasDistances = np.abs(
                 positions[:, np.newaxis] - brokenCobrasCenters)
-            validTargets = np.all(brokenCobrasDistances > 
+            validTargets = np.all(brokenCobrasDistances >
                 brokenCobrasMargin * brokenCobrasAvoidDistance, axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
@@ -352,14 +352,27 @@ class TargetSelector(ABC):
         self.accessibleTargetElbows = np.zeros(arrayShape, dtype=complex)
         self.accessibleTargetPriorities = np.zeros(arrayShape)
 
+        # get all elbows in a single call
+        tmp_cobras = np.zeros(len(associations), dtype=int)
+        tmp_positions = np.zeros((len(associations), maxTargetsPerCobra), dtype=complex)
+        for i, (cidx, _, positions, _) in enumerate(associations):
+            tmp_cobras[i] = cidx
+            tmp_positions[i, :len(positions)] = positions
+        tmp_cobras = self.bench.cobras.cobraCoach.allCobras[tmp_cobras]
+        thetaAngles, _, _ = self.bench.cobras.cobraCoach.pfi.positionsToAngles(
+                tmp_cobras, tmp_positions)
+        elbowPositions = self.bench.cobras.cobraCoach.pfi.anglesToElbowPositions(
+                tmp_cobras, thetaAngles[:, :, 0])
+        for i, (cidx, _, positions, _) in enumerate(associations):
+            self.accessibleTargetElbows[cidx, :len(positions)] = elbowPositions[i, :len(positions)]
+
         # Fill the arrays with the cobra-target association information
         for i, indices, positions, distances in associations:
             # Get the total number of accessible targets for this cobra
             nTargets = len(indices)
 
-            # Calculate the elbow positions at the target positions
-            elbows = self.bench.cobras.calculateCobraElbowPositions(
-                i, positions)
+            # Copy in the precomputed elbow positions at the target positions
+            elbows = self.accessibleTargetElbows[i, :nTargets]
 
             # Get the target priorities
             priorities = self.targets.priorities[indices]
