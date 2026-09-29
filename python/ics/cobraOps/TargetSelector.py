@@ -352,19 +352,38 @@ class TargetSelector(ABC):
         self.accessibleTargetElbows = np.zeros(arrayShape, dtype=complex)
         self.accessibleTargetPriorities = np.zeros(arrayShape)
 
-        # get all elbows in a single call
-        tmp_cobras = np.zeros(len(associations), dtype=int)
-        tmp_positions = np.zeros((len(associations), maxTargetsPerCobra), dtype=complex)
-        for i, (cidx, _, positions, _) in enumerate(associations):
-            tmp_cobras[i] = cidx
-            tmp_positions[i, :len(positions)] = positions
-        tmp_cobras = self.bench.cobras.cobraCoach.allCobras[tmp_cobras]
-        thetaAngles, _, _ = self.bench.cobras.cobraCoach.pfi.positionsToAngles(
-                tmp_cobras, tmp_positions)
-        elbowPositions = self.bench.cobras.cobraCoach.pfi.anglesToElbowPositions(
-                tmp_cobras, thetaAngles[:, :, 0])
-        for i, (cidx, _, positions, _) in enumerate(associations):
-            self.accessibleTargetElbows[cidx, :len(positions)] = elbowPositions[i, :len(positions)]
+        tmp_ntarget_array = np.array([len(i[1]) for i in associations])
+        for length in range(1, maxTargetsPerCobra+1):  # we don't need to do length 0
+            affected = np.where(tmp_ntarget_array==length)[0]
+            n_affected = len(affected)
+            if n_affected > 0:
+                tmp_cobras = np.zeros(n_affected, dtype=int)
+                tmp_positions = np.zeros((n_affected, length), dtype=complex)
+                for i in range(n_affected):
+                    cidx, _, position, _ = associations[affected[i]]
+                    tmp_cobras[i] = cidx
+                    tmp_positions[i] = position
+                tmp_cobras2 = self.bench.cobras.cobraCoach.allCobras[tmp_cobras]
+                thetaAngles, _, _ = self.bench.cobras.cobraCoach.pfi.positionsToAngles(
+                    tmp_cobras2, tmp_positions)
+                elbowPositions = self.bench.cobras.cobraCoach.pfi.anglesToElbowPositions(
+                    tmp_cobras2, thetaAngles[:, :, 0])
+                for i in range(n_affected):
+                    self.accessibleTargetElbows[tmp_cobras[i], :length] = elbowPositions[i]
+
+        # # get all elbows in a single call
+        # tmp_cobras = np.zeros(len(associations), dtype=int)
+        # tmp_positions = np.zeros((len(associations), maxTargetsPerCobra), dtype=complex)
+        # for i, (cidx, _, positions, _) in enumerate(associations):
+            # tmp_cobras[i] = cidx
+            # tmp_positions[i, :len(positions)] = positions
+        # tmp_cobras = self.bench.cobras.cobraCoach.allCobras[tmp_cobras]
+        # thetaAngles, _, _ = self.bench.cobras.cobraCoach.pfi.positionsToAngles(
+                # tmp_cobras, tmp_positions)
+        # elbowPositions = self.bench.cobras.cobraCoach.pfi.anglesToElbowPositions(
+                # tmp_cobras, thetaAngles[:, :, 0])
+        # for i, (cidx, _, positions, _) in enumerate(associations):
+            # self.accessibleTargetElbows[cidx, :len(positions)] = elbowPositions[i, :len(positions)]
 
         # Fill the arrays with the cobra-target association information
         for i, indices, positions, distances in associations:
