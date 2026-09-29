@@ -354,20 +354,21 @@ class TargetSelector(ABC):
 
         # Calculate the elbow positions by groups of cobras with the same number
         # of accessible targets
-        targetsPerCobra = np.array([len(i[1]) for i in associations])
-        minTargetsPerCobra = targetsPerCobra[targetsPerCobra > 0].min()
+        targetsPerCobra = np.array(
+            [len(indices) for _, indices, _, _ in associations])
+        targetPositions = [positions for _, _, positions, _ in associations]
 
-        for nTargets in range(minTargetsPerCobra, maxTargetsPerCobra + 1):
-            cobraIndices = np.where(targetsPerCobra == nTargets)[0]
+        for nTargets in np.unique(targetsPerCobra[targetsPerCobra > 0]):
+            cobraIndices = np.flatnonzero(targetsPerCobra == nTargets)
 
-            if len(cobraIndices) > 0:
-                positions = np.empty((nCobras, nTargets), dtype=complex)
+            # calculateElbowPositions takes positions for the whole fleet and
+            # selects the group rows, so the other rows are left as NaN
+            positions = np.full((nCobras, nTargets), np.nan, dtype=complex)
+            positions[cobraIndices] = [targetPositions[i] for i in cobraIndices]
 
-                for i in cobraIndices:
-                    positions[i] = associations[i][2]
-
-                self.accessibleTargetElbows[cobraIndices, :nTargets] = self.bench.cobras.calculateElbowPositions(
-                    positions, indices=cobraIndices)
+            elbows = self.bench.cobras.calculateElbowPositions(
+                positions, indices=cobraIndices)
+            self.accessibleTargetElbows[cobraIndices, :nTargets] = elbows
 
         # Fill the arrays with the cobra-target association information
         for i, indices, positions, distances in associations:
