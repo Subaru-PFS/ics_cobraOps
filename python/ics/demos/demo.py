@@ -78,11 +78,13 @@ safetyMargin = 0.25
 brokenCobrasMargin = 1.0
 fiducialsAvoidDistance = 0.0
 avoidFiducials = True
+start = time.time()
 selector = TargetSelector(bench, targets)
 selector.run(safetyMargin=safetyMargin, brokenCobrasMargin=brokenCobrasMargin,
              fiducialsAvoidDistance=fiducialsAvoidDistance,
              avoidFiducials=avoidFiducials)
 selectedTargets = selector.getSelectedTargets()
+print(f"Total target selection time: {np.round(time.time() - start, 2)} seconds")
 
 # Simulate an observation
 start = time.time()

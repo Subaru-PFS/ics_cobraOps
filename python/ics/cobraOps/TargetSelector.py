@@ -78,8 +78,8 @@ class TargetSelector(ABC):
             patrol area. Default is 0.
         brokenCobrasMargin: float, optional
             Safety margin to avoid possible collions with broken cobras for
-            which we don't know their exact position. Sources falling at a 
-            distance to the broken cobras smaller than 
+            which we don't know their exact position. Sources falling at a
+            distance to the broken cobras smaller than
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
             Default is 0.
         fiducialsAvoidDistance: float, optional
@@ -120,8 +120,8 @@ class TargetSelector(ABC):
             patrol area. Default is 0.
         brokenCobrasMargin: float, optional
             Safety margin to avoid possible collions with broken cobras for
-            which we don't know their exact position. Sources falling at a 
-            distance to the broken cobras smaller than 
+            which we don't know their exact position. Sources falling at a
+            distance to the broken cobras smaller than
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
             Default is 0.
         fiducialsAvoidDistance: float, optional
@@ -246,8 +246,8 @@ class TargetSelector(ABC):
             patrol area.
         brokenCobrasMargin: float
             Safety margin to avoid possible collions with broken cobras for
-            which we don't know their exact position. Sources falling at a 
-            distance to the broken cobras smaller than 
+            which we don't know their exact position. Sources falling at a
+            distance to the broken cobras smaller than
             brokenCobrasMargin * brokenCobrasRmax will not be selected.
         fiducialsAvoidDistance: float
             The distance in mm to use to avoid collisions with the fiducial
@@ -286,7 +286,7 @@ class TargetSelector(ABC):
 
         # Obtain the cobra-target associations
         associations = []
-        maxTargetsPerCobra = 0
+        targetsPerCobra = np.zeros(nCobras, dtype=int)
 
         for i in range(nCobras):
             # Get the cobra link radius
@@ -315,7 +315,7 @@ class TargetSelector(ABC):
                 brokenCobrasRmax + brokenCobrasLinkRadius + cobraLinkRadius)
             brokenCobrasDistances = np.abs(
                 positions[:, np.newaxis] - brokenCobrasCenters)
-            validTargets = np.all(brokenCobrasDistances > 
+            validTargets = np.all(brokenCobrasDistances >
                 brokenCobrasMargin * brokenCobrasAvoidDistance, axis=1)
             indices = indices[validTargets]
             positions = positions[validTargets]
@@ -342,9 +342,10 @@ class TargetSelector(ABC):
 
             # Save the cobra-target association information
             associations.append((i, indices, positions, distances))
-            maxTargetsPerCobra = max(maxTargetsPerCobra, len(indices))
+            targetsPerCobra[i] = len(indices)
 
         # Create the accessible target arrays
+        maxTargetsPerCobra = targetsPerCobra.max()
         arrayShape = (nCobras, maxTargetsPerCobra)
         self.accessibleTargetIndices = np.full(
             arrayShape, TargetGroup.NULL_TARGET_INDEX)
@@ -352,14 +353,28 @@ class TargetSelector(ABC):
         self.accessibleTargetElbows = np.zeros(arrayShape, dtype=complex)
         self.accessibleTargetPriorities = np.zeros(arrayShape)
 
+        # Calculate the elbow positions by groups of cobras with the same number
+        # of accessible targets
+        targetPositions = [positions for _, _, positions, _ in associations]
+
+        for nTargets in np.unique(targetsPerCobra[targetsPerCobra > 0]):
+            cobraIndices = np.flatnonzero(targetsPerCobra == nTargets)
+
+            # calculateElbowPositions takes positions for the whole fleet and
+            # selects the group rows, so the other rows are left as NaN
+            positions = np.full((nCobras, nTargets), np.nan, dtype=complex)
+            positions[cobraIndices] = [targetPositions[i] for i in cobraIndices]
+            elbows = self.bench.cobras.calculateElbowPositions(
+                positions, indices=cobraIndices)
+            self.accessibleTargetElbows[cobraIndices, :nTargets] = elbows
+
         # Fill the arrays with the cobra-target association information
         for i, indices, positions, distances in associations:
             # Get the total number of accessible targets for this cobra
             nTargets = len(indices)
 
-            # Calculate the elbow positions at the target positions
-            elbows = self.bench.cobras.calculateCobraElbowPositions(
-                i, positions)
+            # Copy in the precomputed elbow positions at the target positions
+            elbows = self.accessibleTargetElbows[i, :nTargets]
 
             # Get the target priorities
             priorities = self.targets.priorities[indices]
