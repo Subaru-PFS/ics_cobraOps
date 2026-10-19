@@ -306,43 +306,33 @@ class TargetSelector(ABC):
             blackDotDistances = np.abs(
                 positions[:, np.newaxis] - blackDotsPositions)
             validTargets = np.all(blackDotDistances > blackDotsRadius, axis=1)
-            indices = indices[validTargets]
-            positions = positions[validTargets]
-            distances = distances[validTargets]
 
             # Invalidate targets falling inside the broken cobras patrol areas
             brokenCobrasAvoidDistance =  (
                 brokenCobrasRmax + brokenCobrasLinkRadius + cobraLinkRadius)
             brokenCobrasDistances = np.abs(
                 positions[:, np.newaxis] - brokenCobrasCenters)
-            validTargets = np.all(brokenCobrasDistances >
+            validTargets &= np.all(brokenCobrasDistances >
                 brokenCobrasMargin * brokenCobrasAvoidDistance, axis=1)
-            indices = indices[validTargets]
-            positions = positions[validTargets]
-            distances = distances[validTargets]
 
             # Invalidate targets falling too close to fiducial fibers
             fiducialDistances = np.abs(
                 positions[:, np.newaxis] - fiducialPositions)
-            validTargets = np.all(
+            validTargets &= np.all(
                 fiducialDistances > fiducialsAvoidDistance, axis=1)
-            indices = indices[validTargets]
-            positions = positions[validTargets]
-            distances = distances[validTargets]
 
             # Invalidate targets falling too close to bad cobras positions
             badCobrasAvoidDistance = badCobrasLinkRadius + cobraLinkRadius
             badCobrasDistances = np.abs(
                 positions[:, np.newaxis] - badCobrasPositions)
-            validTargets = np.all(
+            validTargets &= np.all(
                 badCobrasDistances > badCobrasAvoidDistance, axis=1)
-            indices = indices[validTargets]
-            positions = positions[validTargets]
-            distances = distances[validTargets]
 
             # Save the cobra-target association information
-            associations.append((i, indices, positions, distances))
-            targetsPerCobra[i] = len(indices)
+            associations.append((i, indices[validTargets],
+                                 positions[validTargets],
+                                 distances[validTargets]))
+            targetsPerCobra[i] = validTargets.sum()
 
         # Create the accessible target arrays
         maxTargetsPerCobra = targetsPerCobra.max()
