@@ -284,6 +284,14 @@ class TargetSelector(ABC):
         badCobrasLinkRadius = self.bench.cobras.linkRadius[
             hasBadCobrasPositions]
 
+        # Invalidate targets falling inside the black dots or too close to
+        # fiducial fibers. This doesn't depend on the cobra, so it is checked
+        # only once for each target
+        validPositions = self._outsideCircles(
+            self.targets.positions, blackDotsPositions, blackDotsRadius)
+        validPositions &= self._outsideCircles(
+            self.targets.positions, fiducialPositions, fiducialsAvoidDistance)
+
         # Obtain the cobra-target associations
         associations = []
         targetsPerCobra = np.zeros(nCobras, dtype=int)
@@ -302,10 +310,7 @@ class TargetSelector(ABC):
                 positions = positions[[]]
                 distances = distances[[]]
 
-            # Invalidate targets falling inside the black dots
-            blackDotDistances = np.abs(
-                positions[:, np.newaxis] - blackDotsPositions)
-            validTargets = np.all(blackDotDistances > blackDotsRadius, axis=1)
+            validTargets = validPositions[indices]
 
             # Invalidate targets falling inside the broken cobras patrol areas
             brokenCobrasAvoidDistance =  (
@@ -314,12 +319,6 @@ class TargetSelector(ABC):
                 positions[:, np.newaxis] - brokenCobrasCenters)
             validTargets &= np.all(brokenCobrasDistances >
                 brokenCobrasMargin * brokenCobrasAvoidDistance, axis=1)
-
-            # Invalidate targets falling too close to fiducial fibers
-            fiducialDistances = np.abs(
-                positions[:, np.newaxis] - fiducialPositions)
-            validTargets &= np.all(
-                fiducialDistances > fiducialsAvoidDistance, axis=1)
 
             # Invalidate targets falling too close to bad cobras positions
             badCobrasAvoidDistance = badCobrasLinkRadius + cobraLinkRadius
@@ -444,6 +443,50 @@ class TargetSelector(ABC):
         self.accessibleTargetDistances = self.accessibleTargetDistances[:, :maxTargetsPerCobra]
         self.accessibleTargetElbows = self.accessibleTargetElbows[:, :maxTargetsPerCobra]
         self.accessibleTargetPriorities = self.accessibleTargetPriorities[:, :maxTargetsPerCobra]
+
+    @staticmethod
+    def _outsideCircles(points, centers, radii):
+        """Checks which points fall outside all the given circles.
+
+        Gives the same result as
+        np.all(np.abs(points[:, np.newaxis] - centers) > radii, axis=1),
+        but each point is only compared with the circles near it.
+
+        Parameters
+        ----------
+        points: object
+            A complex numpy array with the point coordinates.
+        centers: object
+            A complex numpy array with the circle centers.
+        radii: object
+            The circle radii. A scalar or an array with the centers shape.
+
+        Returns
+        -------
+        object
+            A boolean numpy array, True for the points outside all circles.
+
+        """
+        isOutside = np.ones(len(points), dtype=bool)
+
+        if len(points) == 0 or len(centers) == 0:
+            return isOutside
+
+        radii = np.broadcast_to(radii, centers.shape)
+
+        # Search slightly beyond the largest radius, so that rounding in the
+        # KD tree distances cannot miss a circle that the exact test catches
+        kdTree = KDTree(np.column_stack((centers.real, centers.imag)))
+        nearCircles = kdTree.query_ball_point(
+            np.column_stack((points.real, points.imag)),
+            radii.max() * (1 + 1e-9))
+
+        for i, circles in enumerate(nearCircles):
+            if circles:
+                isOutside[i] = np.all(
+                    np.abs(points[i] - centers[circles]) > radii[circles])
+
+        return isOutside
 
     def getAccessibleTargetsInformation(self, cobraIndex):
         """Returns the indices, distances to the cobra center and cobra elbow
